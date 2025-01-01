@@ -1,0 +1,333 @@
+<?php
+session_start();
+if (empty($_SESSION['name'])) {
+    header('location:index.php');
+    exit();
+}
+include('header.php');
+include('includes/connection.php');
+
+// Get the next patient ID
+$fetch_query = mysqli_query($connection, "SELECT MAX(id) as id FROM tbl_patient");
+$row = mysqli_fetch_row($fetch_query);
+$pt_id = $row[0] == 0 ? 1 : $row[0] + 1;
+
+// Handle form submission
+if (isset($_REQUEST['save-patient'])) {
+    $patient_id = 'PT-' . $pt_id;
+    $first_name = mysqli_real_escape_string($connection, $_REQUEST['first_name']);
+    $last_name = mysqli_real_escape_string($connection, $_REQUEST['last_name']);
+    $email = mysqli_real_escape_string($connection, $_REQUEST['email']);
+    $dob = mysqli_real_escape_string($connection, $_REQUEST['dob']);
+    $gender = mysqli_real_escape_string($connection, $_REQUEST['gender']);
+    $civil_status = mysqli_real_escape_string($connection, $_REQUEST['civil_status']);
+    $patient_type = mysqli_real_escape_string($connection, $_REQUEST['patient_type']);
+    $contact_number = mysqli_real_escape_string($connection, $_REQUEST['contact_number']);
+    $address = mysqli_real_escape_string($connection, $_REQUEST['address']);
+    $date_time = mysqli_real_escape_string($connection, $_REQUEST['date_time']);
+    $status = mysqli_real_escape_string($connection, $_REQUEST['status']);
+    $message = mysqli_real_escape_string($connection, $_REQUEST['message']);
+    $weight = mysqli_real_escape_string($connection, $_REQUEST['weight']);
+    $height = mysqli_real_escape_string($connection, $_REQUEST['height']);
+    $temperature = mysqli_real_escape_string($connection, $_REQUEST['temperature']);
+    $blood_pressure = mysqli_real_escape_string($connection, $_REQUEST['blood_pressure']);
+    $menstruation = mysqli_real_escape_string($connection, $_REQUEST['menstruation']);
+    $last_menstrual_period = mysqli_real_escape_string($connection, $_REQUEST['last_menstrual_period']);
+
+    // Handle gender-specific fields
+    if ($gender == 'Male') {
+        $menstruation = 'None';
+        $last_menstrual_period = '';
+    }
+
+    // If "None" or "Menopause" is selected for menstruation, clear the last menstrual period
+    if ($menstruation == 'None' || $menstruation == 'Menopause') {
+        $last_menstrual_period = ''; // Clear the last menstrual period field
+    }
+
+    // Check if the patient with the same first and last name already exists
+    $check_query = mysqli_prepare($connection, "SELECT * FROM tbl_patient WHERE first_name = ? AND last_name = ?");
+    mysqli_stmt_bind_param($check_query, 'ss', $first_name, $last_name);
+    mysqli_stmt_execute($check_query);
+    $result = mysqli_stmt_get_result($check_query);
+
+    if (mysqli_num_rows($result) > 0) {
+        $msg = "Patient with the same name already exists.";
+    } else {
+        // Insert patient record using prepared statement
+        $insert_query = mysqli_prepare($connection, "INSERT INTO tbl_patient (patient_id, first_name, last_name, email, dob, gender, civil_status, patient_type, contact_number, address, status, message, weight, height, temperature, blood_pressure, menstruation, last_menstrual_period, date_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+        mysqli_stmt_bind_param($insert_query, 'ssssssssssssssssss', $patient_id, $first_name, $last_name, $email, $dob, $gender, $civil_status, $patient_type, $contact_number, $address, $status, $message, $weight, $height, $temperature, $blood_pressure, $menstruation, $last_menstrual_period);
+
+        if (mysqli_stmt_execute($insert_query)) {
+            $msg = "Patient added successfully";
+        } else {
+            $msg = "Error!";
+        }
+
+        // Close the statement
+        mysqli_stmt_close($insert_query);
+    }
+
+    // Close the check query statement
+    mysqli_stmt_close($check_query);
+}
+?>
+
+<div class="page-wrapper">
+    <div class="content">
+        <div class="row">
+            <div class="col-sm-4">
+                <h4 class="page-title">Add Patient</h4>
+            </div>
+            <div class="col-sm-8 text-right mb-3">
+                <a href="patients.php" class="btn btn-primary btn-rounded float-right">Back</a>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-lg-8 offset-lg-2">
+                <form method="post">
+                    <div class="row">
+                        <div class="col-sm-6">
+                            <div class="form-group">
+                                <label>Patient ID</label>
+                                <input class="form-control" type="text" name="patient_id" value="<?php if(!empty($pt_id)) { echo 'PT-'.$pt_id; } else { echo 'PT-1'; } ?>" disabled>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="form-group">
+                                <label>First Name</label>
+                                <input class="form-control" type="text" name="first_name" required>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="form-group">
+                                <label>Last Name</label>
+                                <input class="form-control" type="text" name="last_name" required>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="form-group">
+                                <label>Email</label>
+                                <input class="form-control" type="email" name="email">
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="form-group">
+                                <label>Date of Birth</label>
+                                <div class="cal-icon">
+                                    <input type="text" class="form-control datetimepicker" name="dob">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="form-group">
+                                <label>Contact Number</label>
+                                <input class="form-control" type="text" name="contact_number" required>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="form-group">
+                                <label>Gender</label>
+                                <div class="form-check">
+                                    <input type="radio" name="gender" class="form-check-input" value="Male" checked>
+                                    <label class="form-check-label">Male</label>
+                                </div>
+                                <div class="form-check">
+                                    <input type="radio" name="gender" class="form-check-input" value="Female">
+                                    <label class="form-check-label">Female</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Civil Status</label>
+                                <select class="form-control" name="civil_status">
+                                    <option value="">Select</option>
+                                    <option value="Single">Single</option>
+                                    <option value="Married">Married</option>
+                                    <option value="Widow">Widow</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Patient's Type</label>
+                                <select class="form-control" name="patient_type" required>
+                                    <option value="">Select</option>
+                                    <option value="Inpatient">Inpatient</option>
+                                    <option value="Outpatient">Outpatient</option>
+                                    <option value="Hemodialysis">Hemodialysis</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="form-group">
+                                <label>Address</label>
+                                <input class="form-control" type="text" name="address">
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="form-group">
+                                <label>Weight</label>
+                                <div class="input-group">
+                                    <input class="form-control" type="text" name="weight">
+                                    <div class="input-group-append">
+                                        <span class="input-group-text">kg</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="form-group">
+                                <label>Height</label>
+                                <div class="input-group">
+                                    <input class="form-control" type="text" name="height">
+                                    <div class="input-group-append">
+                                        <span class="input-group-text">ft</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="form-group">
+                                <label>Temperature</label>
+                                <div class="input-group">
+                                    <input class="form-control" type="text" name="temperature">
+                                    <div class="input-group-append">
+                                        <span class="input-group-text">°C</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="form-group">
+                                <label>Blood Pressure</label>
+                                <input class="form-control" type="text" name="blood_pressure">
+                            </div>
+                        </div>
+                        <div class="col-md-6 menstruation-fields" style="display: none;">
+                            <div class="form-group">
+                                <label>Menstruation</label>
+                                <select class="form-control" name="menstruation" id="menstruationSelect">
+                                    <option value="">Select</option>
+                                    <option value="Regular">Regular</option>
+                                    <option value="Irregular">Irregular</option>
+                                    <option value="Menopause">Menopause</option> 
+                                    <option value="None">None</option> 
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 menstruation-fields" style="display: none;">
+                            <div class="form-group">
+                                <label>Last Menstrual Period</label>
+                                <div class="cal-icon">
+                                    <input type="text" class="form-control datetimepicker" name="last_menstrual_period" id="lastMenstrualPeriodInput">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="form-group">
+                                <label>Other Concerns</label>
+                                <textarea cols="30" rows="4" class="form-control" name="message"></textarea>
+                            </div>
+                        </div>
+                        <div class="col-12 mt-3 text-center">
+                            <button class="btn btn-primary submit-btn" name="save-patient">Save</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<?php 
+include('footer.php');
+?>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script type="text/javascript">
+$(document).ready(function() {
+    // Hide or show menstruation-related fields based on gender selection
+    $('input[name="gender"]').on('change', function() {
+        if ($(this).val() == 'Male') {
+            $('.menstruation-fields').hide(); // Hide all menstruation-related fields
+            $('#menstruationSelect').val(''); // Clear the menstruation select field
+            $('#lastMenstrualPeriodInput').val(''); // Clear the last menstrual period field
+        } else {
+            $('.menstruation-fields').show(); // Show menstruation-related fields
+        }
+    });
+
+    // Handle changes in the menstruation select field
+    $('#menstruationSelect').on('change', function() {
+        if ($(this).val() == 'None' || $(this).val() == 'Menopause') {
+            $('#lastMenstrualPeriodInput').val(''); // Clear the last menstrual period field
+            $('#lastMenstrualPeriodInput').prop('disabled', true); // Disable the input field
+        } else {
+            $('#lastMenstrualPeriodInput').prop('disabled', false); // Enable the input field if not 'None' or 'Menopause'
+        }
+    });
+});
+
+</script>
+
+<script type="text/javascript">
+    <?php
+    if(isset($msg)) {
+        echo 'swal("' . $msg . '");';
+    }
+    ?>
+</script>
+<style>
+.btn-primary {
+            background: #12369e;
+            border: none;
+        }
+        .btn-primary:hover {
+            background: #05007E;
+        }
+        .form-group {
+    position: relative;
+}
+.form-control {
+    border-radius: .375rem; /* Rounded corners */
+    border-color: #ced4da; /* Border color */
+    background-color: #f8f9fa; /* Background color */
+}
+
+.cal-icon {
+    position: relative;
+}
+
+.cal-icon input {
+    padding-right: 30px; /* Adjust the padding to make space for the icon */
+}
+
+.cal-icon::after {
+    content: '\f073'; /* FontAwesome calendar icon */
+    font-family: 'FontAwesome';
+    position: absolute;
+    right: 10px; /* Adjust this value to align the icon properly */
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    color: #aaa; /* Adjust color as needed */
+}
+select.form-control {
+            border-radius: .375rem; /* Rounded corners */
+            border: 1px solid; /* Border color */
+            border-color: #ced4da; /* Border color */
+            background-color: #f8f9fa; /* Background color */
+            padding: .375rem 2.5rem .375rem .75rem; /* Adjust padding to make space for the larger arrow */
+            font-size: 1rem; /* Font size */
+            line-height: 1.5; /* Line height */
+            height: calc(2.25rem + 2px); /* Adjust height */
+            -webkit-appearance: none; /* Remove default styling on WebKit browsers */
+            -moz-appearance: none; /* Remove default styling on Mozilla browsers */
+            appearance: none; /* Remove default styling on other browsers */
+            background: url('data:image/svg+xml;charset=UTF-8,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20"%3E%3Cpath d="M7 10l5 5 5-5z" fill="%23aaa"/%3E%3C/svg%3E') no-repeat right 0.75rem center;
+            background-size: 20px; /* Size of the custom arrow */
+        }
+</style>

@@ -1,0 +1,344 @@
+<?php
+session_start();
+if (empty($_SESSION['name'])) {
+    header('location:index.php');
+    exit();
+}
+include('header.php');
+include('includes/connection.php');
+
+// Sanitize the `id` parameter
+$id = mysqli_real_escape_string($connection, $_GET['id']);
+
+// Fetch existing employee data
+$fetch_query = mysqli_query($connection, "SELECT * FROM tbl_employee WHERE id='$id'");
+$row = mysqli_fetch_array($fetch_query);
+
+$msg = ''; // Initialize $msg
+
+// Update employee data
+if (isset($_POST['save-emp'])) {
+    // Sanitize user inputs
+    $first_name = mysqli_real_escape_string($connection, $_POST['first_name']);
+    $last_name = mysqli_real_escape_string($connection, $_POST['last_name']);
+    $username = mysqli_real_escape_string($connection, $_POST['username']);
+    $emailid = mysqli_real_escape_string($connection, $_POST['emailid']);
+    $pwd = mysqli_real_escape_string($connection, $_POST['pwd']);  // Password entered by user
+    $dob = mysqli_real_escape_string($connection, $_POST['dob']);
+    $employee_id = mysqli_real_escape_string($connection, $_POST['employee_id']);
+    $joining_date = mysqli_real_escape_string($connection, $_POST['joining_date']);
+    $gender = mysqli_real_escape_string($connection, $_POST['gender']);
+    $phone = mysqli_real_escape_string($connection, $_POST['phone']);
+    $address = mysqli_real_escape_string($connection, $_POST['address']);
+    $bio = mysqli_real_escape_string($connection, $_POST['bio']);
+    $role = mysqli_real_escape_string($connection, $_POST['role']);
+    $status = mysqli_real_escape_string($connection, $_POST['status']);
+    $specialization = isset($_POST['specialization']) ? mysqli_real_escape_string($connection, $_POST['specialization']) : '';
+
+    // Encrypt the password before saving it
+    $hashed_password = password_hash($pwd, PASSWORD_BCRYPT);  // Using Bcrypt hashing
+
+    // Handle image upload
+    $profile_picture = null;
+    $profile_picture_updated = false;
+
+    if (isset($_FILES['profile_picture']) && $_FILES['profile_picture']['error'] === UPLOAD_ERR_OK) {
+        $fileTmpPath = $_FILES['profile_picture']['tmp_name'];
+        $fileType = $_FILES['profile_picture']['type'];
+        $fileData = file_get_contents($fileTmpPath);
+
+        // Check for valid image file types
+        $validTypes = ['image/jpeg', 'image/png', 'image/gif'];
+        if (in_array($fileType, $validTypes)) {
+            $profile_picture = $fileData;
+            $profile_picture_updated = true;
+        } else {
+            $msg = "Invalid file type. Only JPEG, PNG, and GIF are allowed.";
+        }
+    }
+
+    if (!$msg) {
+        // Prepare the update statement
+        if ($profile_picture_updated) {
+            $stmt = mysqli_prepare($connection, "UPDATE tbl_employee SET first_name=?, last_name=?, specialization=?, username=?, emailid=?, password=?, dob=?, employee_id=?, joining_date=?, gender=?, address=?, phone=?, bio=?, role=?, status=?, profile_picture=? WHERE id=?");
+
+            // Bind parameters with 'b' for BLOB (image data)
+            mysqli_stmt_bind_param($stmt, 'ssssssssssssssbsi', $first_name, $last_name, $specialization, $username, $emailid, $hashed_password, $dob, $employee_id, $joining_date, $gender, $address, $phone, $bio, $role, $status, $profile_picture, $id);
+        } else {
+            // Update employee data without profile picture
+            $stmt = mysqli_prepare($connection, "UPDATE tbl_employee SET first_name=?, last_name=?, specialization=?, username=?, emailid=?, password=?, dob=?, employee_id=?, joining_date=?, gender=?, address=?, phone=?, bio=?, role=?, status=? WHERE id=?");
+
+            // Bind parameters excluding 'profile_picture'
+            mysqli_stmt_bind_param($stmt, 'ssssssssssssssi', $first_name, $last_name, $specialization, $username, $emailid, $hashed_password, $dob, $employee_id, $joining_date, $gender, $address, $phone, $bio, $role, $status, $id);
+        }
+
+        // Execute the query and check for errors
+        if (mysqli_stmt_execute($stmt)) {
+            $msg = "Employee updated successfully";
+        } else {
+            $msg = "Error: " . mysqli_error($connection);
+        }
+
+        mysqli_stmt_close($stmt);
+    }
+}
+?>
+
+<div class="page-wrapper">
+    <div class="content">
+        <div class="row">
+            <div class="col-sm-4">
+                <h4 class="page-title">Edit Employee</h4>
+            </div>
+            <div class="col-sm-8 text-right mb-3">
+                <a href="employees.php" class="btn btn-primary btn-rounded">Back</a>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-lg-8 offset-lg-2">
+                <form method="post" enctype="multipart/form-data">
+                    <div class="row">
+                        <!-- Profile Picture -->
+                        <div class="col-sm-6">
+                            <div class="form-group">
+                                <label>Profile Picture</label>
+                                <input type="file" class="form-control-file" name="profile_picture">
+                                <?php if ($row['profile_picture']): ?>
+                                <img src="fetch-image-employee.php?id=<?php echo $row['id']; ?>" alt="Employee Profile" width="105">
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                        
+                        <!-- First Name -->
+                        <div class="col-sm-6">
+                            <div class="form-group">
+                                <label>First Name <span class="text-danger">*</span></label>
+                                <input class="form-control" type="text" name="first_name" value="<?php echo $row['first_name']; ?>">
+                            </div>
+                        </div>
+                        
+                        <!-- Last Name -->
+                        <div class="col-sm-6">
+                            <div class="form-group">
+                                <label>Last Name</label>
+                                <input class="form-control" type="text" name="last_name" value="<?php echo $row['last_name']; ?>">
+                            </div>
+                        </div>
+                        
+                        <!-- Username -->
+                        <div class="col-sm-6">
+                            <div class="form-group">
+                                <label>Username <span class="text-danger">*</span></label>
+                                <input class="form-control" type="text" name="username" value="<?php echo $row['username']; ?>">
+                            </div>
+                        </div>
+                        
+                        <!-- Email -->
+                        <div class="col-sm-6">
+                            <div class="form-group">
+                                <label>Email <span class="text-danger">*</span></label>
+                                <input class="form-control" type="email" name="emailid" value="<?php echo $row['emailid']; ?>">
+                            </div>
+                        </div>
+                        
+                        <!-- Password -->
+                        <div class="col-sm-6">
+                            <div class="form-group">
+                                <label>Password</label>
+                                <input class="form-control" type="password" name="pwd" value="<?php echo $row['password']; ?>">
+                            </div>
+                        </div>
+                        
+                        <!-- Employee ID -->
+                        <div class="col-sm-6">
+                            <div class="form-group">
+                                <label>Employee ID</label>
+                                <input class="form-control" type="number" name="employee_id" value="<?php echo $row['employee_id']; ?>">
+                            </div>
+                        </div>
+                        
+                        <!-- Specialization (Conditional) -->
+                        <?php if ($row['role'] == 2): ?>
+                        <div class="col-sm-6">
+                            <div class="form-group">
+                                <label>Specialization</label>
+                                <input class="form-control" type="text" name="specialization" value="<?php echo $row['specialization']; ?>">
+                            </div>
+                        </div>
+                        <?php endif; ?>
+                        
+                        <!-- Joining Date -->
+                        <div class="col-sm-6">
+                            <div class="form-group">
+                                <label>Joining Date</label>
+                                <input class="form-control datetimepicker" name="joining_date" value="<?php echo $row['joining_date']; ?>">
+                            </div>
+                        </div>
+                        
+                        <!-- Date of Birth -->
+                        <div class="col-sm-6">
+                            <div class="form-group">
+                                <label>Date of Birth <span class="text-danger">*</span></label>
+                                <input class="form-control datetimepicker" name="dob" required value="<?php echo $row['dob']; ?>">
+                            </div>
+                        </div>
+                        
+                        <!-- Phone -->
+                        <div class="col-sm-6">
+                            <div class="form-group">
+                                <label>Phone</label>
+                                <input class="form-control" type="text" name="phone" value="<?php echo $row['phone']; ?>">
+                            </div>
+                        </div>
+                        
+                        <!-- Gender -->
+                        <div class="col-sm-6">
+                            <div class="form-group gender-select">
+                                <label>Gender:</label>
+                                <div class="form-check form-check-inline">
+                                    <input type="radio" name="gender" class="form-check-input" value="Male" <?php if($row['gender'] == 'Male') echo 'checked'; ?>> Male
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input type="radio" name="gender" class="form-check-input" value="Female" <?php if($row['gender'] == 'Female') echo 'checked'; ?>> Female
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Address -->
+                        <div class="col-sm-12">
+                            <div class="form-group">
+                                <label>Address</label>
+                                <input type="text" class="form-control" name="address" value="<?php echo $row['address']; ?>">
+                            </div>
+                        </div>
+                        
+                        <!-- Short Biography -->
+                        <div class="col-sm-12">
+                            <div class="form-group">
+                                <label>Short Biography</label>
+                                <textarea class="form-control" rows="3" name="bio"><?php echo $row['bio']; ?></textarea>
+                            </div>
+                        </div>
+                        
+                        <!-- Role -->
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Role</label>
+                                <select class="form-control" name="role">
+                                    <option value="">Select</option>
+                                    <?php
+                                    $fetch_query = mysqli_query($connection, "SELECT title, role FROM tbl_role");
+                                    while($role = mysqli_fetch_array($fetch_query)) {
+                                    ?>
+                                    <option value="<?php echo $role['role']; ?>" <?php if($role['role'] == $row['role']) echo 'selected'; ?>>
+                                        <?php echo $role['title']; ?>
+                                    </option>
+                                    <?php } ?>
+                                </select>
+                            </div>
+                        </div>
+                        <!-- Status -->
+                        <div class="col-sm-12">
+                            <div class="form-group">
+                                <label>Status</label>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="status" id="active" value="1" <?php if($row['status'] == 1) echo 'checked'; ?>>
+                                    <label class="form-check-label" for="active">Active</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="status" id="inactive" value="0" <?php if($row['status'] == 0) echo 'checked'; ?>>
+                                    <label class="form-check-label" for="inactive">Inactive</label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Submit Button -->
+                        <div class="col-sm-12 text-center mt-3">
+                            <button class="btn btn-primary submit-btn" name="save-emp">Save</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<?php 
+include('footer.php');
+?>
+<script type="text/javascript">
+    <?php
+    if(isset($msg) && $msg) {
+        echo 'swal("' . $msg . '");';
+    }
+    ?>
+</script>
+<style>
+    .btn-primary {
+        background: #12369e;
+        border: none;
+    }
+    .btn-primary:hover {
+        background: #05007E;
+    }
+
+    .cal-icon {
+        position: relative;
+    }
+
+    .cal-icon input {
+        padding-right: 30px; /* Adjust the padding to make space for the icon */
+    }
+
+    .cal-icon::after {
+        content: '\f073'; /* FontAwesome calendar icon */
+        font-family: 'FontAwesome';
+        position: absolute;
+        right: 10px; /* Adjust this value to align the icon properly */
+        top: 50%;
+        transform: translateY(-50%);
+        pointer-events: none;
+        color: #aaa; /* Adjust color as needed */
+    }
+    .time-icon {
+    position: relative;
+    }
+
+    .time-icon input {
+        padding-right: 30px; /* Adjust the padding to make space for the icon */
+    }
+
+    .time-icon::after {
+        position: absolute;
+        right: 10px; /* Adjust this value to align the icon properly */
+        top: 50%;
+        transform: translateY(-50%);
+        pointer-events: none;
+        color: #aaa; /* Adjust color as needed */
+    }
+    .form-control {
+    border-radius: .375rem; /* Rounded corners */
+    border-color: #ced4da; /* Border color */
+    background-color: #f8f9fa; /* Background color */
+}
+select.form-control {
+            border-radius: .375rem; /* Rounded corners */
+            border: 1px solid; /* Border color */
+            border-color: #ced4da; /* Border color */
+            background-color: #f8f9fa; /* Background color */
+            padding: .375rem 2.5rem .375rem .75rem; /* Adjust padding to make space for the larger arrow */
+            font-size: 1rem; /* Font size */
+            line-height: 1.5; /* Line height */
+            height: calc(2.25rem + 2px); /* Adjust height */
+            -webkit-appearance: none; /* Remove default styling on WebKit browsers */
+            -moz-appearance: none; /* Remove default styling on Mozilla browsers */
+            appearance: none; /* Remove default styling on other browsers */
+            background: url('data:image/svg+xml;charset=UTF-8,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20"%3E%3Cpath d="M7 10l5 5 5-5z" fill="%23aaa"/%3E%3C/svg%3E') no-repeat right 0.75rem center;
+            background-size: 20px; /* Size of the custom arrow */
+        }
+
+        select.form-control:focus {
+            border-color: #12369e; /* Border color on focus */
+            box-shadow: 0 0 0 .2rem rgba(38, 143, 255, .25); /* Shadow on focus */
+        }
+</style>

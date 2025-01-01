@@ -1,0 +1,709 @@
+<?php
+session_start();
+ob_start();
+
+if (empty($_SESSION['name'])) {
+    header('location:index.php');
+    exit; // Stop further execution
+}
+
+include('header.php');
+include('includes/connection.php');
+
+// Function to sanitize user inputs
+function sanitize($connection, $input) {
+    return mysqli_real_escape_string($connection, htmlspecialchars(strip_tags(trim($input)), ENT_QUOTES, 'UTF-8'));
+}
+
+// Initialize a message variable
+$msg = null;
+
+$role = isset($_SESSION['role']) ? $_SESSION['role'] : null;
+
+// Process Diagnosis Form Submission
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['diagnosis']) && isset($_POST['inpatientIdDiagnosis'])) {
+    $diagnosis = sanitize($connection, $_POST['diagnosis']);
+    $inpatientId = sanitize($connection, $_POST['inpatientIdDiagnosis']);
+
+    $update_query = $connection->prepare("UPDATE tbl_inpatient_record SET diagnosis = ? WHERE inpatient_id = ?");
+    $update_query->bind_param("ss", $diagnosis, $inpatientId);
+    $msg = $update_query->execute() ? "Diagnosis added successfully." : "Error adding diagnosis.";
+}
+
+// Process Treatment (Selected Medicines)
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['selectedMedicines']) && isset($_POST['inpatientIdTreatment'])) {
+    $inpatientId = sanitize($connection, $_POST['inpatientIdTreatment']);
+    $selectedMedicines = json_decode($_POST['selectedMedicines'], true);
+
+    if ($selectedMedicines) {
+        foreach ($selectedMedicines as $medicine) {
+            $medicineId = sanitize($connection, $medicine['id']);
+            $medicineName = sanitize($connection, $medicine['name']);
+            $medicineBrand = sanitize($connection, $medicine['brand']);
+            $quantity = intval($medicine['quantity']);
+            $price = floatval($medicine['price']);
+            $totalPrice = $quantity * $price;
+
+            $insertQuery = $connection->prepare("
+                INSERT INTO tbl_treatment (inpatient_id, patient_id, patient_name, medicine_name, medicine_brand, total_quantity, price, total_price, treatment_date)
+                SELECT inpatient_id, patient_id, patient_name, ?, ?, ?, ?, ?, NOW()
+                FROM tbl_inpatient_record
+                WHERE inpatient_id = ?
+            ");
+            $insertQuery->bind_param("ssssss", $medicineName, $medicineBrand, $quantity, $price, $totalPrice, $inpatientId);
+            if (!$insertQuery->execute()) {
+                $msg = "Error inserting treatment: " . $connection->error;
+                break;
+            }
+
+            $updateMedicineQuery = $connection->prepare("UPDATE tbl_medicines SET quantity = quantity - ? WHERE id = ?");
+            $updateMedicineQuery->bind_param("is", $quantity, $medicineId);
+            if (!$updateMedicineQuery->execute()) {
+                $msg = "Error updating medicine quantity: " . $connection->error;
+                break;
+            }
+
+            $updateInpatientQuery = $connection->prepare("
+                UPDATE tbl_inpatient_record
+                SET 
+                    medicine_name = IF(medicine_name IS NULL OR medicine_name = '', ?, CONCAT(medicine_name, ', ', ?)),
+                    medicine_brand = IF(medicine_brand IS NULL OR medicine_brand = '', ?, CONCAT(medicine_brand, ', ', ?)),
+                    total_quantity = IF(total_quantity IS NULL, ?, total_quantity + ?)
+                WHERE inpatient_id = ?
+            ");
+            $updateInpatientQuery->bind_param("sssssis", $medicineName, $medicineName, $medicineBrand, $medicineBrand, $quantity, $quantity, $inpatientId);
+            if (!$updateInpatientQuery->execute()) {
+                $msg = "Error updating inpatient record: " . $connection->error;
+                break;
+            }
+        }
+
+        if (!isset($msg)) {
+            $msg = "Treatment added successfully.";
+        }
+    } else {
+        $msg = "Error: Invalid medicines data.";
+    }
+}
+
+// Process Patient Form Submission
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['patientId'])) {
+    $patientId = sanitize($connection, $_POST['patientId']);
+
+    $patient_query = $connection->prepare("SELECT * FROM tbl_inpatient WHERE id = ?");
+    $patient_query->bind_param("s", $patientId);
+    $patient_query->execute();
+    $patient_result = $patient_query->get_result();
+    $patient = $patient_result->fetch_assoc();
+
+    if ($patient) {
+        $inpatient_id = $patient['inpatient_id'];
+        $patient_id = $patient['patient_id'];
+        $name = sanitize($connection, $patient['patient_name']);
+        $gender = sanitize($connection, $patient['gender']);
+        $dob = sanitize($connection, $patient['dob']);
+        $room_type = sanitize($connection, $patient['room_type']);
+        $room_number = sanitize($connection, $patient['room_number']);
+        $bed_number = sanitize($connection, $patient['bed_number']);
+        $admission_date = sanitize($connection, $patient['admission_date']);
+        $doctor_incharge = "";
+
+        $insert_query = $connection->prepare("
+            INSERT INTO tbl_inpatient_record (
+                inpatient_id, patient_id, patient_name, gender, dob, doctor_incharge, admission_date, room_type, room_number, bed_number
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+        $insert_query->bind_param("ssssssssss", $inpatient_id, $patient_id, $name, $gender, $dob, $doctor_incharge, $admission_date, $room_type, $room_number, $bed_number);
+        $insert_query->execute();
+
+        header('Location: inpatient-record.php');
+        exit;
+    } else {
+        $msg = "Patient not found. Please check the Patient ID.";
+    }
+}
+
+// Process Assigning Doctor Form
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['inpatientIdDoctor']) && isset($_POST['doctorId'])) {
+    $inpatientId = sanitize($connection, $_POST['inpatientIdDoctor']);
+    $doctorId = sanitize($connection, $_POST['doctorId']);
+
+    $doctor_query = $connection->prepare("SELECT first_name, last_name FROM tbl_employee WHERE id = ?");
+    $doctor_query->bind_param("s", $doctorId);
+    $doctor_query->execute();
+    $doctor_result = $doctor_query->get_result();
+    $doctor = $doctor_result->fetch_assoc();
+    $doctor_name = sanitize($connection, $doctor['first_name'] . ' ' . $doctor['last_name']);
+
+    $update_query = $connection->prepare("UPDATE tbl_inpatient_record SET doctor_incharge = ? WHERE inpatient_id = ?");
+    $update_query->bind_param("ss", $doctor_name, $inpatientId);
+
+    $msg = $update_query->execute() ? "Doctor assigned successfully." : "Error assigning doctor.";
+}
+
+// Display the Message
+if ($msg !== null) {
+    echo '<script>';
+    echo 'swal({ text: "' . $msg . '", icon: "' . (strpos($msg, "successfully") !== false ? 'success' : 'error') . '" });';
+    if (strpos($msg, "successfully") !== false) {
+        echo 'setTimeout(function() { window.location.href = "inpatient-record.php"; }, 2000);';
+    }
+    echo '</script>';
+}
+
+ob_end_flush();
+?>
+
+<div class="page-wrapper">
+    <div class="content">
+        <div class="row">
+            <div class="col-sm-4 col-3">
+                <h4 class="page-title">Inpatient Record</h4>
+            </div>
+            <?php if ($role == 1 || $role == 3): ?>
+                <div class="col-sm-10 col-9 m-b-20">
+                    <form method="POST" action="inpatient-record.php" id="addPatientForm" class="form-inline">
+                        <div class="input-group w-50">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text">
+                                    <i class="fas fa-search"></i> <!-- Search icon -->
+                                </span>
+                            </div>
+                            <input
+                                type="text"
+                                class="form-control search-input"
+                                id="patientSearchInput"
+                                name="patientSearchInput"
+                                placeholder="Enter Patient"
+                                onkeyup="searchPatients()">
+                            <div class="input-group-append">
+                                <button type="submit" class="btn btn-primary" id="addPatientBtn" disabled>Add</button>
+                            </div>
+                        </div>
+                        <input type="hidden" name="patientId" id="patientId">
+                    </form>
+                    <ul id="searchResults" class="list-group mt-2" style="max-height: 200px; overflow-y: auto; border: 1px solid #ccc; border-radius: 5px; display: none;"></ul>
+                </div>
+                <?php endif; ?>
+        </div>
+        <div class="table-responsive">
+        <label for="patientSearchInput" class="font-weight-bold">Search Patient:</label>
+        <input class="form-control" type="text" id="inpatientSearchInput" onkeyup="filterInpatients()" placeholder="Search Patient ID or Patient Name">
+            <table class="datatable table table-hover" id="inpatientTable">
+                <thead style="background-color: #CCCCCC;">
+                    <tr>
+                        <th>Patient ID</th>
+                        <th>Inpatient ID</th>
+                        <th>Patient Name</th>
+                        <th>Age</th>
+                        <th>Gender</th>
+                        <th>Doctor Incharge</th>
+                        <th>Lab Result</th>
+                        <th>Diagnosis</th>
+                        <th>Medications</th>
+                        <th>Room Type</th>
+                        <th>Room Number</th>
+                        <th>Bed Number</th>
+                        <th>Admission Date and Time</th>
+                        <th>Discharge Date and Time</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php
+                    if(isset($_GET['ids'])){
+                    $id = $_GET['ids'];
+                    $update_query = mysqli_query($connection, "UPDATE tbl_inpatient_record SET deleted = 1 WHERE id='$id'");
+                    }
+                    $fetch_query = mysqli_query($connection, "
+                    SELECT r.*, i.discharge_date, 
+                        GROUP_CONCAT(CONCAT(t.medicine_name, ' (', t.medicine_brand, ') - ', t.total_quantity, ' pcs') SEPARATOR '<br>') AS treatments
+                    FROM tbl_inpatient_record r
+                    LEFT JOIN tbl_inpatient i ON r.inpatient_id = i.inpatient_id
+                    LEFT JOIN tbl_treatment t ON r.inpatient_id = t.inpatient_id
+                    GROUP BY r.inpatient_id
+                    ");
+                    while ($row = mysqli_fetch_array($fetch_query)) {
+                        $dob = $row['dob'];
+                        $date = str_replace('/', '-', $dob);
+                        $dob = date('Y-m-d', strtotime($date));
+                        $year = (date('Y') - date('Y', strtotime($dob)));
+
+                        $admission_date_time = date('F d, Y g:i A', strtotime($row['admission_date']));
+                        $discharge_date_time = ($row['discharge_date']) ? date('F d, Y g:i A', strtotime($row['discharge_date'])) : 'N/A';
+
+                        // Combine medicine name, brand, and quantity
+                        $treatmentDetails = $row['treatments'] ?: 'No treatments added';
+                    ?>
+                        <tr>
+                            <td><?php echo $row['patient_id']; ?></td>
+                            <td><?php echo $row['inpatient_id']; ?></td>
+                            <td><?php echo $row['patient_name']; ?></td>
+                            <td><?php echo $year; ?></td>
+                            <td><?php echo $row['gender']; ?></td>
+                            <td>
+                                <?php if (empty($row['doctor_incharge'])) { ?>
+                                    <button class="btn btn-primary btn-sm select-doctor-btn" data-toggle="modal" data-target="#doctorModal" data-id="<?php echo $row['inpatient_id']; ?>">Select Doctor</button>
+                                <?php } else { ?>
+                                    <?php echo $row['doctor_incharge']; ?>
+                                <?php } ?>
+                            </td>
+                            <td>
+                                <form action="generate-result.php" method="get">
+                                    <input type="hidden" name="patient_id" value="<?php echo $row['patient_id']; ?>">
+                                    <button class="btn btn-primary btn-sm custom-btn" type="submit">
+                                        <i class="fa fa-file-pdf-o m-r-5"></i> View Result
+                                    </button>
+                                </form>
+                            </td>
+                            <td><?php echo $row['diagnosis']; ?></td>
+                            <td>
+                                <?php if (!empty($row['treatments'])): ?>
+                                    <!-- Display Treatment Details if Present -->
+                                    <div><?php echo nl2br($row['treatments']); ?></div>
+                                <?php else: ?>
+                                    <!-- Display Button to Add/Edit Treatments if No Treatments Exist -->
+                                    <button class="btn btn-primary btn-sm treatment-btn mt-2" data-toggle="modal" data-target="#treatmentModal" data-id="<?php echo $row['inpatient_id']; ?>">
+                                        <i class="fa fa-stethoscope m-r-5"></i> Add/Edit Treatments
+                                    </button>
+                                <?php endif; ?>
+                            </td>
+                            <td><?php echo $row['room_type']; ?></td>
+                            <td><?php echo $row['room_number']; ?></td>
+                            <td><?php echo $row['bed_number']; ?></td>
+                            <td><?php echo $admission_date_time; ?></td>
+                            <td><?php echo $discharge_date_time; ?></td>
+                            <td class="text-right">
+                                <div class="dropdown dropdown-action">
+                                    <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><i class="fa fa-ellipsis-v"></i></a>
+                                    <div class="dropdown-menu dropdown-menu-right">
+                                        <?php if ($_SESSION['role'] == 2 && $_SESSION['name'] == $row['doctor_incharge']) { ?>
+                                            <button class="dropdown-item diagnosis-btn" data-toggle="modal" data-target="#diagnosisModal" data-id="<?php echo $row['inpatient_id']; ?>" <?php echo !empty($row['diagnosis']) ? 'disabled' : ''; ?>><i class="fa fa-stethoscope m-r-5"></i> Diagnosis</button>
+                                        <?php } ?>
+                                        <?php if ($_SESSION['role'] == 1) { ?>
+                                            <a class="dropdown-item" href="edit-inpatient-record.php?id=<?php echo $row['id']; ?>"><i class="fa fa-pencil m-r-5"></i> Edit</a>
+                                            <a class="dropdown-item" href="inpatient-record.php?ids=<?php echo $row['id']; ?>" onclick="return confirmDelete()"><i class="fa fa-trash-o m-r-5"></i> Delete</a>
+                                        <?php } ?>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    <?php } ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div id="treatmentModal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="treatmentModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="treatmentModalLabel">Select Medicines</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="medicineSelectionForm" method="POST" action="inpatient-record.php">
+                    <!-- Hidden input to pass inpatient ID -->
+                    <input type="hidden" name="inpatientIdTreatment" id="inpatientIdTreatment">
+                    
+                    <!-- Medicine Search Section -->
+                    <div class="form-group">
+                        <label for="medicineSearchInput">Search Medicines</label>
+                        <input
+                            type="text"
+                            class="form-control"
+                            id="medicineSearchInput"
+                            placeholder="Enter medicine name or brand"
+                            onkeyup="searchMedicines()"
+                        >
+                    </div>
+                    <div class="table-responsive mb-4">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Medicine Name</th>
+                                    <th>Medicine Brand</th>
+                                    <th>Expiration Date</th>
+                                    <th>Available Quantity</th>
+                                    <th>Price</th>
+                                    <th>Quantity</th>
+                                </tr>
+                            </thead>
+                            <tbody id="medicineSearchResults">
+                                <!-- Search results will populate here -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Selected Medicines Section -->
+                    <h5>Selected Medicines</h5>
+                    <ul id="selectedMedicinesList" class="list-group">
+                        <!-- Selected medicines will populate here -->
+                    </ul>
+                    <input type="hidden" name="selectedMedicines" id="selectedMedicines">
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                <button type="submit" class="btn btn-primary" form="medicineSelectionForm">Save Treatment</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Diagnosis Modal -->
+<div id="diagnosisModal" class="modal fade" role="dialog">
+    <div class="modal-dialog">
+        <!-- Modal content-->
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title">Diagnosis</h4>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <!-- Form for diagnosis -->
+                <form id="diagnosisForm" method="post" action="inpatient-record.php">
+                    <div class="form-group">
+                        <label for="diagnosis">Enter Diagnosis:</label>
+                        <input type="text" class="form-control" id="diagnosis" name="diagnosis">
+                    </div>
+                    <input type="hidden" id="inpatientIdDiagnosis" name="inpatientIdDiagnosis">
+                    <button type="submit" class="btn btn-primary">Submit</button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Doctor Modal -->
+<div id="doctorModal" class="modal fade" role="dialog">
+    <div class="modal-dialog">
+        <!-- Modal content-->
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title">Select Doctor</h4>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <!-- List of doctors -->
+                <form id="doctorForm" method="post" action="inpatient-record.php">
+                    <input type="hidden" id="inpatientIdDoctor" name="inpatientIdDoctor">
+                    <div class="form-group">
+                        <label for="doctor">Select Doctor:</label>
+                        <select class="form-control" id="doctor" name="doctor">
+                            <?php
+                            // Fetch doctors from tbl_employee where role = 2 (doctor)
+                            $doctor_query = mysqli_query($connection, "SELECT id, first_name, last_name FROM tbl_employee WHERE role = 2");
+                            while ($doctor = mysqli_fetch_array($doctor_query)) {
+                                $doctor_name = $doctor['first_name'] . ' ' . $doctor['last_name'];
+                                echo "<option value='".$doctor['id']."'>".$doctor_name."</option>";
+                            }
+                            ?>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Assign Doctor</button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Success and Error Alerts -->
+<div id="successAlert"></div>
+<div id="errorAlert"></div>
+
+<?php
+include('footer.php');
+?>
+<script language="JavaScript" type="text/javascript">
+<?php
+if (isset($msg)) {
+    echo 'swal("' . $msg . '");';
+}
+?>
+function confirmDelete(){
+    return confirm('Are you sure want to delete this Patient?');
+}
+</script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script>
+    $(document).on('click', '.diagnosis-btn', function(){
+        var inpatientId = $(this).data('id');
+        $('#inpatientIdDiagnosis').val(inpatientId); // Update the ID of the hidden input field
+    });
+    $(document).on('click', '.treatment-btn', function(){
+        var inpatientId = $(this).data('id');
+        $('#inpatientIdTreatment').val(inpatientId); // Update the ID of the hidden input field
+    });
+</script>
+
+<script>
+let selectedMedicines = [];
+
+// Function to search medicines
+function searchMedicines() {
+    const query = document.getElementById('medicineSearchInput').value.trim();
+
+    if (query.length > 2) {
+        $.ajax({
+            url: 'search-medicines.php',
+            type: 'GET',
+            data: { query },
+            success: function (data) {
+                $('#medicineSearchResults').html(data); // Populate search results
+            },
+            error: function () {
+                alert('Error fetching medicines. Please try again later.');
+            }
+        });
+    } else {
+        $('#medicineSearchResults').html('<tr><td colspan="7">Please enter at least 3 characters to search.</td></tr>');
+    }
+}
+
+// Function to add medicine to the selected list
+function addMedicineToList(id, name, brand, availableQuantity, price, expiration_date, event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+
+    const quantityInput = parseInt(document.getElementById(`quantityInput-${id}`).value, 10);
+
+    if (quantityInput <= 0 || quantityInput > availableQuantity) {
+        alert('Invalid quantity. Please try again.');
+        return;
+    }
+
+    // Check if the medicine is already in the list
+    const existingMedicineIndex = selectedMedicines.findIndex(medicine => medicine.id === id);
+
+    if (existingMedicineIndex !== -1) {
+        // If the medicine exists, update the quantity
+        selectedMedicines[existingMedicineIndex].quantity = quantityInput;
+    } else {
+        // Add new medicine
+        const medicine = {
+            id,
+            name,
+            brand,
+            quantity: quantityInput,
+            price: parseFloat(price),
+            expiration_date,
+        };
+        selectedMedicines.push(medicine);
+    }
+
+    // Update the UI
+    updateSelectedMedicinesUI();
+}
+
+// Function to update the selected medicines UI
+function updateSelectedMedicinesUI() {
+    $('#selectedMedicinesList').html('');
+
+    selectedMedicines.forEach((medicine, index) => {
+        const listItem = `
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                <div>
+                    <strong>${medicine.name} (${medicine.brand})</strong> - 
+                    ${medicine.quantity} pcs @ ${medicine.price} PHP each 
+                    <small>(Exp: ${medicine.expiration_date})</small>
+                </div>
+                <button 
+                    type="button" 
+                    class="btn btn-danger btn-sm" 
+                    onclick="removeMedicineFromList(${index})">
+                    Remove
+                </button>
+            </li>`;
+        $('#selectedMedicinesList').append(listItem);
+    });
+
+    $('#selectedMedicines').val(JSON.stringify(selectedMedicines));
+}
+
+// Function to remove a medicine from the selected list
+function removeMedicineFromList(index) {
+    selectedMedicines.splice(index, 1); // Remove the medicine by index
+    updateSelectedMedicinesUI();
+}
+
+// Reset selected medicines when opening the modal
+$('.treatment-btn').on('click', function () {
+    const inpatientId = $(this).data('id');
+    $('#inpatientIdTreatment').val(inpatientId);
+    selectedMedicines = []; // Clear the array
+    $('#selectedMedicinesList').html(''); // Clear the UI
+    $('#selectedMedicines').val(''); // Clear the hidden input
+});
+
+</script>
+
+<script>
+     function filterInpatients() {
+        var input, filter, table, tr, td, i, txtValue;
+        input = document.getElementById("inpatientSearchInput");
+        filter = input.value.toUpperCase();
+        table = document.getElementById("inpatientTable");
+        tr = table.getElementsByTagName("tr");
+
+        for (i = 0; i < tr.length; i++) {
+            var matchFound = false;
+            for (var j = 0; j < tr[i].cells.length; j++) {
+                td = tr[i].cells[j];
+                if (td) {
+                    txtValue = td.textContent || td.innerText;
+                    if (txtValue.toUpperCase().indexOf(filter) > -1) {
+                        matchFound = true;
+                        break;
+                    }
+                }
+            }
+            if (matchFound || i === 0) {
+                tr[i].style.display = "";
+            } else {
+                tr[i].style.display = "none";
+            }
+        }
+    }
+</script>
+
+
+<script>
+     function filterInpatients() {
+        var input, filter, table, tr, td, i, txtValue;
+        input = document.getElementById("inpatientSearchInput");
+        filter = input.value.toUpperCase();
+        table = document.getElementById("inpatientTable");
+        tr = table.getElementsByTagName("tr");
+
+        for (i = 0; i < tr.length; i++) {
+            var matchFound = false;
+            for (var j = 0; j < tr[i].cells.length; j++) {
+                td = tr[i].cells[j];
+                if (td) {
+                    txtValue = td.textContent || td.innerText;
+                    if (txtValue.toUpperCase().indexOf(filter) > -1) {
+                        matchFound = true;
+                        break;
+                    }
+                }
+            }
+            if (matchFound || i === 0) {
+                tr[i].style.display = "";
+            } else {
+                tr[i].style.display = "none";
+            }
+        }
+    }
+
+    function searchPatients() {
+        var input = document.getElementById("patientSearchInput").value;
+        if (input.length < 2) {
+            document.getElementById("searchResults").style.display = "none";
+            document.getElementById("searchResults").innerHTML = "";
+            return;
+        }
+        $.ajax({
+            url: "search-ipt-record.php", // Backend script to fetch patients
+            method: "GET",
+            data: { query: input },
+            success: function (data) {
+                var results = document.getElementById("searchResults");
+                results.innerHTML = data;
+                results.style.display = "block";
+            },
+        });
+    }
+
+    // Select Patient from Search Results
+    $(document).on("click", ".search-result", function () {
+        var patientId = $(this).data("id");
+        var patientName = $(this).text();
+
+        $("#patientId").val(patientId); // Set the hidden input value
+        $("#patientSearchInput").val(patientName); // Set input to selected patient name
+        $("#addPatientBtn").prop("disabled", false); // Enable the Add button
+        $("#searchResults").html("").hide(); // Clear and hide the dropdown
+    });
+</script>
+
+<script>
+// This function will open the modal and set the outpatient_id dynamically
+$(document).on('click', '.select-doctor-btn', function() {
+    var inpatientId = $(this).data('id');
+    $('#inpatientIdDoctor').val(inpatientId);
+    $('#doctorModal').modal('show');
+});
+
+// When the form for assigning doctor is submitted
+$('#doctorForm').submit(function(e) {
+    e.preventDefault(); // Prevent default form submission
+    var inpatientId = $('#inpatientIdDoctor').val();
+    var doctorId = $('#doctor').val();
+
+    // Send the selected doctor to be updated in the database
+    $.ajax({
+        url: 'inpatient-record.php', // Ensure the PHP file is the correct one to process the form
+        type: 'POST',
+        data: {
+            inpatientIdDoctor: inpatientId,
+            doctorId: doctorId
+        },
+        success: function(response) {
+            // Handle success, e.g., update the table row or show a success message
+            location.reload(); // Reload the page to show the updated doctor in charge
+        },
+        error: function(xhr, status, error) {
+            // Handle any errors
+            alert('Error assigning doctor');
+        }
+    });
+});
+</script>
+
+<style>
+    .btn-primary {
+            background: #12369e;
+            border: none;
+        }
+        .btn-primary:hover {
+            background: #05007E;
+        }
+        #searchResults {
+        max-height: 200px;
+        overflow-y: auto;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        display: none;
+        background: #fff;
+        position: absolute;
+        z-index: 1000;
+        width: 50%;
+    }
+    #searchResults li {
+        padding: 8px 12px;
+        cursor: pointer;
+        list-style: none;
+        border-bottom: 1px solid #ddd;
+    }
+    #searchResults li:hover {
+        background-color: #12369e;
+        color: white;
+    }
+    .form-inline .input-group {
+        width: 100%;
+    }
+    .search-icon-bg {
+    background-color: #fff; 
+    border: none; 
+    color: #6c757d; 
+    }
+</style>
