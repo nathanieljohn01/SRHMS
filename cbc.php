@@ -16,8 +16,9 @@ if ($_SESSION['role'] == 1) {
 
 $can_print = ($_SESSION['role'] == 5);
 
+// Function to sanitize inputs
 function sanitize($connection, $input) {
-    return mysqli_real_escape_string($connection, $input);
+    return mysqli_real_escape_string($connection, htmlspecialchars(trim($input), ENT_QUOTES, 'UTF-8'));
 }
 
 $role = isset($_SESSION['role']) ? $_SESSION['role'] : null;
@@ -26,7 +27,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['patientId'])) {
     // Sanitize the patient ID input
     $patientId = sanitize($connection, $_POST['patientId']);
 
-    // Prepare and bind the query
+    // Prepare and bind the query for fetching patient details
     $patient_query = $connection->prepare("SELECT * FROM tbl_laborder WHERE id = ?");
     $patient_query->bind_param("s", $patientId);  // "s" stands for string
     
@@ -59,49 +60,47 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['patientId'])) {
         $cbc_id = $new_cbc_id;
 
         // Sanitize user inputs and set NULL if empty
-        $hemoglobin = !empty($_POST['hemoglobin']) ? mysqli_real_escape_string($connection, $_POST['hemoglobin']) : NULL;
-        $hematocrit = !empty($_POST['hematocrit']) ? mysqli_real_escape_string($connection, $_POST['hematocrit']) : NULL;
-        $red_blood_cells = !empty($_POST['red_blood_cells']) ? mysqli_real_escape_string($connection, $_POST['red_blood_cells']) : NULL;
-        $white_blood_cells = !empty($_POST['white_blood_cells']) ? mysqli_real_escape_string($connection, $_POST['white_blood_cells']) : NULL;
-        $esr = !empty($_POST['esr']) ? mysqli_real_escape_string($connection, $_POST['esr']) : NULL;
-        $segmenters = !empty($_POST['segmenters']) ? mysqli_real_escape_string($connection, $_POST['segmenters']) : NULL;
-        $lymphocytes = !empty($_POST['lymphocytes']) ? mysqli_real_escape_string($connection, $_POST['lymphocytes']) : NULL;
-        $eosinophils = !empty($_POST['eosinophils']) ? mysqli_real_escape_string($connection, $_POST['eosinophils']) : NULL;
-        $monocytes = !empty($_POST['monocytes']) ? mysqli_real_escape_string($connection, $_POST['monocytes']) : NULL;
-        $bands = !empty($_POST['bands']) ? mysqli_real_escape_string($connection, $_POST['bands']) : NULL;
-        $platelets = !empty($_POST['platelets']) ? mysqli_real_escape_string($connection, $_POST['platelets']) : NULL;
+        $hemoglobin = !empty($_POST['hemoglobin']) ? sanitize($connection, $_POST['hemoglobin']) : NULL;
+        $hematocrit = !empty($_POST['hematocrit']) ? sanitize($connection, $_POST['hematocrit']) : NULL;
+        $red_blood_cells = !empty($_POST['red_blood_cells']) ? sanitize($connection, $_POST['red_blood_cells']) : NULL;
+        $white_blood_cells = !empty($_POST['white_blood_cells']) ? sanitize($connection, $_POST['white_blood_cells']) : NULL;
+        $esr = !empty($_POST['esr']) ? sanitize($connection, $_POST['esr']) : NULL;
+        $segmenters = !empty($_POST['segmenters']) ? sanitize($connection, $_POST['segmenters']) : NULL;
+        $lymphocytes = !empty($_POST['lymphocytes']) ? sanitize($connection, $_POST['lymphocytes']) : NULL;
+        $eosinophils = !empty($_POST['eosinophils']) ? sanitize($connection, $_POST['eosinophils']) : NULL;
+        $monocytes = !empty($_POST['monocytes']) ? sanitize($connection, $_POST['monocytes']) : NULL;
+        $bands = !empty($_POST['bands']) ? sanitize($connection, $_POST['bands']) : NULL;
+        $platelets = !empty($_POST['platelets']) ? sanitize($connection, $_POST['platelets']) : NULL;
 
         // Prepare the query to insert with NULL values for empty fields
-        $query = "
+        $insert_query = $connection->prepare("
             INSERT INTO tbl_cbc (cbc_id, patient_id, patient_name, gender, dob, hemoglobin, hematocrit, red_blood_cells, white_blood_cells, esr, segmenters, lymphocytes, eosinophils, monocytes, bands, platelets, date_time) 
-            VALUES ('$cbc_id', '$patient_id', '$name', '$gender', '$dob', 
-                    " . ($hemoglobin !== NULL ? "'$hemoglobin'" : "NULL") . ", 
-                    " . ($hematocrit !== NULL ? "'$hematocrit'" : "NULL") . ", 
-                    " . ($red_blood_cells !== NULL ? "'$red_blood_cells'" : "NULL") . ", 
-                    " . ($white_blood_cells !== NULL ? "'$white_blood_cells'" : "NULL") . ", 
-                    " . ($esr !== NULL ? "'$esr'" : "NULL") . ", 
-                    " . ($segmenters !== NULL ? "'$segmenters'" : "NULL") . ", 
-                    " . ($lymphocytes !== NULL ? "'$lymphocytes'" : "NULL") . ", 
-                    " . ($eosinophils !== NULL ? "'$eosinophils'" : "NULL") . ", 
-                    " . ($monocytes !== NULL ? "'$monocytes'" : "NULL") . ", 
-                    " . ($bands !== NULL ? "'$bands'" : "NULL") . ", 
-                    " . ($platelets !== NULL ? "'$platelets'" : "NULL") . ", NOW())
-        ";
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+        ");
+        
+        // Bind parameters
+        $insert_query->bind_param("ssssssssssssssss", 
+            $cbc_id, $patient_id, $name, $gender, $dob,
+            $hemoglobin, $hematocrit, $red_blood_cells, $white_blood_cells,
+            $esr, $segmenters, $lymphocytes, $eosinophils, $monocytes, 
+            $bands, $platelets
+        );
 
         // Execute the query
-        if ($connection->query($query) === TRUE) {
+        if ($insert_query->execute()) {
             echo "Record added successfully";
         } else {
-            echo "Error: " . $query . "<br>" . $connection->error;
+            echo "Error: " . $insert_query->error;
         }
 
-        // Redirect or show a success me  ssage
+        // Redirect or show a success message
         header('Location: cbc.php');
         exit;
     } else {
         echo "<script>alert('Patient not found. Please check the Patient ID.');</script>";
     }
 }
+
 ob_end_flush(); // Flush output buffer
 ?>
 
@@ -165,8 +164,10 @@ ob_end_flush(); // Flush output buffer
                 <tbody>
                     <?php
                     if (isset($_GET['ids'])) {
-                        $id = $_GET['ids'];
-                        $update_query = mysqli_query($connection, "UPDATE tbl_cbc SET deleted = 1 WHERE id='$id'");
+                        $id = sanitize($connection, $_GET['ids']);
+                        $update_query = $connection->prepare("UPDATE tbl_cbc SET deleted = 1 WHERE id = ?");
+                        $update_query->bind_param("s", $id);
+                        $update_query->execute();
                     }
                     $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_cbc WHERE deleted = 0 ORDER BY date_time ASC");
                     while ($row = mysqli_fetch_array($fetch_query)) {

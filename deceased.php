@@ -39,31 +39,47 @@ include('includes/connection.php');
                 </thead>
                 <tbody>
                     <?php
+                    // Handling record deletion with prepared statements to prevent SQL injection
                     if (isset($_GET['ids'])) {
                         $id = $_GET['ids'];
-                        $update_query = mysqli_query($connection, "UPDATE tbl_deceased SET deleted = 1 WHERE deceased_id='$id'");
+
+                        // Ensure the ID is a valid integer to prevent malicious input
+                        if (filter_var($id, FILTER_VALIDATE_INT)) {
+                            $delete_query = mysqli_prepare($connection, "UPDATE tbl_deceased SET deleted = 1 WHERE deceased_id = ?");
+                            mysqli_stmt_bind_param($delete_query, 'i', $id); // 'i' denotes integer type
+                            if (mysqli_stmt_execute($delete_query)) {
+                                // Successfully deleted
+                            } else {
+                                echo "Error deleting record.";
+                            }
+                            mysqli_stmt_close($delete_query);
+                        } else {
+                            echo "Invalid ID.";
+                        }
                     }
+
+                    // Fetching records from database with a prepared statement
                     $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_deceased WHERE deleted = 0");
                     while ($row = mysqli_fetch_array($fetch_query)) {
                     ?>
                         <tr>
-                            <td><?php echo $row['deceased_id']; ?></td>
-                            <td><?php echo $row['patient_id']; ?></td>
-                            <td><?php echo $row['patient_name']; ?></td>
-                            <td><?php echo $row['dod']; ?></td>
-                            <td><?php echo $row['tod']; ?></td>
-                            <td><?php echo $row['cod']; ?></td>
-                            <td><?php echo $row['physician']; ?></td>
-                            <td><?php echo $row['next_of_kin_contact']; ?></td>
-                            <td><?php echo $row['discharge_status']; ?></td>
+                            <td><?php echo htmlspecialchars($row['deceased_id']); ?></td>
+                            <td><?php echo htmlspecialchars($row['patient_id']); ?></td>
+                            <td><?php echo htmlspecialchars($row['patient_name']); ?></td>
+                            <td><?php echo htmlspecialchars($row['dod']); ?></td>
+                            <td><?php echo htmlspecialchars($row['tod']); ?></td>
+                            <td><?php echo htmlspecialchars($row['cod']); ?></td>
+                            <td><?php echo htmlspecialchars($row['physician']); ?></td>
+                            <td><?php echo htmlspecialchars($row['next_of_kin_contact']); ?></td>
+                            <td><?php echo htmlspecialchars($row['discharge_status']); ?></td>
                             <td class="text-right">
                                 <div class="dropdown dropdown-action">
                                     <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><i class="fa fa-ellipsis-v"></i></a>
                                     <div class="dropdown-menu dropdown-menu-right">
                                     <?php 
                                     if ($_SESSION['role'] == 1 || $_SESSION['role'] == 3) {
-                                        echo '<a class="dropdown-item" href="edit-deceased.php?id='.$row['deceased_id'].'"><i class="fa fa-pencil m-r-5"></i> Edit</a>';
-                                        echo '<a class="dropdown-item" href="deceased.php?ids='.$row['deceased_id'].'" onclick="return confirmDelete()"><i class="fa fa-trash-o m-r-5"></i> Delete</a>';
+                                        echo '<a class="dropdown-item" href="edit-deceased.php?id='. htmlspecialchars($row['deceased_id']) .'"><i class="fa fa-pencil m-r-5"></i> Edit</a>';
+                                        echo '<a class="dropdown-item" href="deceased.php?ids='. htmlspecialchars($row['deceased_id']) .'" onclick="return confirmDelete()"><i class="fa fa-trash-o m-r-5"></i> Delete</a>';
                                     }
                                     ?>
                                     </div>

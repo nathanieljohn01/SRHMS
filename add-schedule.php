@@ -7,14 +7,19 @@ if (empty($_SESSION['name'])) {
 include('header.php');
 include('includes/connection.php');
 
+// Function to sanitize inputs with XSS protection
+function sanitize($connection, $input) {
+    return mysqli_real_escape_string($connection, htmlspecialchars(trim($input), ENT_QUOTES, 'UTF-8'));
+}
+
 if (isset($_REQUEST['add-schedule'])) {
     // Sanitize inputs
-    $doctor_name = mysqli_real_escape_string($connection, $_REQUEST['doctor']);
-    $days = mysqli_real_escape_string($connection, implode(", ", $_REQUEST['days']));
-    $start_time = mysqli_real_escape_string($connection, $_REQUEST['start_time']);
-    $end_time = mysqli_real_escape_string($connection, $_REQUEST['end_time']);
-    $message = mysqli_real_escape_string($connection, $_REQUEST['message']);
-    $status = mysqli_real_escape_string($connection, $_REQUEST['status']);
+    $doctor_name = sanitize($connection, $_REQUEST['doctor']);
+    $days = sanitize($connection, implode(", ", $_REQUEST['days']));
+    $start_time = sanitize($connection, $_REQUEST['start_time']);
+    $end_time = sanitize($connection, $_REQUEST['end_time']);
+    $message = sanitize($connection, $_REQUEST['message']);
+    $status = sanitize($connection, $_REQUEST['status']);
 
     // Get doctor ID from tbl_employee
     $fetch_query = mysqli_prepare($connection, "SELECT specialization FROM tbl_employee WHERE concat(first_name, ' ', last_name) = ?");

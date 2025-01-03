@@ -4,6 +4,7 @@ if (empty($_SESSION['name'])) {
     header('location:index.php');
     exit; // Ensure script stops execution after redirection
 }
+
 include('includes/connection.php');
 
 // Include TCPDF library
@@ -12,9 +13,10 @@ require_once('vendor/autoload.php');
 
 // Fetch urinalysis details
 if (isset($_GET['id'])) {
-    $urinalysis_id = $_GET['id'];
+    // Sanitize and escape the input using mysqli_real_escape_string
+    $urinalysis_id = mysqli_real_escape_string($connection, $_GET['id']);
     mysqli_query($connection, "SET NAMES 'utf8'");
-    $filename = isset($_GET['filename']) ? $_GET['filename'] : 'urinalysis_' . $urinalysis_id;
+    $filename = isset($_GET['filename']) ? mysqli_real_escape_string($connection, $_GET['filename']) : 'urinalysis_' . $urinalysis_id;
 }
 
 // Create new PDF document
@@ -54,22 +56,25 @@ $pdf->AddPage();
 // Output urinalysis details
 $html = '';
 
-// Fetch urinalysis details
-$fetch_query = mysqli_query($connection, "SELECT * FROM tbl_urinalysis WHERE urinalysis_id = '$urinalysis_id'");
+// Prepare the query using a prepared statement to prevent SQL injection
+$fetch_query = $connection->prepare("SELECT * FROM tbl_urinalysis WHERE urinalysis_id = ?");
+$fetch_query->bind_param('s', $urinalysis_id);
+$fetch_query->execute();
+$result = $fetch_query->get_result();
 
-foreach ($fetch_query as $row) {
+while ($row = $result->fetch_assoc()) {
     // Calculate age
     $dob = date('Y-m-d', strtotime(str_replace('/', '-', $row['dob'])));
     $year = (date('Y') - date('Y', strtotime($dob)));
 
-    // Patient Information
+    // Patient Information (sanitized with htmlspecialchars)
     $html .= '<div style="text-align: center; margin-bottom: 20px;">
                 <img src="assets/img/srchlogo.png" alt="Hospital Logo" style="max-width: 120px; height: 108px;">
                 <h3>Urinalysis</h3>
-                <p><strong>Patient Name:</strong> <strong>'.$row['patient_name'].'</strong> | <strong>Age:</strong> <strong>'.$year.'</strong> | <strong>Gender:</strong> <strong>'.$row['gender'].'</strong> | <strong>Date and Time:</strong> <strong>'.date('F d Y g:i A', strtotime($row['date_time'])).'</strong></p>
+                <p><strong>Patient Name:</strong> <strong>' . htmlspecialchars($row['patient_name']) . '</strong> | <strong>Age:</strong> <strong>' . $year . '</strong> | <strong>Gender:</strong> <strong>' . htmlspecialchars($row['gender']) . '</strong> | <strong>Date and Time:</strong> <strong>' . date('F d Y g:i A', strtotime($row['date_time'])) . '</strong></p>
             </div>';
 
-    // Macroscopic Table
+    // Macroscopic Table (sanitized with htmlspecialchars)
     $html .= '<h4 style="font-size: 16px; text-align: center;">Macroscopic</h4>';
     $html .= '<table border="1" cellpadding="5" style="width: 100%;">
                 <thead style="background-color: #CCCCCC;">
@@ -87,20 +92,20 @@ foreach ($fetch_query as $row) {
                 </thead>
                 <tbody>
                     <tr>
-                        <td><strong>'.$row['color'].'</strong></td>
-                        <td><strong>'.$row['transparency'].'</strong></td>
-                        <td><strong>'.$row['reaction'].'</strong></td>
-                        <td><strong>'.$row['protein'].'</strong></td>
-                        <td><strong>'.$row['glucose'].'</strong></td>
-                        <td><strong>'.$row['specific_gravity'].'</strong></td>
-                        <td><strong>'.$row['ketone'].'</strong></td>
-                        <td><strong>'.$row['urobilinogen'].'</strong></td>
-                        <td><strong>'.$row['pregnancy_test'].'</strong></td>
+                        <td><strong>' . htmlspecialchars($row['color']) . '</strong></td>
+                        <td><strong>' . htmlspecialchars($row['transparency']) . '</strong></td>
+                        <td><strong>' . htmlspecialchars($row['reaction']) . '</strong></td>
+                        <td><strong>' . htmlspecialchars($row['protein']) . '</strong></td>
+                        <td><strong>' . htmlspecialchars($row['glucose']) . '</strong></td>
+                        <td><strong>' . htmlspecialchars($row['specific_gravity']) . '</strong></td>
+                        <td><strong>' . htmlspecialchars($row['ketone']) . '</strong></td>
+                        <td><strong>' . htmlspecialchars($row['urobilinogen']) . '</strong></td>
+                        <td><strong>' . htmlspecialchars($row['pregnancy_test']) . '</strong></td>
                     </tr>
                 </tbody>
             </table>';
 
-    // Microscopic Table
+    // Microscopic Table (sanitized with htmlspecialchars)
     $html .= '<h4 style="font-size: 16px; text-align: center;">Microscopic</h4>';
     $html .= '<table border="1" cellpadding="5" style="width: 100%;">
                 <thead style="background-color: #CCCCCC;">
@@ -120,17 +125,17 @@ foreach ($fetch_query as $row) {
                 </thead>
                 <tbody>
                     <tr>
-                        <td><strong>'.$row['pus_cells'].'</strong></td>
-                        <td><strong>'.$row['red_blood_cells'].'</strong></td>
-                        <td><strong>'.$row['epithelial_cells'].'</strong></td>
-                        <td><strong>'.$row['a_urates_a_phosphates'].'</strong></td>
-                        <td><strong>'.$row['mucus_threads'].'</strong></td>
-                        <td><strong>'.$row['bacteria'].'</strong></td>
-                        <td><strong>'.$row['calcium_oxalates'].'</strong></td>
-                        <td><strong>'.$row['uric_acid_crystals'].'</strong></td>
-                        <td><strong>'.$row['pus_cells_clumps'].'</strong></td>
-                        <td><strong>'.$row['coarse_granular_cast'].'</strong></td>
-                        <td><strong>'.$row['hyaline_cast'].'</strong></td>
+                        <td><strong>' . htmlspecialchars($row['pus_cells']) . '</strong></td>
+                        <td><strong>' . htmlspecialchars($row['red_blood_cells']) . '</strong></td>
+                        <td><strong>' . htmlspecialchars($row['epithelial_cells']) . '</strong></td>
+                        <td><strong>' . htmlspecialchars($row['a_urates_a_phosphates']) . '</strong></td>
+                        <td><strong>' . htmlspecialchars($row['mucus_threads']) . '</strong></td>
+                        <td><strong>' . htmlspecialchars($row['bacteria']) . '</strong></td>
+                        <td><strong>' . htmlspecialchars($row['calcium_oxalates']) . '</strong></td>
+                        <td><strong>' . htmlspecialchars($row['uric_acid_crystals']) . '</strong></td>
+                        <td><strong>' . htmlspecialchars($row['pus_cells_clumps']) . '</strong></td>
+                        <td><strong>' . htmlspecialchars($row['coarse_granular_cast']) . '</strong></td>
+                        <td><strong>' . htmlspecialchars($row['hyaline_cast']) . '</strong></td>
                     </tr>
                 </tbody>
             </table>';
@@ -147,8 +152,10 @@ foreach ($fetch_query as $row) {
     $html .= '</div>';
 
 }
-    $pdf->writeHTML($html, true, false, true, false, '');
 
-    // Close and output PDF document
-    $pdf->Output($filename . '.pdf', 'D');
-    ?>
+// Output the HTML content as a PDF
+$pdf->writeHTML($html, true, false, true, false, '');
+
+// Close and output PDF document
+$pdf->Output($filename . '.pdf', 'D');
+?>

@@ -7,9 +7,14 @@ if (empty($_SESSION['name'])) {
 include('header.php');
 include('includes/connection.php');
 
+// Function to sanitize user inputs
+function sanitize($connection, $input) {
+    return mysqli_real_escape_string($connection, htmlspecialchars(trim($input), ENT_QUOTES, 'UTF-8'));
+}
+
 // Fetch the patient details
 if (isset($_GET['id'])) {
-    $id = mysqli_real_escape_string($connection, $_GET['id']); // Sanitize ID
+    $id = sanitize($connection, $_GET['id']); // Sanitize ID
     $fetch_query_stmt = mysqli_prepare($connection, "SELECT * FROM tbl_patient WHERE id = ?");
     mysqli_stmt_bind_param($fetch_query_stmt, 'i', $id);
     mysqli_stmt_execute($fetch_query_stmt);
@@ -21,23 +26,23 @@ if (isset($_GET['id'])) {
 // Update patient details
 if (isset($_POST['save-patient'])) {
     // Sanitize inputs
-    $first_name = mysqli_real_escape_string($connection, $_POST['first_name']);
-    $last_name = mysqli_real_escape_string($connection, $_POST['last_name']);
-    $email = mysqli_real_escape_string($connection, $_POST['email']);
-    $dob = mysqli_real_escape_string($connection, $_POST['dob']);
-    $gender = mysqli_real_escape_string($connection, $_POST['gender']);
-    $civil_status = mysqli_real_escape_string($connection, $_POST['civil_status']);
-    $patient_type = mysqli_real_escape_string($connection, $_POST['patient_type']);
-    $contact_number = mysqli_real_escape_string($connection, $_POST['contact_number']);
-    $address = mysqli_real_escape_string($connection, $_POST['address']);
-    $message = mysqli_real_escape_string($connection, $_POST['message']);
-    $status = mysqli_real_escape_string($connection, $_POST['status']);
-    $weight = mysqli_real_escape_string($connection, $_POST['weight']);
-    $height = mysqli_real_escape_string($connection, $_POST['height']);
-    $temperature = mysqli_real_escape_string($connection, $_POST['temperature']);
-    $blood_pressure = mysqli_real_escape_string($connection, $_POST['blood_pressure']);
-    $menstruation = mysqli_real_escape_string($connection, $_POST['menstruation']);
-    $last_menstrual_period = mysqli_real_escape_string($connection, $_POST['last_menstrual_period']);
+    $first_name = sanitize($connection, $_POST['first_name']);
+    $last_name = sanitize($connection, $_POST['last_name']);
+    $email = sanitize($connection, $_POST['email']);
+    $dob = sanitize($connection, $_POST['dob']);
+    $gender = sanitize($connection, $_POST['gender']);
+    $civil_status = sanitize($connection, $_POST['civil_status']);
+    $patient_type = sanitize($connection, $_POST['patient_type']);
+    $contact_number = sanitize($connection, $_POST['contact_number']);
+    $address = sanitize($connection, $_POST['address']);
+    $message = sanitize($connection, $_POST['message']);
+    $status = sanitize($connection, $_POST['status']);
+    $weight = sanitize($connection, $_POST['weight']);
+    $height = sanitize($connection, $_POST['height']);
+    $temperature = sanitize($connection, $_POST['temperature']);
+    $blood_pressure = sanitize($connection, $_POST['blood_pressure']);
+    $menstruation = sanitize($connection, $_POST['menstruation']);
+    $last_menstrual_period = sanitize($connection, $_POST['last_menstrual_period']);
 
     // Handle fields for male patients
     if ($gender == 'Male') {
@@ -53,6 +58,7 @@ if (isset($_POST['save-patient'])) {
     // Prepare the update statement
     $update_query_stmt = mysqli_prepare($connection, "UPDATE tbl_patient SET first_name = ?, last_name = ?, email = ?, dob = ?, gender = ?, civil_status = ?, patient_type = ?, address = ?, contact_number = ?, status = ?, message = ?, weight = ?, height = ?, temperature = ?, blood_pressure = ?, menstruation = ?, last_menstrual_period = ? WHERE id = ?");
     mysqli_stmt_bind_param($update_query_stmt, 'sssssssssssssssssi', $first_name, $last_name, $email, $dob, $gender, $civil_status, $patient_type, $address, $contact_number, $status, $message, $weight, $height, $temperature, $blood_pressure, $menstruation, $last_menstrual_period, $id);
+    
     $update_result = mysqli_stmt_execute($update_query_stmt);
 
     if ($update_result) {
@@ -170,21 +176,21 @@ if (isset($_POST['save-patient'])) {
                         <div class="col-sm-6">
                             <div class="form-group">
                                 <label>Weight</label>
-                                <input class="form-control" type="text" name="weight" value="<?php echo $row['weight']; ?>">
+                                <input class="form-control" type="number" name="weight" value="<?php echo $row['weight']; ?>">
                                 <span class="input-group-text">kg</span>
                             </div>
                         </div>
                         <div class="col-sm-6">
                             <div class="form-group">
                                 <label>Height</label>
-                                <input class="form-control" type="text" name="height" value="<?php echo $row['height']; ?>">
+                                <input class="form-control" type="number" name="height" value="<?php echo $row['height']; ?>">
                                 <span class="input-group-text">ft</span>
                             </div>
                         </div>
                         <div class="col-sm-6">
                             <div class="form-group">
                                 <label>Temperature</label>
-                                <input class="form-control" type="text" name="temperature" value="<?php echo $row['temperature']; ?>">
+                                <input class="form-control" type="number" name="temperature" value="<?php echo $row['temperature']; ?>">
                                 <span class="input-group-text">°C</span>
                             </div>
                         </div>

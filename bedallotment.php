@@ -33,8 +33,8 @@ include('includes/connection.php');
                 <tbody>
                     <?php
                     if (isset($_GET['ids'])) {
-                        $id = $_GET['ids'];
-                        $delete_query = mysqli_query($connection, "DELETE FROM tbl_bedallocation where id='$id'");
+                        $id = mysqli_real_escape_string($connection, $_GET['ids']);
+                        $delete_query = mysqli_query($connection, "DELETE FROM tbl_bedallocation WHERE id='$id'");
                     }
                     $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_bedallocation");
                     while ($row = mysqli_fetch_array($fetch_query)) {

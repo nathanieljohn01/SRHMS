@@ -2,43 +2,64 @@
 session_start();
 if (empty($_SESSION['name'])) {
     header('location:index.php');
+    exit();
 }
+
 include('header.php');
 include('includes/connection.php');
 
-$id = $_GET['id'];
-$fetch_query = mysqli_query($connection, "SELECT * FROM tbl_outpatient WHERE id='$id'");
-$row = mysqli_fetch_array($fetch_query);
+// Function to sanitize inputs
+function sanitize($connection, $input) {
+    return mysqli_real_escape_string($connection, htmlspecialchars(trim($input), ENT_QUOTES, 'UTF-8'));
+}
 
+$id = sanitize($connection, $_GET['id']);
+
+// Fetch outpatient data using prepared statements
+$fetch_query = mysqli_prepare($connection, "SELECT * FROM tbl_outpatient WHERE id = ?");
+mysqli_stmt_bind_param($fetch_query, "s", $id);
+mysqli_stmt_execute($fetch_query);
+$result = mysqli_stmt_get_result($fetch_query);
+$row = mysqli_fetch_array($result);
+mysqli_stmt_close($fetch_query);
+
+// Handle form submission for updating outpatient record
 if (isset($_REQUEST['save-outpatient'])) {
-    $patient_name = $_POST['patient_name'];
-    $dob = $_POST['dob'];
-    $gender = $_POST['gender'];
-    $diagnosis = $_POST['diagnosis'];
-    
-    // Fetch patient details (gender and dob)
-    $fetch_query = mysqli_query($connection, "SELECT gender, dob FROM tbl_patient WHERE concat(first_name,' ',last_name) = '$patient_name' AND deleted = 0");
-    $row = mysqli_fetch_array($fetch_query);
-    $gender = $row['gender'];
-    $dob = $row['dob'];
+    // Sanitize user inputs
+    $patient_name = sanitize($connection, $_POST['patient_name']);
+    $dob = sanitize($connection, $_POST['dob']);
+    $gender = sanitize($connection, $_POST['gender']);
+    $diagnosis = sanitize($connection, $_POST['diagnosis']);
 
-    // Use prepared statements to prevent SQL injection
-    $update_query = mysqli_prepare($connection, "UPDATE tbl_outpatient SET patient_name=?, dob=?, gender=?, diagnosis=? WHERE id=?");
+    // Fetch patient details (gender and dob) using sanitized patient name
+    $fetch_query = mysqli_prepare($connection, "SELECT gender, dob FROM tbl_patient WHERE CONCAT(first_name, ' ', last_name) = ? AND deleted = 0");
+    mysqli_stmt_bind_param($fetch_query, "s", $patient_name);
+    mysqli_stmt_execute($fetch_query);
+    $result = mysqli_stmt_get_result($fetch_query);
+    $patient_row = mysqli_fetch_array($result);
+    $gender = $patient_row['gender'];
+    $dob = $patient_row['dob'];
+    mysqli_stmt_close($fetch_query);
 
-    // Bind the parameters
+    // Update outpatient record using prepared statements
+    $update_query = mysqli_prepare($connection, "UPDATE tbl_outpatient SET patient_name = ?, dob = ?, gender = ?, diagnosis = ? WHERE id = ?");
     mysqli_stmt_bind_param($update_query, 'ssssi', $patient_name, $dob, $gender, $diagnosis, $id);
 
-    // Execute the query
+    // Execute the update query
     if (mysqli_stmt_execute($update_query)) {
         $msg = "Outpatient updated successfully";
         // Re-fetch the updated outpatient record
-        $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_outpatient WHERE id='$id'");
-        $row = mysqli_fetch_array($fetch_query);
+        $fetch_query = mysqli_prepare($connection, "SELECT * FROM tbl_outpatient WHERE id = ?");
+        mysqli_stmt_bind_param($fetch_query, "s", $id);
+        mysqli_stmt_execute($fetch_query);
+        $result = mysqli_stmt_get_result($fetch_query);
+        $row = mysqli_fetch_array($result);
+        mysqli_stmt_close($fetch_query);
     } else {
-        $msg = "Error!";
+        $msg = "Error updating outpatient record";
     }
 
-    // Close the prepared statement
+    // Close the update query
     mysqli_stmt_close($update_query);
 }
 ?>

@@ -35,10 +35,10 @@ include('includes/connection.php');
                 <tbody>
                     <?php
                     if (isset($_GET['ids'])) {
-                        $id = $_GET['ids'];
-                        $delete_query = mysqli_query($connection, "DELETE FROM tbl_visitorpass WHERE id='$id'");
+                        $id = mysqli_real_escape_string($connection, $_GET['ids']);
+                        $update_query = $connection->prepare("UPDATE tbl_visitorpass SET deleted = 1 WHERE id = ?");
                     }
-                    $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_visitorpass");
+                    $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_visitorpass WHERE deleted = 0");
                     while ($row = mysqli_fetch_array($fetch_query)) {
                         $check_in_time = date('F d, Y g:i A', strtotime($row['check_in_time']));
                         $check_out_time = ($row['check_out_time'] != NULL) ? date('F d, Y g:i A', strtotime($row['check_out_time'])) : ''; // If check_out_time is not NULL, format it, otherwise leave it empty

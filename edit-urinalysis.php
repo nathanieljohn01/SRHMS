@@ -7,9 +7,14 @@ if (empty($_SESSION['name'])) {
 include('header.php');
 include('includes/connection.php');
 
+// Function to sanitize user inputs
+function sanitize($connection, $input) {
+    return mysqli_real_escape_string($connection, htmlspecialchars(trim($input), ENT_QUOTES, 'UTF-8'));
+}
+
 // Get urinalysis ID for fetching existing data
 if (isset($_GET['id'])) {
-    $urinalysis_id = $_GET['id'];
+    $urinalysis_id = sanitize($connection, $_GET['id']);
 
     // Fetch existing urinalysis data using prepared statement
     $fetch_query = mysqli_prepare($connection, "SELECT * FROM tbl_urinalysis WHERE urinalysis_id = ?");
@@ -28,29 +33,29 @@ if (isset($_GET['id'])) {
 // Handle form submission for editing urinalysis data
 if (isset($_POST['edit-urinalysis'])) {
     // Sanitize inputs
-    $urinalysis_id = $_POST['urinalysis_id'];
-    $patient_name = $_POST['patient_name'];
-    $date_time = $_POST['date_time'];
-    $color = $_POST['color'];
-    $transparency = $_POST['transparency'];
-    $reaction = $_POST['reaction'];
-    $protein = $_POST['protein'];
-    $glucose = $_POST['glucose'];
-    $specific_gravity = $_POST['specific_gravity'];
-    $ketone = $_POST['ketone'];
-    $urobilinogen = $_POST['urobilinogen'];
-    $pregnancy_test = $_POST['pregnancy_test'];
-    $pus_cells = $_POST['pus_cells'];
-    $red_blood_cells = $_POST['red_blood_cells'];
-    $epithelial_cells = $_POST['epithelial_cells'];
-    $a_urates_a_phosphates = $_POST['a_urates_a_phosphates'];
-    $mucus_threads = $_POST['mucus_threads'];
-    $bacteria = $_POST['bacteria'];
-    $calcium_oxalates = $_POST['calcium_oxalates'];
-    $uric_acid_crystals = $_POST['uric_acid_crystals'];
-    $pus_cells_clumps = $_POST['pus_cells_clumps'];
-    $coarse_granular_cast = $_POST['coarse_granular_cast'];
-    $hyaline_cast = $_POST['hyaline_cast'];
+    $urinalysis_id = sanitize($connection, $_POST['urinalysis_id']);
+    $patient_name = sanitize($connection, $_POST['patient_name']);
+    $date_time = sanitize($connection, $_POST['date_time']);
+    $color = sanitize($connection, $_POST['color']);
+    $transparency = sanitize($connection, $_POST['transparency']);
+    $reaction = sanitize($connection, $_POST['reaction']);
+    $protein = sanitize($connection, $_POST['protein']);
+    $glucose = sanitize($connection, $_POST['glucose']);
+    $specific_gravity = sanitize($connection, $_POST['specific_gravity']);
+    $ketone = sanitize($connection, $_POST['ketone']);
+    $urobilinogen = sanitize($connection, $_POST['urobilinogen']);
+    $pregnancy_test = sanitize($connection, $_POST['pregnancy_test']);
+    $pus_cells = sanitize($connection, $_POST['pus_cells']);
+    $red_blood_cells = sanitize($connection, $_POST['red_blood_cells']);
+    $epithelial_cells = sanitize($connection, $_POST['epithelial_cells']);
+    $a_urates_a_phosphates = sanitize($connection, $_POST['a_urates_a_phosphates']);
+    $mucus_threads = sanitize($connection, $_POST['mucus_threads']);
+    $bacteria = sanitize($connection, $_POST['bacteria']);
+    $calcium_oxalates = sanitize($connection, $_POST['calcium_oxalates']);
+    $uric_acid_crystals = sanitize($connection, $_POST['uric_acid_crystals']);
+    $pus_cells_clumps = sanitize($connection, $_POST['pus_cells_clumps']);
+    $coarse_granular_cast = sanitize($connection, $_POST['coarse_granular_cast']);
+    $hyaline_cast = sanitize($connection, $_POST['hyaline_cast']);
 
     // Fetch patient information using prepared statement
     $patient_query = mysqli_prepare($connection, "SELECT patient_id, gender, dob, patient_type FROM tbl_patient WHERE CONCAT(first_name, ' ', last_name) = ?");
@@ -66,7 +71,7 @@ if (isset($_POST['edit-urinalysis'])) {
 
     // Update urinalysis data using prepared statement
     $update_query = mysqli_prepare($connection, "UPDATE tbl_urinalysis SET patient_name = ?, dob = ?, gender = ?, date_time = ?, color = ?, transparency = ?, reaction = ?, protein = ?, glucose = ?, specific_gravity = ?, ketone = ?, urobilinogen = ?, pregnancy_test = ?, pus_cells = ?, red_blood_cells = ?, epithelial_cells = ?, a_urates_a_phosphates = ?, mucus_threads = ?, bacteria = ?, calcium_oxalates = ?, uric_acid_crystals = ?, pus_cells_clumps = ?, coarse_granular_cast = ?, hyaline_cast = ? WHERE urinalysis_id = ?");
-    
+
     // Bind all parameters as strings
     mysqli_stmt_bind_param($update_query, "sssssssssssssssssssssssss", $patient_name, $dob, $gender, $date_time, $color, $transparency, $reaction, $protein, $glucose, $specific_gravity, $ketone, $urobilinogen, $pregnancy_test, $pus_cells, $red_blood_cells, $epithelial_cells, $a_urates_a_phosphates, $mucus_threads, $bacteria, $calcium_oxalates, $uric_acid_crystals, $pus_cells_clumps, $coarse_granular_cast, $hyaline_cast, $urinalysis_id);
 

@@ -1,11 +1,15 @@
 <?php
 session_start();
-if(empty($_SESSION['name']))
-{
+if (empty($_SESSION['name'])) {
     header('location:index.php');
 }
 include('header.php');
 include('includes/connection.php');
+
+function sanitize($data) {
+    return htmlspecialchars(strip_tags($data), ENT_QUOTES, 'UTF-8');
+}
+
 ?>
 <div class="page-wrapper">
     <div class="content">
@@ -41,33 +45,47 @@ include('includes/connection.php');
                 </thead>
                 <tbody>
                     <?php
-                    if(isset($_GET['ids'])){
+                    if (isset($_GET['ids'])) {
                         $id = $_GET['ids'];
-                        $update_query = mysqli_query($connection, "UPDATE tbl_newborn SET deleted = 1 WHERE id='$id'");
+
+                        // Ensure the ID is a number to prevent SQL injection
+                        if (filter_var($id, FILTER_VALIDATE_INT)) {
+                            $update_query = mysqli_prepare($connection, "UPDATE tbl_newborn SET deleted = 1 WHERE id = ?");
+                            mysqli_stmt_bind_param($update_query, 'i', $id); // 'i' denotes an integer
+                            if (mysqli_stmt_execute($update_query)) {
+                                // Successfully updated
+                            } else {
+                                echo "Error in deleting record.";
+                            }
+                            mysqli_stmt_close($update_query);
+                        } else {
+                            echo "Invalid ID.";
+                        }
                     }
+
+                    // Fetch newborn records
                     $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_newborn WHERE deleted = 0");
-                    while($row = mysqli_fetch_array($fetch_query))
-                    {
+                    while ($row = mysqli_fetch_array($fetch_query)) {
                     ?>
                         <tr>
-                            <td><?php echo $row['newborn_id']; ?></td>
-                            <td><?php echo $row['first_name']; ?></td>
-                            <td><?php echo $row['last_name']; ?></td>
-                            <td><?php echo $row['gender']; ?></td>
-                            <td><?php echo $row['dob']; ?></td>
-                            <td><?php echo $row['tob']; ?></td>
-                            <td><?php echo $row['birth_weight']; ?></td>
-                            <td><?php echo $row['birth_height']; ?></td>
-                            <td><?php echo $row['gestational_age']; ?></td>
-                            <td><?php echo $row['physician']; ?></td>
+                            <td><?php echo htmlspecialchars($row['newborn_id']); ?></td>
+                            <td><?php echo htmlspecialchars($row['first_name']); ?></td>
+                            <td><?php echo htmlspecialchars($row['last_name']); ?></td>
+                            <td><?php echo htmlspecialchars($row['gender']); ?></td>
+                            <td><?php echo htmlspecialchars($row['dob']); ?></td>
+                            <td><?php echo htmlspecialchars($row['tob']); ?></td>
+                            <td><?php echo htmlspecialchars($row['birth_weight']); ?></td>
+                            <td><?php echo htmlspecialchars($row['birth_height']); ?></td>
+                            <td><?php echo htmlspecialchars($row['gestational_age']); ?></td>
+                            <td><?php echo htmlspecialchars($row['physician']); ?></td>
                             <td class="text-right">
                                 <div class="dropdown dropdown-action">
                                     <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><i class="fa fa-ellipsis-v"></i></a>
                                     <div class="dropdown-menu dropdown-menu-right">
                                     <?php 
-                                    if ($_SESSION['role'] == 1 | $_SESSION['role'] == 3) {
-                                        echo '<a class="dropdown-item" href="edit-newborn.php?id='.$row['id'].'"><i class="fa fa-pencil m-r-5"></i> Edit</a>';
-                                        echo '<a class="dropdown-item" href="newborn.php?ids='.$row['id'].'" onclick="return confirmDelete()"><i class="fa fa-trash-o m-r-5"></i> Delete</a>';
+                                    if ($_SESSION['role'] == 1 || $_SESSION['role'] == 3) {
+                                        echo '<a class="dropdown-item" href="edit-newborn.php?id='. htmlspecialchars($row['id']) .'"><i class="fa fa-pencil m-r-5"></i> Edit</a>';
+                                        echo '<a class="dropdown-item" href="newborn.php?ids='. htmlspecialchars($row['id']) .'" onclick="return confirmDelete()"><i class="fa fa-trash-o m-r-5"></i> Delete</a>';
                                     }
                                     ?>
                                     </div>
@@ -84,6 +102,7 @@ include('includes/connection.php');
 <?php
 include('footer.php');
 ?>
+
 
 <script language="JavaScript" type="text/javascript">
 function confirmDelete(){

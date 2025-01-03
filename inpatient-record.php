@@ -160,7 +160,7 @@ ob_end_flush();
             <div class="col-sm-4 col-3">
                 <h4 class="page-title">Inpatient Record</h4>
             </div>
-            <?php if ($role == 1 || $role == 3): ?>
+            <?php if ($_SESSION['role'] == 1 || $_SESSION['role'] == 3): ?>
                 <div class="col-sm-10 col-9 m-b-20">
                     <form method="POST" action="inpatient-record.php" id="addPatientForm" class="form-inline">
                         <div class="input-group w-50">
@@ -184,11 +184,11 @@ ob_end_flush();
                     </form>
                     <ul id="searchResults" class="list-group mt-2" style="max-height: 200px; overflow-y: auto; border: 1px solid #ccc; border-radius: 5px; display: none;"></ul>
                 </div>
-                <?php endif; ?>
+            <?php endif; ?>
         </div>
         <div class="table-responsive">
-        <label for="patientSearchInput" class="font-weight-bold">Search Patient:</label>
-        <input class="form-control" type="text" id="inpatientSearchInput" onkeyup="filterInpatients()" placeholder="Search Patient ID or Patient Name">
+            <label for="patientSearchInput" class="font-weight-bold">Search Patient:</label>
+            <input class="form-control" type="text" id="inpatientSearchInput" onkeyup="filterInpatients()" placeholder="Search Patient ID or Patient Name">
             <table class="datatable table table-hover" id="inpatientTable">
                 <thead style="background-color: #CCCCCC;">
                     <tr>
@@ -211,17 +211,25 @@ ob_end_flush();
                 </thead>
                 <tbody>
                     <?php
-                    if(isset($_GET['ids'])){
-                    $id = $_GET['ids'];
-                    $update_query = mysqli_query($connection, "UPDATE tbl_inpatient_record SET deleted = 1 WHERE id='$id'");
+                    // Securely handle GET data for the deletion process
+                    if (isset($_GET['ids'])) {
+                        // Sanitize the incoming GET parameter to ensure it's safe to use in the query
+                        $id = intval($_GET['ids']);  // Using intval to sanitize and ensure it's an integer
+                        
+                        // Perform the delete operation using prepared statements to prevent SQL injection
+                        $update_query = mysqli_prepare($connection, "UPDATE tbl_inpatient_record SET deleted = 1 WHERE id = ?");
+                        mysqli_stmt_bind_param($update_query, 'i', $id);
+                        mysqli_stmt_execute($update_query);
                     }
+
+                    // Fetch inpatient data using a safe query
                     $fetch_query = mysqli_query($connection, "
-                    SELECT r.*, i.discharge_date, 
-                        GROUP_CONCAT(CONCAT(t.medicine_name, ' (', t.medicine_brand, ') - ', t.total_quantity, ' pcs') SEPARATOR '<br>') AS treatments
-                    FROM tbl_inpatient_record r
-                    LEFT JOIN tbl_inpatient i ON r.inpatient_id = i.inpatient_id
-                    LEFT JOIN tbl_treatment t ON r.inpatient_id = t.inpatient_id
-                    GROUP BY r.inpatient_id
+                        SELECT r.*, i.discharge_date, 
+                            GROUP_CONCAT(CONCAT(t.medicine_name, ' (', t.medicine_brand, ') - ', t.total_quantity, ' pcs') SEPARATOR '<br>') AS treatments
+                        FROM tbl_inpatient_record r
+                        LEFT JOIN tbl_inpatient i ON r.inpatient_id = i.inpatient_id
+                        LEFT JOIN tbl_treatment t ON r.inpatient_id = t.inpatient_id
+                        GROUP BY r.inpatient_id
                     ");
                     while ($row = mysqli_fetch_array($fetch_query)) {
                         $dob = $row['dob'];
@@ -236,53 +244,53 @@ ob_end_flush();
                         $treatmentDetails = $row['treatments'] ?: 'No treatments added';
                     ?>
                         <tr>
-                            <td><?php echo $row['patient_id']; ?></td>
-                            <td><?php echo $row['inpatient_id']; ?></td>
-                            <td><?php echo $row['patient_name']; ?></td>
+                            <td><?php echo htmlspecialchars($row['patient_id']); ?></td>
+                            <td><?php echo htmlspecialchars($row['inpatient_id']); ?></td>
+                            <td><?php echo htmlspecialchars($row['patient_name']); ?></td>
                             <td><?php echo $year; ?></td>
-                            <td><?php echo $row['gender']; ?></td>
+                            <td><?php echo htmlspecialchars($row['gender']); ?></td>
                             <td>
                                 <?php if (empty($row['doctor_incharge'])) { ?>
-                                    <button class="btn btn-primary btn-sm select-doctor-btn" data-toggle="modal" data-target="#doctorModal" data-id="<?php echo $row['inpatient_id']; ?>">Select Doctor</button>
+                                    <button class="btn btn-primary btn-sm select-doctor-btn" data-toggle="modal" data-target="#doctorModal" data-id="<?php echo htmlspecialchars($row['inpatient_id']); ?>">Select Doctor</button>
                                 <?php } else { ?>
-                                    <?php echo $row['doctor_incharge']; ?>
+                                    <?php echo htmlspecialchars($row['doctor_incharge']); ?>
                                 <?php } ?>
                             </td>
                             <td>
                                 <form action="generate-result.php" method="get">
-                                    <input type="hidden" name="patient_id" value="<?php echo $row['patient_id']; ?>">
+                                    <input type="hidden" name="patient_id" value="<?php echo htmlspecialchars($row['patient_id']); ?>">
                                     <button class="btn btn-primary btn-sm custom-btn" type="submit">
                                         <i class="fa fa-file-pdf-o m-r-5"></i> View Result
                                     </button>
                                 </form>
                             </td>
-                            <td><?php echo $row['diagnosis']; ?></td>
+                            <td><?php echo htmlspecialchars($row['diagnosis']); ?></td>
                             <td>
                                 <?php if (!empty($row['treatments'])): ?>
                                     <!-- Display Treatment Details if Present -->
-                                    <div><?php echo nl2br($row['treatments']); ?></div>
+                                    <div><?php echo nl2br(strip_tags($row['treatments'], '<br>')); ?></div>
                                 <?php else: ?>
                                     <!-- Display Button to Add/Edit Treatments if No Treatments Exist -->
-                                    <button class="btn btn-primary btn-sm treatment-btn mt-2" data-toggle="modal" data-target="#treatmentModal" data-id="<?php echo $row['inpatient_id']; ?>">
+                                    <button class="btn btn-primary btn-sm treatment-btn mt-2" data-toggle="modal" data-target="#treatmentModal" data-id="<?php echo htmlspecialchars($row['inpatient_id']); ?>">
                                         <i class="fa fa-stethoscope m-r-5"></i> Add/Edit Treatments
                                     </button>
                                 <?php endif; ?>
                             </td>
-                            <td><?php echo $row['room_type']; ?></td>
-                            <td><?php echo $row['room_number']; ?></td>
-                            <td><?php echo $row['bed_number']; ?></td>
-                            <td><?php echo $admission_date_time; ?></td>
-                            <td><?php echo $discharge_date_time; ?></td>
+                            <td><?php echo htmlspecialchars($row['room_type']); ?></td>
+                            <td><?php echo htmlspecialchars($row['room_number']); ?></td>
+                            <td><?php echo htmlspecialchars($row['bed_number']); ?></td>
+                            <td><?php echo htmlspecialchars($admission_date_time); ?></td>
+                            <td><?php echo htmlspecialchars($discharge_date_time); ?></td>
                             <td class="text-right">
                                 <div class="dropdown dropdown-action">
                                     <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><i class="fa fa-ellipsis-v"></i></a>
                                     <div class="dropdown-menu dropdown-menu-right">
                                         <?php if ($_SESSION['role'] == 2 && $_SESSION['name'] == $row['doctor_incharge']) { ?>
-                                            <button class="dropdown-item diagnosis-btn" data-toggle="modal" data-target="#diagnosisModal" data-id="<?php echo $row['inpatient_id']; ?>" <?php echo !empty($row['diagnosis']) ? 'disabled' : ''; ?>><i class="fa fa-stethoscope m-r-5"></i> Diagnosis</button>
+                                            <button class="dropdown-item diagnosis-btn" data-toggle="modal" data-target="#diagnosisModal" data-id="<?php echo htmlspecialchars($row['inpatient_id']); ?>" <?php echo !empty($row['diagnosis']) ? 'disabled' : ''; ?>><i class="fa fa-stethoscope m-r-5"></i> Diagnosis</button>
                                         <?php } ?>
                                         <?php if ($_SESSION['role'] == 1) { ?>
-                                            <a class="dropdown-item" href="edit-inpatient-record.php?id=<?php echo $row['id']; ?>"><i class="fa fa-pencil m-r-5"></i> Edit</a>
-                                            <a class="dropdown-item" href="inpatient-record.php?ids=<?php echo $row['id']; ?>" onclick="return confirmDelete()"><i class="fa fa-trash-o m-r-5"></i> Delete</a>
+                                            <a class="dropdown-item" href="edit-inpatient-record.php?id=<?php echo htmlspecialchars($row['id']); ?>"><i class="fa fa-pencil m-r-5"></i> Edit</a>
+                                            <a class="dropdown-item" href="inpatient-record.php?ids=<?php echo htmlspecialchars($row['id']); ?>" onclick="return confirmDelete()"><i class="fa fa-trash-o m-r-5"></i> Delete</a>
                                         <?php } ?>
                                     </div>
                                 </div>

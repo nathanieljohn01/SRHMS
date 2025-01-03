@@ -1,8 +1,16 @@
 <?php 
 session_start();
-if(!empty($_SESSION['name']))
-{
-	unset($_SESSION['name']);
-	header('location:index.php');
+
+// Check if the session variable 'name' is set
+if(!empty($_SESSION['name'])) {
+	// Unset all session variables
+	session_unset();
+	
+	// Destroy the session
+	session_destroy();
+	
+	// Redirect to the index page
+	header('Location: index.php');
+	exit();
 }
 ?>

@@ -7,9 +7,14 @@ if (empty($_SESSION['name'])) {
 include('header.php');
 include('includes/connection.php');
 
+// Sanitize function for input sanitization and XSS protection
+function sanitize($connection, $input) {
+    return mysqli_real_escape_string($connection, htmlspecialchars(trim($input), ENT_QUOTES, 'UTF-8'));
+}
+
 // Fetch existing data if ID is provided
 if (isset($_GET['id'])) {
-    $deceased_id = $_GET['id'];
+    $deceased_id = sanitize($connection, $_GET['id']);  // Sanitize the ID
 
     // Fetch data using prepared statements
     $fetch_stmt = $connection->prepare("SELECT * FROM tbl_deceased WHERE deceased_id = ?");
@@ -26,13 +31,13 @@ if (isset($_GET['id'])) {
 }
 
 if (isset($_POST['save-deceased'])) {
-    $patient_name = $_POST['patient_name'];
+    $patient_name = sanitize($connection, $_POST['patient_name']);
     $dod = DateTime::createFromFormat('d/m/Y', $_POST['dod'])->format('F j, Y');
     $tod = date("g:i A", strtotime($_POST['tod']));
-    $cod = $_POST['cod'];
-    $physician = $_POST['physician'];
-    $next_of_kin_contact = $_POST['next_of_kin_contact'];
-    $discharge_status = $_POST['discharge_status'];
+    $cod = sanitize($connection, $_POST['cod']);
+    $physician = sanitize($connection, $_POST['physician']);
+    $next_of_kin_contact = sanitize($connection, $_POST['next_of_kin_contact']);
+    $discharge_status = sanitize($connection, $_POST['discharge_status']);
 
     // Fetch patient_id based on patient_name
     $fetch_patient_stmt = $connection->prepare("SELECT patient_id FROM tbl_patient WHERE CONCAT(first_name, ' ', last_name) = ? AND deleted = 0");

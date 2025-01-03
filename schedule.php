@@ -41,15 +41,11 @@ include('includes/connection.php');
                         $id = $_GET['ids'];
                         // Sanitize $id before using it in the query
                         $id = mysqli_real_escape_string($connection, $id);
-                        $delete_query = mysqli_query($connection, "DELETE FROM tbl_schedule WHERE id='$id'");
-                        if ($delete_query) {
-                            echo "<p>Schedule deleted successfully.</p>";
-                        } else {
-                            echo "<p>Error deleting schedule: " . mysqli_error($connection) . "</p>";
-                        }
+                        // Update query to set deleted = 1
+                        $update_query = mysqli_query($connection, "UPDATE tbl_schedule SET deleted = 1 WHERE id='$id'");
                     }
 
-                    $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_schedule");
+                    $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_schedule WHERE deleted = 0");
                     while ($row = mysqli_fetch_array($fetch_query)) {
                     ?>
                     <tr>

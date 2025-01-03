@@ -13,7 +13,7 @@ $patientType = isset($_GET['patient_type']) ? $_GET['patient_type'] : 'inpatient
 // Select the correct table based on patient type and prepare query
 if ($patientType === 'hemodialysis') {
     $query = "
-        SELECT b.billing_id, b.patient_id, b.patient_name, b.dob, b.address, b.final_diagnosis, b.admission_date, b.discharge_date, b.room_fee, b.lab_fee, b.medication_fee, b.operating_room_fee, 
+        SELECT b.billing_id, b.patient_id, b.patient_name, b.dob, b.address, b.diagnosis, b.admission_date, b.discharge_date, b.room_fee, b.lab_fee, b.medication_fee, b.operating_room_fee, 
                b.professional_fee, b.pf_discount_amount, b.readers_fee, b.discount_amount, b.total_due, b.non_discounted_total, 
                GROUP_CONCAT(o.item_name ORDER BY o.date_time DESC SEPARATOR ', ') AS other_items, 
                GROUP_CONCAT(o.item_cost ORDER BY o.date_time DESC SEPARATOR ', ') AS other_costs
@@ -24,7 +24,7 @@ if ($patientType === 'hemodialysis') {
     ";
 } else {
     $query = "
-        SELECT b.billing_id, b.patient_id, b.patient_name, b.dob, b.address, b.final_diagnosis, b.admission_date, b.discharge_date, b.room_fee, b.lab_fee, b.medication_fee, b.operating_room_fee, 
+        SELECT b.billing_id, b.patient_id, b.patient_name, b.dob, b.address, b.diagnosis, b.admission_date, b.discharge_date, b.room_fee, b.lab_fee, b.medication_fee, b.operating_room_fee, 
                b.professional_fee, b.pf_discount_amount, b.readers_fee, b.discount_amount, b.total_due, b.non_discounted_total, 
                GROUP_CONCAT(o.item_name ORDER BY o.date_time DESC SEPARATOR ', ') AS other_items, 
                GROUP_CONCAT(o.item_cost ORDER BY o.date_time DESC SEPARATOR ', ') AS other_costs
@@ -91,7 +91,7 @@ if ($patientType === 'hemodialysis') {
                         <td><?php echo $row['patient_name']; ?></td>
                         <td><?php echo $year; ?></td>
                         <td><?php echo $row['address']; ?></td>
-                        <td><?php echo $row['final_diagnosis']; ?></td>
+                        <td><?php echo $row['diagnosis']; ?></td>
                         <td><?php echo date('F d, Y g:i A', strtotime($row['admission_date'])); ?></td>
                         <td><?php echo date('F d, Y g:i A', strtotime($row['discharge_date'])); ?></td>
                         <td class="text-right">

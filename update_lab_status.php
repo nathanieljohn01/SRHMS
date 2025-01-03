@@ -10,20 +10,26 @@ if(isset($_POST['lab_test'], $_POST['status'])) {
     $lab_test = $_POST['lab_test'];
     $status = $_POST['status'];
 
-    // Update the status in the database
-    $update_query = "UPDATE tbl_labtest SET status = '$status' WHERE lab_test = '$lab_test'";
-    $result = mysqli_query($connection, $update_query);
+    // Prepare the SQL statement
+    $stmt = $connection->prepare("UPDATE tbl_labtest SET status = ? WHERE lab_test = ?");
+    $stmt->bind_param("ss", $status, $lab_test);
 
-    // Check if the query was successful
-    if($result) {
+    // Execute the statement
+    if($stmt->execute()) {
         // Return a success message
         echo "Status updated successfully";
     } else {
         // Return an error message
         echo "Error updating status";
     }
+
+    // Close the statement
+    $stmt->close();
 } else {
     // Return an error message if parameters are not set
     echo "Parameters not set";
 }
+
+// Close the database connection
+$connection->close();
 ?>

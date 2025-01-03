@@ -3,7 +3,7 @@
 
 include('includes/connection.php');
 
-$selectedRoomNumber = $_GET['room_number'];
+$selectedRoomNumber = isset($_GET['room_number']) ? mysqli_real_escape_string($connection, $_GET['room_number']) : '';
 
 $query = "SELECT DISTINCT bed_number FROM tbl_bedallocation";
 

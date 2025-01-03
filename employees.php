@@ -41,11 +41,6 @@ include('includes/connection.php');
                         // Sanitize $id before using it in the query
                         $id = mysqli_real_escape_string($connection, $id);
                         $delete_query = mysqli_query($connection, "UPDATE tbl_employee SET deleted = 1 WHERE id='$id'");
-                        if ($delete_query) {
-                            echo "<p>Employee marked as deleted successfully.</p>";
-                        } else {
-                            echo "<p>Error marking employee as deleted: " . mysqli_error($connection) . "</p>";
-                        }
                     }
                     
                     $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_employee WHERE deleted = 0");

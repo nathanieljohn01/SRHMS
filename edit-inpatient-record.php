@@ -2,28 +2,38 @@
 session_start();
 if (empty($_SESSION['name'])) {
     header('location:index.php');
+    exit();
 }
+
 include('header.php');
 include('includes/connection.php');
 
-$id = $_GET['id'];
+// Function to sanitize inputs
+function sanitize($connection, $input) {
+    return mysqli_real_escape_string($connection, htmlspecialchars(trim($input), ENT_QUOTES, 'UTF-8'));
+}
+
+$id = sanitize($connection, $_GET['id']);
+
+// Fetch existing inpatient record data
 $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_inpatient_record WHERE id='$id'");
 $row = mysqli_fetch_array($fetch_query);
 
-$msg = ''; // Initialize $msg variable
+$msg = ''; // Initialize message variable
 
 if (isset($_POST['update-inpatient'])) {
-    $patient_name = $_POST['patient_name'];
-    $doctor_incharge = $_POST['doctor_incharge'];
-    $treatment = $_POST['treatment'];
+    // Sanitize user inputs
+    $patient_name = sanitize($connection, $_POST['patient_name']);
+    $doctor_incharge = sanitize($connection, $_POST['doctor_incharge']);
+    $treatment = sanitize($connection, $_POST['treatment']);
 
-    // Use prepared statement to prevent SQL injection
+    // Prepare the update query using a prepared statement
     $stmt = mysqli_prepare($connection, "UPDATE tbl_inpatient_record SET patient_name = ?, doctor_incharge = ?, treatment = ? WHERE id = ?");
-    
-    // Bind the parameters
+
+    // Bind parameters
     mysqli_stmt_bind_param($stmt, 'sssi', $patient_name, $doctor_incharge, $treatment, $id);
-    
-    // Execute the query
+
+    // Execute the query and check if it was successful
     if (mysqli_stmt_execute($stmt)) {
         $msg = "Inpatient record updated successfully";
     } else {
@@ -34,7 +44,6 @@ if (isset($_POST['update-inpatient'])) {
     mysqli_stmt_close($stmt);
 }
 ?>
-
 
 <div class="page-wrapper">
     <div class="content">
@@ -59,7 +68,7 @@ if (isset($_POST['update-inpatient'])) {
                         <div class="col-md-6">
                             <div class="form-group">
                                 <label>Doctor In Charge</label>
-                                <select class="form-control" name="doctor_incharge" required>
+                                <select class="form-control" name="doctor_incharge" disabled>
                                     <option value="">Select Doctor</option>
                                     <?php
                                     $doctor_query = mysqli_query($connection, "SELECT CONCAT(first_name, ' ', last_name) as name FROM tbl_employee WHERE role = 2");

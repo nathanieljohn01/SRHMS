@@ -7,6 +7,11 @@ if (empty($_SESSION['name'])) {
 include('header.php');
 include('includes/connection.php');
 
+// Function to sanitize user input
+function sanitize_input($connection, $input) {
+    return mysqli_real_escape_string($connection, htmlspecialchars(trim($input), ENT_QUOTES, 'UTF-8'));
+}
+
 // Get the next patient ID
 $fetch_query = mysqli_query($connection, "SELECT MAX(id) as id FROM tbl_patient");
 $row = mysqli_fetch_row($fetch_query);
@@ -14,25 +19,26 @@ $pt_id = $row[0] == 0 ? 1 : $row[0] + 1;
 
 // Handle form submission
 if (isset($_REQUEST['save-patient'])) {
+    // Sanitize all inputs
     $patient_id = 'PT-' . $pt_id;
-    $first_name = mysqli_real_escape_string($connection, $_REQUEST['first_name']);
-    $last_name = mysqli_real_escape_string($connection, $_REQUEST['last_name']);
-    $email = mysqli_real_escape_string($connection, $_REQUEST['email']);
-    $dob = mysqli_real_escape_string($connection, $_REQUEST['dob']);
-    $gender = mysqli_real_escape_string($connection, $_REQUEST['gender']);
-    $civil_status = mysqli_real_escape_string($connection, $_REQUEST['civil_status']);
-    $patient_type = mysqli_real_escape_string($connection, $_REQUEST['patient_type']);
-    $contact_number = mysqli_real_escape_string($connection, $_REQUEST['contact_number']);
-    $address = mysqli_real_escape_string($connection, $_REQUEST['address']);
-    $date_time = mysqli_real_escape_string($connection, $_REQUEST['date_time']);
-    $status = mysqli_real_escape_string($connection, $_REQUEST['status']);
-    $message = mysqli_real_escape_string($connection, $_REQUEST['message']);
-    $weight = mysqli_real_escape_string($connection, $_REQUEST['weight']);
-    $height = mysqli_real_escape_string($connection, $_REQUEST['height']);
-    $temperature = mysqli_real_escape_string($connection, $_REQUEST['temperature']);
-    $blood_pressure = mysqli_real_escape_string($connection, $_REQUEST['blood_pressure']);
-    $menstruation = mysqli_real_escape_string($connection, $_REQUEST['menstruation']);
-    $last_menstrual_period = mysqli_real_escape_string($connection, $_REQUEST['last_menstrual_period']);
+    $first_name = sanitize_input($connection, $_REQUEST['first_name']);
+    $last_name = sanitize_input($connection, $_REQUEST['last_name']);
+    $email = sanitize_input($connection, $_REQUEST['email']);
+    $dob = sanitize_input($connection, $_REQUEST['dob']);
+    $gender = sanitize_input($connection, $_REQUEST['gender']);
+    $civil_status = sanitize_input($connection, $_REQUEST['civil_status']);
+    $patient_type = sanitize_input($connection, $_REQUEST['patient_type']);
+    $contact_number = sanitize_input($connection, $_REQUEST['contact_number']);
+    $address = sanitize_input($connection, $_REQUEST['address']);
+    $date_time = sanitize_input($connection, $_REQUEST['date_time']);
+    $status = sanitize_input($connection, $_REQUEST['status']);
+    $message = sanitize_input($connection, $_REQUEST['message']);
+    $weight = sanitize_input($connection, $_REQUEST['weight']);
+    $height = sanitize_input($connection, $_REQUEST['height']);
+    $temperature = sanitize_input($connection, $_REQUEST['temperature']);
+    $blood_pressure = sanitize_input($connection, $_REQUEST['blood_pressure']);
+    $menstruation = sanitize_input($connection, $_REQUEST['menstruation']);
+    $last_menstrual_period = sanitize_input($connection, $_REQUEST['last_menstrual_period']);
 
     // Handle gender-specific fields
     if ($gender == 'Male') {
@@ -55,16 +61,16 @@ if (isset($_REQUEST['save-patient'])) {
         $msg = "Patient with the same name already exists.";
     } else {
         // Insert patient record using prepared statement
-        $insert_query = mysqli_prepare($connection, "INSERT INTO tbl_patient (patient_id, first_name, last_name, email, dob, gender, civil_status, patient_type, contact_number, address, status, message, weight, height, temperature, blood_pressure, menstruation, last_menstrual_period, date_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+        $insert_query = mysqli_prepare($connection, "INSERT INTO tbl_patient (patient_id, first_name, last_name, email, dob, gender, civil_status, patient_type, contact_number, address, status, message, weight, height, temperature, blood_pressure, menstruation, last_menstrual_period, date_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
         mysqli_stmt_bind_param($insert_query, 'ssssssssssssssssss', $patient_id, $first_name, $last_name, $email, $dob, $gender, $civil_status, $patient_type, $contact_number, $address, $status, $message, $weight, $height, $temperature, $blood_pressure, $menstruation, $last_menstrual_period);
 
         if (mysqli_stmt_execute($insert_query)) {
             $msg = "Patient added successfully";
         } else {
-            $msg = "Error!";
+            $msg = "Error inserting the patient record!";
         }
 
-        // Close the statement
+        // Close the insert statement
         mysqli_stmt_close($insert_query);
     }
 
@@ -170,7 +176,7 @@ if (isset($_REQUEST['save-patient'])) {
                             <div class="form-group">
                                 <label>Weight</label>
                                 <div class="input-group">
-                                    <input class="form-control" type="text" name="weight">
+                                    <input class="form-control" type="number" name="weight" step="0.01" min="0" required>
                                     <div class="input-group-append">
                                         <span class="input-group-text">kg</span>
                                     </div>
@@ -181,7 +187,7 @@ if (isset($_REQUEST['save-patient'])) {
                             <div class="form-group">
                                 <label>Height</label>
                                 <div class="input-group">
-                                    <input class="form-control" type="text" name="height">
+                                    <input class="form-control" type="number" name="height" required>
                                     <div class="input-group-append">
                                         <span class="input-group-text">ft</span>
                                     </div>
@@ -192,7 +198,7 @@ if (isset($_REQUEST['save-patient'])) {
                             <div class="form-group">
                                 <label>Temperature</label>
                                 <div class="input-group">
-                                    <input class="form-control" type="text" name="temperature">
+                                    <input class="form-control" type="number" name="temperature" required>
                                     <div class="input-group-append">
                                         <span class="input-group-text">°C</span>
                                     </div>

@@ -54,10 +54,10 @@ $pdf->AddPage();
 
 // Section title: Lab Results
 $pdf->SetFont('helvetica', 'B', 14);
-$pdf->Cell(0, 10, 'Lab Results for Patient ID: ' . $patient_id, 0, 1, 'L');
+$pdf->Cell(0, 10, 'Lab Results for Patient ID: ' . htmlspecialchars($patient_id), 0, 1, 'L');
 $pdf->Ln(5);
 
-// Function to render lab results table
+// Function to render lab results table with XSS protection
 function renderLabResultsTable($pdf, $testType, $data, $columns, $widths)
 {
     $pdf->SetFont('helvetica', 'B', 10);
@@ -65,7 +65,7 @@ function renderLabResultsTable($pdf, $testType, $data, $columns, $widths)
 
     // Table header
     foreach ($columns as $index => $header) {
-        $pdf->Cell($widths[$index], 7, $header, 1, 0, 'C', true);
+        $pdf->Cell($widths[$index], 7, htmlspecialchars($header), 1, 0, 'C', true); // Escape column headers
     }
     $pdf->Ln();
 
@@ -74,12 +74,12 @@ function renderLabResultsTable($pdf, $testType, $data, $columns, $widths)
 
     // Table rows
     foreach ($data as $row) {
-        $pdf->Cell($widths[0], 6, $testType, 1, 0, 'L');
-        $pdf->Cell($widths[1], 6, date('F d, Y g:i A', strtotime($row['date_time'])), 1, 0, 'C');
+        $pdf->Cell($widths[0], 6, htmlspecialchars($testType), 1, 0, 'L'); // Escape test type
+        $pdf->Cell($widths[1], 6, htmlspecialchars(date('F d, Y g:i A', strtotime($row['date_time']))), 1, 0, 'C'); // Escape date/time
         
-        // Bold font for the "Results" column
+        // Bold font for the "Results" column, escape results data
         $pdf->SetFont('helvetica', 'B', 9);
-        $pdf->MultiCell($widths[2], 6, $row['results'], 1, 'L', false);
+        $pdf->MultiCell($widths[2], 6, htmlspecialchars($row['results']), 1, 'L', false); // Escape results
         $pdf->SetFont('helvetica', '', 9); // Reset to normal font for other rows
     }
     $pdf->Ln(5);

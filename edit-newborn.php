@@ -2,11 +2,19 @@
 session_start();
 if (empty($_SESSION['name'])) {
     header('location:index.php');
+    exit();
 }
+
 include('header.php');
 include('includes/connection.php');
 
-$id = $_GET['id'];
+// Function to sanitize inputs
+function sanitize($connection, $input) {
+    return mysqli_real_escape_string($connection, htmlspecialchars(trim($input), ENT_QUOTES, 'UTF-8'));
+}
+
+$id = sanitize($connection, $_GET['id']);
+
 // Prepare the fetch statement
 $fetch_query = mysqli_prepare($connection, "SELECT * FROM tbl_newborn WHERE id = ?");
 mysqli_stmt_bind_param($fetch_query, "s", $id);
@@ -14,37 +22,42 @@ mysqli_stmt_execute($fetch_query);
 $result = mysqli_stmt_get_result($fetch_query);
 $row = mysqli_fetch_assoc($result);
 
-if (isset($_REQUEST['update-newborn'])) {
-    $first_name = $_REQUEST['first_name'];
-    $last_name = $_REQUEST['last_name'];
+$msg = ''; // Initialize the message variable
 
-    // Convert date of birth from DD/MM/YYYY to September 10, 2024
-    $dob = DateTime::createFromFormat('d/m/Y', $_REQUEST['dob'])->format('F j, Y');
+if (isset($_REQUEST['update-newborn'])) {
+    // Sanitize the user inputs
+    $first_name = sanitize($connection, $_REQUEST['first_name']);
+    $last_name = sanitize($connection, $_REQUEST['last_name']);
+
+    // Convert date of birth from DD/MM/YYYY to September 10, 2024 format
+    $dob = DateTime::createFromFormat('d/m/Y', sanitize($connection, $_REQUEST['dob']))->format('F j, Y');
 
     // Convert time of birth
-    $tob = date("g:i A", strtotime($_REQUEST['tob']));
-    $gender = $_REQUEST['gender'];
-    $birth_weight = $_REQUEST['birth_weight'];
-    $birth_height = $_REQUEST['birth_height'];
-    $gestational_age = $_REQUEST['gestational_age'];
-    $physician = $_REQUEST['physician'];
+    $tob = date("g:i A", strtotime(sanitize($connection, $_REQUEST['tob'])));
+    $gender = sanitize($connection, $_REQUEST['gender']);
+    $birth_weight = sanitize($connection, $_REQUEST['birth_weight']);
+    $birth_height = sanitize($connection, $_REQUEST['birth_height']);
+    $gestational_age = sanitize($connection, $_REQUEST['gestational_age']);
+    $physician = sanitize($connection, $_REQUEST['physician']);
 
     // Prepare the update statement
     $update_query = mysqli_prepare($connection, "UPDATE tbl_newborn SET first_name = ?, last_name = ?, dob = ?, tob = ?, gender = ?, birth_weight = ?, birth_height = ?, gestational_age = ?, physician = ? WHERE id = ?");
     mysqli_stmt_bind_param($update_query, "ssssssssss", $first_name, $last_name, $dob, $tob, $gender, $birth_weight, $birth_height, $gestational_age, $physician, $id);
 
+    // Execute the update query and check if it was successful
     if (mysqli_stmt_execute($update_query)) {
         $msg = "Newborn details updated successfully";
     } else {
-        $msg = "Error updating details";
+        $msg = "Error updating details: " . mysqli_error($connection);
     }
 
+    // Close the update statement
     mysqli_stmt_close($update_query);
 }
 
+// Close the fetch statement
 mysqli_stmt_close($fetch_query);
 ?>
-
 
 <div class="page-wrapper">
     <div class="content">

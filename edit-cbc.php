@@ -7,9 +7,15 @@ if (empty($_SESSION['name'])) {
 include('header.php');
 include('includes/connection.php');
 
+// Sanitize function for input sanitization and XSS protection
+function sanitize($connection, $input) {
+    return mysqli_real_escape_string($connection, htmlspecialchars(trim($input), ENT_QUOTES, 'UTF-8'));
+}
+
 // Fetch CBC data
 if (isset($_GET['id'])) {
-    $cbc_id = $_GET['id'];
+    $cbc_id = sanitize($connection, $_GET['id']);  // Sanitize the ID
+
     $fetch_query_stmt = mysqli_prepare($connection, "SELECT * FROM tbl_cbc WHERE cbc_id = ?");
     mysqli_stmt_bind_param($fetch_query_stmt, 's', $cbc_id);
     mysqli_stmt_execute($fetch_query_stmt);
@@ -25,19 +31,19 @@ if (isset($_GET['id'])) {
 
 // Update CBC data
 if (isset($_POST['update-cbc'])) {
-    $patient_name = $_POST['patient_name'];
-    $date_time = $_POST['date_time'];
-    $hemoglobin = $_POST['hemoglobin'];
-    $hematocrit = $_POST['hematocrit'];
-    $red_blood_cells = $_POST['red_blood_cells'];
-    $white_blood_cells = $_POST['white_blood_cells'];
-    $esr= $_POST['esr'];
-    $segmenters = $_POST['segmenters'];
-    $lymphocytes = $_POST['lymphocytes'];
-    $eosinophils = $_POST['eosinophils'];
-    $monocytes = $_POST['monocytes'];
-    $bands = $_POST['bands'];
-    $platelets = $_POST['platelets'];
+    $patient_name = sanitize($connection, $_POST['patient_name']);
+    $date_time = sanitize($connection, $_POST['date_time']);
+    $hemoglobin = sanitize($connection, $_POST['hemoglobin']);
+    $hematocrit = sanitize($connection, $_POST['hematocrit']);
+    $red_blood_cells = sanitize($connection, $_POST['red_blood_cells']);
+    $white_blood_cells = sanitize($connection, $_POST['white_blood_cells']);
+    $esr = sanitize($connection, $_POST['esr']);
+    $segmenters = sanitize($connection, $_POST['segmenters']);
+    $lymphocytes = sanitize($connection, $_POST['lymphocytes']);
+    $eosinophils = sanitize($connection, $_POST['eosinophils']);
+    $monocytes = sanitize($connection, $_POST['monocytes']);
+    $bands = sanitize($connection, $_POST['bands']);
+    $platelets = sanitize($connection, $_POST['platelets']);
 
     // Fetch Patient ID, Gender, and DOB based on the patient's name
     $fetch_patient_stmt = mysqli_prepare($connection, "SELECT patient_id, gender, dob FROM tbl_patient WHERE CONCAT(first_name, ' ', last_name) = ?");
@@ -101,47 +107,47 @@ if (isset($_POST['update-cbc'])) {
                     </div>
                     <div class="form-group">
                         <label for="hemoglobin">Hemoglobin</label>
-                        <input class="form-control" type="text" name="hemoglobin" id="hemoglobin" value="<?php echo htmlspecialchars($cbc_data['hemoglobin']); ?>">
+                        <input class="form-control" type="number" step="0.1" name="hemoglobin" id="hemoglobin" value="<?php echo htmlspecialchars($cbc_data['hemoglobin']); ?>">
                     </div>
                     <div class="form-group">
                         <label for="hematocrit">Hematocrit</label>
-                        <input class="form-control" type="text" name="hematocrit" id="hematocrit" value="<?php echo htmlspecialchars($cbc_data['hematocrit']); ?>">
+                        <input class="form-control" type="number" step="0.1" name="hematocrit" id="hematocrit" value="<?php echo htmlspecialchars($cbc_data['hematocrit']); ?>">
                     </div>
                     <div class="form-group">
                         <label for="red_blood_cells">Red Blood Cells</label>
-                        <input class="form-control" type="text" name="red_blood_cells" id="red_blood_cells" value="<?php echo htmlspecialchars($cbc_data['red_blood_cells']); ?>">
+                        <input class="form-control" type="number" step="0.1" name="red_blood_cells" id="red_blood_cells" value="<?php echo htmlspecialchars($cbc_data['red_blood_cells']); ?>">
                     </div>
                     <div class="form-group">
                         <label for="white_blood_cells">White Blood Cells</label>
-                        <input class="form-control" type="text" name="white_blood_cells" id="white_blood_cells" value="<?php echo htmlspecialchars($cbc_data['white_blood_cells']); ?>">
+                        <input class="form-control" type="number" step="0.1" name="white_blood_cells" id="white_blood_cells" value="<?php echo htmlspecialchars($cbc_data['white_blood_cells']); ?>">
                     </div>
                     <div class="form-group">
-                        <label for="segmenters">ESR</label>
-                        <input class="form-control" type="text" name="esr" id="esr" value="<?php echo htmlspecialchars($cbc_data['esr']); ?>">
+                        <label for="esr">ESR</label>
+                        <input class="form-control" type="number" step="0.1" name="esr" id="esr" value="<?php echo htmlspecialchars($cbc_data['esr']); ?>">
                     </div>
                     <div class="form-group">
                         <label for="segmenters">Segmenters</label>
-                        <input class="form-control" type="text" name="segmenters" id="segmenters" value="<?php echo htmlspecialchars($cbc_data['segmenters']); ?>">
+                        <input class="form-control" type="number" step="0.1" name="segmenters" id="segmenters" value="<?php echo htmlspecialchars($cbc_data['segmenters']); ?>">
                     </div>
                     <div class="form-group">
                         <label for="lymphocytes">Lymphocytes</label>
-                        <input class="form-control" type="text" name="lymphocytes" id="lymphocytes" value="<?php echo htmlspecialchars($cbc_data['lymphocytes']); ?>">
+                        <input class="form-control" type="number" step="0.1" name="lymphocytes" id="lymphocytes" value="<?php echo htmlspecialchars($cbc_data['lymphocytes']); ?>">
                     </div>
                     <div class="form-group">
                         <label for="eosinophils">Eosinophils</label>
-                        <input class="form-control" type="text" name="eosinophils" id="eosinophils" value="<?php echo htmlspecialchars($cbc_data['eosinophils']); ?>">
+                        <input class="form-control" type="number" step="0.1" name="eosinophils" id="eosinophils" value="<?php echo htmlspecialchars($cbc_data['eosinophils']); ?>">
                     </div>
                     <div class="form-group">
                         <label for="monocytes">Monocytes</label>
-                        <input class="form-control" type="text" name="monocytes" id="monocytes" value="<?php echo htmlspecialchars($cbc_data['monocytes']); ?>">
+                        <input class="form-control" type="number" step="0.1" name="monocytes" id="monocytes" value="<?php echo htmlspecialchars($cbc_data['monocytes']); ?>">
                     </div>
                     <div class="form-group">
                         <label for="bands">Bands</label>
-                        <input class="form-control" type="text" name="bands" id="bands" value="<?php echo htmlspecialchars($cbc_data['bands']); ?>">
+                        <input class="form-control" type="number" step="0.1" name="bands" id="bands" value="<?php echo htmlspecialchars($cbc_data['bands']); ?>">
                     </div>
                     <div class="form-group">
                         <label for="platelets">Platelets</label>
-                        <input class="form-control" type="text" name="platelets" id="platelets" value="<?php echo htmlspecialchars($cbc_data['platelets']); ?>">
+                        <input class="form-control" type="number" step="0.1" name="platelets" id="platelets" value="<?php echo htmlspecialchars($cbc_data['platelets']); ?>">
                     </div>
                     <div class="text-center mt-4">
                         <button class="btn btn-primary submit-btn" name="update-cbc">Update Result</button>

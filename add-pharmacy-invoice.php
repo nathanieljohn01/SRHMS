@@ -7,6 +7,11 @@ if (empty($_SESSION['name'])) {
 include('header.php');
 include('includes/connection.php');
 
+// Function to sanitize inputs
+function sanitize_input($connection, $input) {
+    return mysqli_real_escape_string($connection, htmlspecialchars(trim($input), ENT_QUOTES, 'UTF-8'));
+}
+
 // Initialize total cost variable
 $total_cost = 0;
 
@@ -17,19 +22,23 @@ $inv_id = ($row[0] == 0) ? 1 : $row[0] + 1;
 if (isset($_POST['add-invoice'])) {
     // Sanitize and escape patient name and ID
     $invoice_id = 'INV-' . $inv_id;
-    $invoice_id = mysqli_real_escape_string($connection, $invoice_id);
 
-    $patient_name = mysqli_real_escape_string($connection, $_POST['patient_name']);
-    $patient_id = intval($_POST['patient_id']);
+    $patient_name = sanitize_input($connection, $_POST['patient_name']);
+    $patient_id = intval($_POST['patient_id']); // Use intval to prevent injection
 
     // Fetch patient details
     $fetch_query = mysqli_query($connection, "SELECT patient_id, gender, dob, patient_type FROM tbl_patient WHERE CONCAT(first_name, ' ', last_name) = '$patient_name'");
     $patient = mysqli_fetch_assoc($fetch_query);
 
-    $patient_id = $patient['patient_id']; // Assign patient_id from the fetched data
-    $gender = $patient['gender'];
-    $dob = $patient['dob'];
-    $patient_type = $patient['patient_type'];
+    if ($patient) {
+        $patient_id = $patient['patient_id']; // Assign patient_id from the fetched data
+        $gender = $patient['gender'];
+        $dob = $patient['dob'];
+        $patient_type = $patient['patient_type'];
+    } else {
+        $msg = "Patient not found!";
+        exit();
+    }
 
     // Sanitize and escape medicine details
     $medicine_ids = array_map('intval', $_POST['medicine_id']); // Ensure all medicine IDs are integers
@@ -45,9 +54,9 @@ if (isset($_POST['add-invoice'])) {
         $get_medicine_query = mysqli_query($connection, "SELECT medicine_name, medicine_brand, expiration_date, price, quantity FROM tbl_medicines WHERE id = $medicine_id AND deleted = 0");
         $medicine_row = mysqli_fetch_assoc($get_medicine_query);
 
-        $medicine_name = mysqli_real_escape_string($connection, $medicine_row['medicine_name']);
-        $medicine_brand = mysqli_real_escape_string($connection, $medicine_row['medicine_brand']);
-        $expiration_date = mysqli_real_escape_string($connection, $medicine_row['expiration_date']);
+        $medicine_name = sanitize_input($connection, $medicine_row['medicine_name']);
+        $medicine_brand = sanitize_input($connection, $medicine_row['medicine_brand']);
+        $expiration_date = sanitize_input($connection, $medicine_row['expiration_date']);
         $price = round(floatval($medicine_row['price']), 2); // Round the price to 2 decimal places
         $item_total_price = round($price * $quantities[$key], 2); // Round the total price for each medicine to 2 decimal places        
         $available_quantity = intval($medicine_row['quantity']); // Ensure quantity is an integer

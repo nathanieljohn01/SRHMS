@@ -112,7 +112,6 @@ if (isset($_GET['patient_id'])) {
                 </thead>
                 <tbody>
                     <?php
-                    // Fetch lab test records for the patient
                     $fetch_lab_tests_query = mysqli_query($connection, "SELECT id, lab_test, lab_department, stat, status, requested_date, update_date FROM tbl_laborder WHERE patient_id = '$patient_id'");
                     while ($lab_test_row = mysqli_fetch_assoc($fetch_lab_tests_query)) {
                         $requested_date = date('F d, Y g:i A', strtotime($lab_test_row['requested_date']));
@@ -142,6 +141,35 @@ if (isset($_GET['patient_id'])) {
                                     <input type="hidden" name="update_status" value="1">
                                     <input type="hidden" name="laborder_id" value="<?php echo $lab_test_row['id']; ?>">
                                 </form>
+                                
+                                <!-- Modal -->
+                                <div class="modal fade" id="cancelReasonModal_<?php echo $lab_test_row['id']; ?>" tabindex="-1" role="dialog" aria-labelledby="cancelReasonLabel_<?php echo $lab_test_row['id']; ?>" aria-hidden="true">
+                                    <div class="modal-dialog" role="document">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title" id="cancelReasonLabel_<?php echo $lab_test_row['id']; ?>">Enter Cancel Reason</h5>
+                                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                    <span aria-hidden="true">&times;</span>
+                                                </button>
+                                            </div>
+                                            <form method="post">
+                                                <div class="modal-body">
+                                                    <div class="form-group">
+                                                        <label for="cancelReason_<?php echo $lab_test_row['id']; ?>">Reason</label>
+                                                        <textarea name="cancel_reason" id="cancelReason_<?php echo $lab_test_row['id']; ?>" class="form-control" required></textarea>
+                                                    </div>
+                                                    <input type="hidden" name="update_status" value="1">
+                                                    <input type="hidden" name="selected_action" value="Cancelled">
+                                                    <input type="hidden" name="laborder_id" value="<?php echo $lab_test_row['id']; ?>">
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                                                    <button type="submit" class="btn btn-primary">Submit</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
                             </td>
                         </tr>
                     <?php } ?>
@@ -150,6 +178,7 @@ if (isset($_GET['patient_id'])) {
         </div>
     </div>
 </div>
+
 <?php
 } else {
     header('location: index.php');

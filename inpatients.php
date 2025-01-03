@@ -10,7 +10,7 @@ include('includes/connection.php');
 
 // Function to sanitize user inputs
 function sanitize($connection, $input) {
-    return mysqli_real_escape_string($connection, $input);
+    return mysqli_real_escape_string($connection, htmlspecialchars(strip_tags(trim($input)), ENT_QUOTES, 'UTF-8'));
 }
 
 $role = isset($_SESSION['role']) ? $_SESSION['role'] : null;
@@ -69,7 +69,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['patientId'])) {
 }
 ob_end_flush(); // Flush output buffer
 ?>
-
 <div class="page-wrapper">
     <div class="content">
         <div class="row">
@@ -100,11 +99,11 @@ ob_end_flush(); // Flush output buffer
                     </form>
                     <ul id="searchResults" class="list-group mt-2" style="max-height: 200px; overflow-y: auto; border: 1px solid #ccc; border-radius: 5px; display: none;"></ul>
                 </div>
-                <?php endif; ?>
+            <?php endif; ?>
         </div>
         <div class="table-responsive">
-        <label for="patientSearchInput" class="font-weight-bold">Search Patient:</label>
-        <input class="form-control" type="text" id="inpatientSearchInput" onkeyup="filterInpatients()" placeholder="Search Patient ID or Patient Name">
+            <label for="patientSearchInput" class="font-weight-bold">Search Patient:</label>
+            <input class="form-control" type="text" id="inpatientSearchInput" onkeyup="filterInpatients()" placeholder="Search Patient ID or Patient Name">
             <table class="datatable table table-stripped" id="inpatientTable">
                 <thead style="background-color: #CCCCCC;">
                     <tr>
@@ -123,62 +122,59 @@ ob_end_flush(); // Flush output buffer
                 </thead>
                 <tbody>
                     <?php
-                    if(isset($_GET['ids'])){
-                        $id = $_GET['ids'];
-                        $delete_query = mysqli_query($connection, "delete from tbl_inpatient where id='$id'");
+                    if (isset($_GET['ids'])) {
+                        // Sanitize the input to avoid SQL injection
+                        $id = intval($_GET['ids']);  // Ensuring it's an integer
+                        $update_query = mysqli_prepare($connection, "UPDATE tbl_inpatient SET deleted = 1 WHERE id = ?");
                     }
                     $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_inpatient");
-                    while($row = mysqli_fetch_array($fetch_query))
-                    
-                    {
+                    while ($row = mysqli_fetch_array($fetch_query)) {
                         $dob = $row['dob'];
                         $date = str_replace('/', '-', $dob); 
                         $dob = date('Y-m-d', strtotime($date));
-                        $year = (date('Y') - date('Y',strtotime($dob)));
+                        $year = (date('Y') - date('Y', strtotime($dob)));
 
                         $admission_date_time = date('F d, Y g:i A', strtotime($row['admission_date']));
-                        $discharge_date_time = ($row['discharge_date']) ? date('F d Y g:i A', strtotime($row['discharge_date'])) : 'N/A';
+                        $discharge_date_time = ($row['discharge_date']) ? date('F d, Y g:i A', strtotime($row['discharge_date'])) : 'N/A';
                     ?>
                         <tr>
-                            <td><?php echo $row['patient_id']; ?></td>
-                            <td><?php echo $row['inpatient_id']; ?></td>
-                            <td><?php echo $row['patient_name']; ?></td>
+                            <td><?php echo htmlspecialchars($row['patient_id']); ?></td>
+                            <td><?php echo htmlspecialchars($row['inpatient_id']); ?></td>
+                            <td><?php echo htmlspecialchars($row['patient_name']); ?></td>
                             <td><?php echo $year; ?></td>
-                            <td><?php echo $row['gender']; ?></td>
-                            <td><?php echo $row['room_type']; ?></td>
-                            <td><?php echo $row['room_number']; ?></td>
-                            <td><?php echo $row['bed_number']; ?></td>
+                            <td><?php echo htmlspecialchars($row['gender']); ?></td>
+                            <td><?php echo htmlspecialchars($row['room_type']); ?></td>
+                            <td><?php echo htmlspecialchars($row['room_number']); ?></td>
+                            <td><?php echo htmlspecialchars($row['bed_number']); ?></td>
                             <td><?php echo $admission_date_time; ?></td>
                             <td><?php echo $discharge_date_time; ?></td>
                             <td class="text-right">
                                 <div class="dropdown dropdown-action">
                                     <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><i class="fa fa-ellipsis-v"></i></a>
                                     <div class="dropdown-menu dropdown-menu-right">
-                                    <?php
-                                        if ($_SESSION['role'] == 3) {
-                                            // Check if room_type, room_number, or bed_number is not empty to disable Insert Room link
-                                            if (empty($row['room_type']) && empty($row['room_number']) && empty($row['bed_number'])) {
-                                                echo '<a class="dropdown-item" href="insert-room.php?id=' . $row['id'] . '"><i class="fa fa-pencil m-r-5"></i> Insert Room</a>';
-                                            } else {
-                                                echo '<span class="dropdown-item disabled"><i class="fa fa-pencil m-r-5"></i> Insert Room</span>';
-                                            }
-                                            // Check if discharge_date is empty to enable/disable Discharge link
-                                            if (empty($row['discharge_date'])) {
-                                                echo '<a class="dropdown-item" href="#" onclick="confirmDischarge(' . $row['id'] . ')"><i class="fa fa-sign-out-alt m-r-5"></i> Discharge</a>';
-                                            } else {
-                                                echo '<span class="dropdown-item disabled"><i class="fa fa-sign-out-alt m-r-5"></i> Discharge</span>';
-                                            }  
-                                        }
-                                        ?>
-                                        <?php 
-                                    if ($_SESSION['role'] == 1) {
-                                        echo '<a class="dropdown-item" href="inpatients.php?ids='.$row['id'].'" onclick="return confirmDelete()"><i class="fa fa-trash-o m-r-5"></i> Delete</a>';
-                                    }
-                                    ?>
-                                   </div>
-                               </div>
+                                        <?php if ($_SESSION['role'] == 3): ?>
+                                            <!-- Insert Room Link Disabled based on conditions -->
+                                            <?php if (empty($row['room_type']) && empty($row['room_number']) && empty($row['bed_number'])): ?>
+                                                <a class="dropdown-item" href="insert-room.php?id=<?php echo $row['id']; ?>"><i class="fa fa-pencil m-r-5"></i> Insert Room</a>
+                                            <?php else: ?>
+                                                <span class="dropdown-item disabled"><i class="fa fa-pencil m-r-5"></i> Insert Room</span>
+                                            <?php endif; ?>
+
+                                            <!-- Discharge Link Disabled based on discharge_date -->
+                                            <?php if (empty($row['discharge_date'])): ?>
+                                                <a class="dropdown-item" href="#" onclick="confirmDischarge(<?php echo $row['id']; ?>)"><i class="fa fa-sign-out-alt m-r-5"></i> Discharge</a>
+                                            <?php else: ?>
+                                                <span class="dropdown-item disabled"><i class="fa fa-sign-out-alt m-r-5"></i> Discharge</span>
+                                            <?php endif; ?>
+                                        <?php endif; ?>
+
+                                        <?php if ($_SESSION['role'] == 1): ?>
+                                            <a class="dropdown-item" href="inpatients.php?ids=<?php echo $row['id']; ?>" onclick="return confirmDelete()"><i class="fa fa-trash-o m-r-5"></i> Delete</a>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
                             </td>
-                         </tr>
+                        </tr>
                     <?php } ?>
                 </tbody>
             </table>

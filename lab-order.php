@@ -14,9 +14,17 @@ $row = mysqli_fetch_assoc($fetch_query);
 $tst_id = ($row['id'] == 0) ? 1 : $row['id'] + 1;
 
 if (isset($_POST['save-order'])) {
-    // Generate a new test ID
+    // Sanitize and validate inputs
     $test_id = 'TEST-' . $tst_id;
-    $patient_name = mysqli_real_escape_string($connection, $_POST['patient_name']);
+
+    // Use htmlspecialchars to prevent XSS for patient name and other outputs
+    $patient_name = htmlspecialchars(trim($_POST['patient_name']), ENT_QUOTES, 'UTF-8');
+
+    // Validate patient name (could be improved with regex for specific format, if required)
+    if (empty($patient_name)) {
+        echo "Patient name cannot be empty!";
+        exit;
+    }
 
     // Fetch patient details
     $fetch_patient_stmt = mysqli_prepare($connection, "
@@ -35,8 +43,11 @@ if (isset($_POST['save-order'])) {
         exit;
     }
 
-    $stat_status = isset($_POST['stat']) ? 'STAT' : 'Regular';
-    $shift = mysqli_real_escape_string($connection, $_POST['shift']);
+    // Ensure stat is a valid input
+    $stat_status = isset($_POST['stat']) && $_POST['stat'] === 'on' ? 'STAT' : 'Regular';
+
+    // Validate and sanitize shift input
+    $shift = isset($_POST['shift']) ? htmlspecialchars(trim($_POST['shift']), ENT_QUOTES, 'UTF-8') : 'Regular';
 
     if (isset($_POST['lab_test']) && !empty($_POST['lab_test'])) {
         // Prepare the insert statement for tbl_laborder
@@ -47,6 +58,9 @@ if (isset($_POST['save-order'])) {
         ");
 
         foreach ($_POST['lab_test'] as $selected_lab_test) {
+            // Sanitize lab test name
+            $selected_lab_test = htmlspecialchars(trim($selected_lab_test), ENT_QUOTES, 'UTF-8');
+
             // Fetch lab test details
             $fetch_lab_test_stmt = mysqli_prepare($connection, "
                 SELECT lab_department, lab_test_price 
@@ -64,7 +78,7 @@ if (isset($_POST['save-order'])) {
             }
 
             // Extract department and price
-            $department = $lab_test_data['lab_department'];
+            $department = htmlspecialchars(trim($lab_test_data['lab_department']), ENT_QUOTES, 'UTF-8');
             $price = (float)$lab_test_data['lab_test_price']; // Ensure price is treated as a decimal
 
             // Bind and execute the insert statement
@@ -72,19 +86,18 @@ if (isset($_POST['save-order'])) {
             if (mysqli_stmt_execute($insert_stmt)) {
                 $msg = "Lab order created successfully!";
             } else {
-                $msg= "Error saving data: " . mysqli_error($connection);
+                $msg = "Error saving data: " . mysqli_error($connection);
                 break; // Exit the loop on failure
             }
         }
 
         mysqli_stmt_close($insert_stmt);
-        echo $msg; // Display the appropriate message
+        echo htmlspecialchars($msg, ENT_QUOTES, 'UTF-8'); // Display the appropriate message, ensuring no XSS
     } else {
         echo "Please select at least one lab test.";
     }
 }
 ?>
-
 
 <div class="page-wrapper">
     <div class="content">

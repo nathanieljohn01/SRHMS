@@ -41,8 +41,11 @@ include('includes/connection.php');
                 <tbody>
                     <?php
                     if(isset($_GET['ids'])){
-                    $id = $_GET['ids'];
-                    $update_query = mysqli_query($connection, "UPDATE tbl_patient SET deleted = 1 WHERE id='$id'");
+                        $id = intval($_GET['ids']);
+                        $stmt = $connection->prepare("UPDATE tbl_patient SET deleted = 1 WHERE id = ?");
+                        $stmt->bind_param("i", $id);
+                        $stmt->execute();
+                        $stmt->close();
                     }
                     $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_patient WHERE deleted = 0");
                     while ($row = mysqli_fetch_array($fetch_query)) {

@@ -1,36 +1,54 @@
 <?php
 session_start();
-if(empty($_SESSION['name'])) {
+if (empty($_SESSION['name'])) {
     header('location:index.php');
+    exit();
 }
+
 include('header.php');
 include('includes/connection.php');
 
-$id = $_GET['id'];
-$fetch_query = mysqli_query($connection, "SELECT * FROM tbl_housekeeping_schedule WHERE id='$id'");
-$row = mysqli_fetch_array($fetch_query);
-$schedDateTime = $row['schedule_date_time'];
+// Function to sanitize inputs
+function sanitize($connection, $input) {
+    return mysqli_real_escape_string($connection, htmlspecialchars(trim($input), ENT_QUOTES, 'UTF-8'));
+}
 
-if(isset($_POST['update-housekeeping-schedule'])) {
-    $room_type = $_POST['room_type'];
-    $room_number = $_POST['room_number'];
-    $bed_number = $_POST['bed_number'];
-    $attendant = $_POST['attendant'];
-    $schedule_date_time = date('Y-m-d H:i:s', strtotime($_POST['schedule_date_time'])); // Updated to include time
-    $task_description = $_POST['task_description'];
-    
-    $update_query = mysqli_query($connection, "UPDATE tbl_housekeeping_schedule SET room_type='$room_type', room_number='$room_number', bed_number='$bed_number', attendant='$attendant', schedule_date_time='$schedule_date_time', task_description='$task_description' WHERE id='$id'");
-    
-    if($update_query) {
-        $msg = "Housekeeping schedule updated successfully";
-    } else {
-        $msg = "Error updating schedule!";
+if (isset($_GET['id'])) {
+    $id = sanitize($connection, $_GET['id']);
+
+    // Fetch existing housekeeping schedule data
+    $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_housekeeping_schedule WHERE id='$id'");
+    $row = mysqli_fetch_assoc($fetch_query);
+
+    if (!$row) {
+        echo "Housekeeping schedule not found.";
+        exit();
     }
 }
 
-$id = $_GET['id']; 
-$fetch_query = mysqli_query($connection, "SELECT * FROM tbl_housekeeping_schedule WHERE id='$id'");
-$row = mysqli_fetch_array($fetch_query);
+if (isset($_POST['update-housekeeping-schedule'])) {
+    // Sanitize user inputs
+    $room_type = sanitize($connection, $_POST['room_type']);
+    $room_number = sanitize($connection, $_POST['room_number']);
+    $bed_number = sanitize($connection, $_POST['bed_number']);
+    $schedule_date_time = sanitize($connection, $_POST['schedule_date_time']); // datetime-local already provides formatted value
+    $task_description = sanitize($connection, $_POST['task_description']);
+
+    // Prepare the update query using a prepared statement
+    $stmt = mysqli_prepare($connection, "UPDATE tbl_housekeeping_schedule SET room_type=?, room_number=?, bed_number=?, schedule_date_time=?, task_description=? WHERE id=?");
+
+    // Bind parameters
+    mysqli_stmt_bind_param($stmt, 'sssssi', $room_type, $room_number, $bed_number, $schedule_date_time, $task_description, $id);
+
+    // Execute the query and check if it was successful
+    if (mysqli_stmt_execute($stmt)) {
+        $msg = "Housekeeping schedule updated successfully.";
+    } else {
+        $msg = "Error updating schedule: " . mysqli_error($connection);
+    }
+
+    mysqli_stmt_close($stmt);
+}
 ?>
 
 <div class="page-wrapper">
@@ -49,74 +67,46 @@ $row = mysqli_fetch_array($fetch_query);
                     <input type="hidden" name="id" value="<?php echo $row['id']; ?>">
                     <div class="form-group">
                         <label>Room Type</label>
-                        <select class="form-control" name="room_type">
+                        <select class="form-control" name="room_type" disabled>
                             <option value="">Select Room Type</option>
                             <?php
-                            // Query to retrieve room types with status 'For cleaning'
                             $room_query = mysqli_query($connection, "SELECT DISTINCT room_type FROM tbl_bedallocation WHERE status='For cleaning'");
-                            
-                            // Display room types with status 'For cleaning' in the dropdown list
-                            while($room_row = mysqli_fetch_assoc($room_query)) {
+                            while ($room_row = mysqli_fetch_assoc($room_query)) {
                                 $selected = ($room_row['room_type'] == $row['room_type']) ? 'selected' : '';
-                                echo '<option value="' . $room_row['room_type'] . '" ' . $selected . '>' . $room_row['room_type'] . '</option>';
+                                echo "<option value='{$room_row['room_type']}' $selected>{$room_row['room_type']}</option>";
                             }
                             ?>
                         </select>
                     </div>
                     <div class="form-group">
                         <label>Room Number</label>
-                        <select class="form-control" name="room_number">
+                        <select class="form-control" name="room_number" disabled>
                             <option value="">Select Room Number</option>
                             <?php
-                            // Query to retrieve room numbers with status 'For cleaning'
                             $room_query = mysqli_query($connection, "SELECT DISTINCT room_number FROM tbl_bedallocation WHERE status='For cleaning'");
-                            
-                            // Display room numbers with status 'For cleaning' in the dropdown list
-                            while($room_row = mysqli_fetch_assoc($room_query)) {
+                            while ($room_row = mysqli_fetch_assoc($room_query)) {
                                 $selected = ($room_row['room_number'] == $row['room_number']) ? 'selected' : '';
-                                echo '<option value="' . $room_row['room_number'] . '" ' . $selected . '>' . $room_row['room_number'] . '</option>';
+                                echo "<option value='{$room_row['room_number']}' $selected>{$room_row['room_number']}</option>";
                             }
                             ?>
                         </select>
                     </div>
                     <div class="form-group">
                         <label>Bed Number</label>
-                        <select class="form-control" name="bed_number">
+                        <select class="form-control" name="bed_number" disabled>
                             <option value="">Select Bed Number</option>
                             <?php
-                            // Query to retrieve bed numbers with status 'For cleaning'
                             $bed_query = mysqli_query($connection, "SELECT DISTINCT bed_number FROM tbl_bedallocation WHERE status='For cleaning'");
-                            
-                            // Display bed numbers with status 'For cleaning' in the dropdown list
-                            while($bed_row = mysqli_fetch_assoc($bed_query)) {
+                            while ($bed_row = mysqli_fetch_assoc($bed_query)) {
                                 $selected = ($bed_row['bed_number'] == $row['bed_number']) ? 'selected' : '';
-                                echo '<option value="' . $bed_row['bed_number'] . '" ' . $selected . '>' . $bed_row['bed_number'] . '</option>';
-                            }
-                            ?>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Attendant</label>
-                        <select class="form-control" name="attendant" required>
-                            <?php
-                        
-                            $query = "SELECT * FROM tbl_employee WHERE role = 9";
-                            $result = mysqli_query($connection, $query);
-
-
-                            while ($row_employee = mysqli_fetch_assoc($result)) {
-                                $selected = ($row['attendant'] == $row_employee['employee_id']) ? 'selected' : '';
-
-                                echo '<option value="' . $row_employee['employee_id'] . '" ' . $selected . '>' . $row_employee['employee_name'] . '</option>';
+                                echo "<option value='{$bed_row['bed_number']}' $selected>{$bed_row['bed_number']}</option>";
                             }
                             ?>
                         </select>
                     </div>
                     <div class="form-group">
                         <label>Schedule Date and Time</label>
-                        <div class="cal-icon">
-                            <input type="text" class="form-control datetimepicker" name="schedule_date_time" value="<?php echo $schedDateTime; ?>" required>
-                        </div>
+                        <input type="datetime-local" class="form-control" name="schedule_date_time" value="<?php echo date('Y-m-d\TH:i', strtotime($row['schedule_date_time'])); ?>" disabled>
                     </div>
                     <div class="form-group">
                         <label>Task Description</label>
@@ -131,18 +121,13 @@ $row = mysqli_fetch_array($fetch_query);
     </div>
 </div>
 
+
 <?php
 include('footer.php');
 ?>
 
 <!-- Include jQuery -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-
-<!-- Include datetimepicker CSS -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-datetimepicker/2.5.20/jquery.datetimepicker.min.css">
-
-<!-- Include datetimepicker JS -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-datetimepicker/2.5.20/jquery.datetimepicker.full.min.js"></script>
 
 <script type="text/javascript">
 <?php
@@ -152,15 +137,6 @@ if(isset($msg)) {
 ?>
 </script>
 
-<script>
-    $(document).ready(function(){
-        $('.datetimepicker').datetimepicker({
-            format: 'Y-m-d h:i A', // Date and time format with AM/PM
-            step: 30, // Time step (in minutes)
-            // You can add more options here as needed
-        });
-    });
-</script>
 <style>
 .btn-primary {
             background: #12369e;

@@ -2,26 +2,36 @@
 session_start();
 if (empty($_SESSION['name'])) {
     header('location:index.php');
+    exit;
 }
 include('header.php');
 include('includes/connection.php');
 
-$id = $_GET['id'];
-$fetch_query = mysqli_query($connection, "SELECT * FROM tbl_bedallocation WHERE id='$id'");
-$row = mysqli_fetch_array($fetch_query);
+// Ensure the 'id' parameter is sanitized and cast to an integer
+$id = (int) $_GET['id'];  // Cast to integer for security
+
+// Fetch bed allocation details using a prepared statement
+$fetch_query = $connection->prepare("SELECT * FROM tbl_bedallocation WHERE id = ?");
+$fetch_query->bind_param("i", $id);  // "i" for integer
+$fetch_query->execute();
+$result = $fetch_query->get_result();
+$row = $result->fetch_array(MYSQLI_ASSOC);
 
 if (isset($_POST['save-bed-allotment'])) {
-    $room_type = $_POST['room_type'];
-    $room_number = $_POST['room_number'];
-    $bed_number = $_POST['bed_number'];
+    // Sanitize POST inputs using your sanitize function
+    $room_type = sanitize($connection, $_POST['room_type']);
+    $room_number = sanitize($connection, $_POST['room_number']);
+    $bed_number = sanitize($connection, $_POST['bed_number']);
 
     // Add your bed availability check logic here
     $bed_available = true; // Replace with your actual availability check
 
     if ($bed_available) {
-        $update_query = mysqli_query($connection, "UPDATE tbl_bedallocation SET room_type='$room_type', room_number='$room_number', bed_number='$bed_number' WHERE id='$id'");
-    
-        if ($update_query) {
+        // Update the bed allotment with sanitized values
+        $update_query = $connection->prepare("UPDATE tbl_bedallocation SET room_type = ?, room_number = ?, bed_number = ? WHERE id = ?");
+        $update_query->bind_param("sssi", $room_type, $room_number, $bed_number, $id);  // "s" for string, "i" for integer
+
+        if ($update_query->execute()) {
             $msg = "Bed allotment updated successfully";
         } else {
             $msg = "Error!";
@@ -30,7 +40,13 @@ if (isset($_POST['save-bed-allotment'])) {
         $msg = "No available beds in the selected category.";
     }
 }
+
+// Sanitize function definition
+function sanitize($connection, $input) {
+    return mysqli_real_escape_string($connection, htmlspecialchars(trim($input), ENT_QUOTES, 'UTF-8'));
+}
 ?>
+
 
 <div class="page-wrapper">
     <div class="content">

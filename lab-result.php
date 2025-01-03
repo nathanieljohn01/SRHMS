@@ -1,3 +1,12 @@
+<?php
+include('includes/connection.php');
+session_start(); // Start session before any HTML output
+$role = isset($_SESSION['role']) ? $_SESSION['role'] : null; // Check if role is set in session
+
+// Set the redirect link based on role
+$dashboardLink = ($role == 1) ? 'dashboard.php' : (($role == 5) ? 'dashboard-lab.php' : '#');
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -207,10 +216,10 @@
         <div class="form-group">
             <label for="departmentSelect">Select Department:</label>
             <select id="departmentSelect" data-placeholder="Select Department">
-            <option value="" disabled selected>Select Department</option>
-            <option value="Hematology">Hematology</option>
-            <option value="Clinical Microscopy">Clinical Microscopy</option>
-        </select>
+                <option value="" disabled selected>Select Department</option>
+                <option value="Hematology">Hematology</option>
+                <option value="Clinical Microscopy">Clinical Microscopy</option>
+            </select>
         </div>
         <div class="form-group">
             <label for="testSelect">Select Test:</label>
@@ -220,8 +229,9 @@
         </div>
 
         <button type="button" class="view-button" onclick="navigateToTest()">View Test</button>
-        <button type="button" class="back-button" onclick="window.location.href='dashboard.php'">Back to Dashboard</button>
+        <button type="button" class="back-button" onclick="window.location.href='<?= $dashboardLink ?>'">Back to Dashboard</button>
     </form>
 </div>
+
 </body>
 </html>

@@ -16,7 +16,7 @@ if (!empty($patient_name)) {
         price,
         SUM(total_price) AS total_price
         FROM tbl_treatment
-        WHERE patient_name = ?
+        WHERE patient_name = ? AND deleted = 0
         GROUP BY treatment_date, medicine_name, medicine_brand
         ORDER BY treatment_date DESC;
         ";

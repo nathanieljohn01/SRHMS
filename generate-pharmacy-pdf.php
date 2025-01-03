@@ -4,6 +4,7 @@ if (empty($_SESSION['name'])) {
     header('location:index.php');
     exit; // Ensure script stops execution after redirection
 }
+
 include('includes/connection.php');
 
 // Include TCPDF library
@@ -12,32 +13,39 @@ require_once('vendor/autoload.php');
 
 // Fetch invoice details
 if (isset($_GET['id'])) {
-    $invoice_id = $_GET['id'];
-    mysqli_query($connection, "SET NAMES 'utf8'");
-    $filename = isset($_GET['filename']) ? $_GET['filename'] : 'invoice_' . $invoice_id;
-    $fetch_query = mysqli_query($connection, "SELECT invoice_id, patient_name, medicine_name, medicine_brand, price, quantity, invoice_datetime FROM tbl_pharmacy_invoice WHERE invoice_id = '$invoice_id'");
-    if ($fetch_query && mysqli_num_rows($fetch_query) > 0) {
+    $invoice_id = mysqli_real_escape_string($connection, $_GET['id']);
+    $filename = isset($_GET['filename']) ? htmlspecialchars($_GET['filename'], ENT_QUOTES, 'UTF-8') : 'invoice_' . $invoice_id;
+
+    // Use prepared statements to prevent SQL injection
+    $stmt = $connection->prepare("SELECT invoice_id, patient_name, medicine_name, medicine_brand, price, quantity, invoice_datetime FROM tbl_pharmacy_invoice WHERE invoice_id = ?");
+    $stmt->bind_param("s", $invoice_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if ($result && $result->num_rows > 0) {
         // Initialize arrays to store medicine details
-        $medicines = array();
-        $brands = array();
-        $prices = array();
-        $quantities = array();
-        
-        while ($row = mysqli_fetch_assoc($fetch_query)) {
+        $medicines = [];
+        $brands = [];
+        $prices = [];
+        $quantities = [];
+
+        while ($row = $result->fetch_assoc()) {
             // Populate arrays with medicine details
-            $medicines[] = $row['medicine_name'];
-            $brands[] = $row['medicine_brand'];
-            $prices[] = $row['price'];
-            $quantities[] = $row['quantity'];
-            $patient_name = $row['patient_name']; // Assign patient name here
+            $medicines[] = htmlspecialchars($row['medicine_name'], ENT_QUOTES, 'UTF-8');
+            $brands[] = htmlspecialchars($row['medicine_brand'], ENT_QUOTES, 'UTF-8');
+            $prices[] = htmlspecialchars($row['price'], ENT_QUOTES, 'UTF-8');
+            $quantities[] = htmlspecialchars($row['quantity'], ENT_QUOTES, 'UTF-8');
+            $patient_name = htmlspecialchars($row['patient_name'], ENT_QUOTES, 'UTF-8'); // Assign patient name here
             $total_price = $row['price'] * $row['quantity']; // Calculate total price here
         }
     } else {
-        // Handle case where no invoice is found with given ID
-        // For example, redirect user to a 404 page or display an error message
         echo "Invoice not found";
         exit; // Stop script execution
     }
+    $stmt->close();
+} else {
+    echo "Invalid request";
+    exit;
 }
 
 // Create new PDF document
@@ -81,16 +89,16 @@ $html = '
 </div>
 
 <div class="invoice-header">
-    <img src="assets/img/srchlogo.png" alt="Logo" style="max-width: 120px; height: 120;">
+    <img src="assets/img/srchlogo.png" alt="Logo" style="max-width: 90px; height: 80;">
 </div>
 
-<div class="invoice-details" style="margin-top: 20px;">
-    <div class="invoice-id" style="display: inline-block; margin-right: 20px;">Invoice ID: '.$invoice_id.'</div>
-    <div class="invoice-date" style="display: inline-block; margin-right: 20px;">Date: '.date('F d Y g:i A').'</div>
-    <div class="patient-name" style="display: inline-block;">Patient Name: '.$patient_name.'</div>
+<div class="invoice-details" style="margin-top: 10px;">
+    <div class="invoice-id" style="display: inline-block; margin-right: 20px;">Invoice ID: ' . htmlspecialchars($invoice_id, ENT_QUOTES, 'UTF-8') . '</div>
+    <div class="invoice-date" style="display: inline-block; margin-right: 20px;">Date: ' . date('F d Y g:i A') . '</div>
+    <div class="patient-name" style="display: inline-block;">Patient Name: ' . htmlspecialchars($patient_name, ENT_QUOTES, 'UTF-8') . '</div>
 </div>
 
-<div class="invoice-items" style="margin-top: 20px;">
+<div class="invoice-items" style="margin-top: 10px;">
     <table border="1" cellpadding="5" style="width: 100%;">
         <thead>
             <tr>
@@ -103,17 +111,16 @@ $html = '
         </thead>
         <tbody>';
 
-// Iterate over medicine details arrays
 $total_price = 0; // Initialize total price
 for ($i = 0; $i < count($medicines); $i++) {
     $total_price_item = $prices[$i] * $quantities[$i]; // Calculate total price for current item
     $total_price += $total_price_item; // Accumulate total price for all items
     $html .= '<tr>
-                <td>'.$medicines[$i].'</td>
-                <td>'.$brands[$i].'</td>
-                <td>'.$quantities[$i].' pcs</td>
-                <td>'.$prices[$i].'</td> <!-- Use Unicode character for peso sign -->
-                <td>'.$total_price_item.'</td> <!-- Use Unicode character for peso sign -->
+                <td>' . $medicines[$i] . '</td>
+                <td>' . $brands[$i] . '</td>
+                <td>' . $quantities[$i] . ' pcs</td>
+                <td>' . $prices[$i] . '</td>
+                <td>' . $total_price_item . '</td>
             </tr>';
 }
 
@@ -122,7 +129,7 @@ $html .= '</tbody>
 </div>
 
 <div class="invoice-total" style="margin-top: 20px;">
-    <div class="total">Total Cost:'.$total_price.'</div> 
+    <div class="total">Total Cost: ' . $total_price . '</div>
 </div>';
 
 $pdf->writeHTML($html, true, false, true, false, '');

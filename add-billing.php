@@ -20,7 +20,7 @@ if (isset($_POST['add-billing'])) {
 
     // Fetch patient details based on patient name
     $patient_query = $connection->prepare("
-        SELECT ipr.patient_id, ipr.patient_name, ipr.dob, ipr.gender, ipr.admission_date, ipr.discharge_date, p.address 
+        SELECT ipr.patient_id, ipr.patient_name, ipr.dob, ipr.gender, ipr.admission_date, ipr.discharge_date, ipr.diagnosis, p.address 
         FROM tbl_inpatient_record AS ipr
         JOIN tbl_patient AS p 
         ON ipr.patient_id = p.patient_id 
@@ -37,6 +37,7 @@ if (isset($_POST['add-billing'])) {
         $gender = !empty($patient['gender']) ? "'" . $patient['gender'] . "'" : "NULL";
         $admission_date = !empty($patient['admission_date']) ? "'" . $patient['admission_date'] . "'" : "NULL";
         $discharge_date = !empty($patient['discharge_date']) ? "'" . $patient['discharge_date'] . "'" : "NULL";
+        $diagnosis = !empty($patient['diagnosis']) ? "'" . $patient['diagnosis'] . "'" : "NULL";
         $address = !empty($patient['address']) ? "'" . $patient['address'] . "'" : "NULL";
 
         // Default values for fees
@@ -47,7 +48,7 @@ if (isset($_POST['add-billing'])) {
         $others_fee = 0;
 
         // Calculate medication fee
-        $medication_query = $connection->prepare("SELECT SUM(total_price) AS medication_fee FROM tbl_treatment WHERE patient_name = ?");
+        $medication_query = $connection->prepare("SELECT SUM(total_price) AS medication_fee FROM tbl_treatment WHERE patient_name = ? AND deleted = 0");
         $medication_query->bind_param("s", $patient_name);
         $medication_query->execute();
         $medication_result = $medication_query->get_result();
@@ -71,7 +72,7 @@ if (isset($_POST['add-billing'])) {
             $others_fee_query = "
             SELECT SUM(item_cost) AS others_fee
             FROM tbl_billing_others
-            WHERE billing_id = '$billing_id' AND date_time = (SELECT MAX(date_time) FROM tbl_billing_others WHERE billing_id = '$billing_id')
+            WHERE billing_id = '$billing_id' AND deleted = 0 AND date_time = (SELECT MAX(date_time) FROM tbl_billing_others WHERE billing_id = '$billing_id' AND deleted = 0)
             ";
 
             $others_fee_result = mysqli_query($connection, $others_fee_query);
@@ -130,14 +131,14 @@ if (isset($_POST['add-billing'])) {
         if ($patient_type == 'inpatient') {
             $query = "
                 INSERT INTO tbl_billing_inpatient
-                (billing_id, patient_id, patient_name, dob, gender, admission_date, discharge_date, address, lab_fee, room_fee, medication_fee, total_due, non_discounted_total, discount_amount, professional_fee, pf_discount_amount, readers_fee, others_fee) 
-                VALUES ('$billing_id', '$patient_id', '$patient_name', $dob, $gender, $admission_date, $discharge_date, $address, $lab_fee, $room_fee, $medication_fee, $total_due, $non_discounted_total, $total_discount, $professional_fee, $pf_discount_amount, $readers_fee, $others_fee)
+                (billing_id, patient_id, patient_name, dob, gender, admission_date, discharge_date, diagnosis, address, lab_fee, room_fee, medication_fee, total_due, non_discounted_total, discount_amount, professional_fee, pf_discount_amount, readers_fee, others_fee) 
+                VALUES ('$billing_id', '$patient_id', '$patient_name', $dob, $gender, $admission_date, $discharge_date, $diagnosis, $address, $lab_fee, $room_fee, $medication_fee, $total_due, $non_discounted_total, $total_discount, $professional_fee, $pf_discount_amount, $readers_fee, $others_fee)
             ";
         } elseif ($patient_type == 'hemodialysis') {
             $query = "
                 INSERT INTO tbl_billing_hemodialysis
-                (billing_id, patient_id, patient_name, dob, gender, admission_date, discharge_date, address, lab_fee, room_fee, medication_fee, total_due, non_discounted_total, discount_amount, professional_fee, pf_discount_amount, readers_fee, others_fee) 
-                VALUES ('$billing_id', '$patient_id', '$patient_name', $dob, $gender, $admission_date, $discharge_date, $address, $lab_fee, $room_fee, $medication_fee, $total_due, $non_discounted_total, $total_discount, $professional_fee, $pf_discount_amount, $readers_fee, $others_fee)
+                (billing_id, patient_id, patient_name, dob, gender, admission_date, discharge_date, diagnosis, address, lab_fee, room_fee, medication_fee, total_due, non_discounted_total, discount_amount, professional_fee, pf_discount_amount, readers_fee, others_fee) 
+                VALUES ('$billing_id', '$patient_id', '$patient_name', $dob, $gender, $admission_date, $discharge_date, $diagnosis, $address, $lab_fee, $room_fee, $medication_fee, $total_due, $non_discounted_total, $total_discount, $professional_fee, $pf_discount_amount, $readers_fee, $others_fee)
             ";
         } else {
             $msg = "Error: Patient type not selected.";
@@ -348,48 +349,55 @@ document.addEventListener('DOMContentLoaded', function () {
     let totalDue = 0;
 
 
-    // Function to calculate the total due including others and applying the discount
     function calculateTotalDue() {
-    const professionalFee = parseFloat(document.getElementById('professional-fee').value) || 0;
-    const readersFee = parseFloat(document.getElementById('readers-fee').value) || 0;
+        const professionalFee = parseFloat(document.getElementById('professional-fee').value) || 0;
+        const readersFee = parseFloat(document.getElementById('readers-fee').value) || 0;
 
-    let discountedProfessionalFee = professionalFee;
+        let discountedProfessionalFee = professionalFee;
 
-    // Variables for discount amounts
-    let professionalFeeDiscountAmount = 0; // For the 12% discount
-    let seniorPwdDiscountAmount = 0; // For the Senior/PWD discount (20%)
+        // Variables for discount amounts
+        let professionalFeeDiscountAmount = 0; // For the 12% discount
+        let seniorPwdDiscountAmount = 0; // For the Senior/PWD discount (20%)
 
-    // Apply Professional Fee Discount (12%) first
-    if (professionalFeeDiscountCheckbox.checked) {
-        professionalFeeDiscountAmount = professionalFee * 0.12; // 12% of the original Professional Fee
-        discountedProfessionalFee = professionalFee - professionalFeeDiscountAmount; // Remaining Professional Fee after 12% discount
+        // Apply Professional Fee Discount (12%) first
+        if (professionalFeeDiscountCheckbox.checked) {
+            professionalFeeDiscountAmount = professionalFee * 0.12; // 12% of the original Professional Fee
+            discountedProfessionalFee = professionalFee - professionalFeeDiscountAmount; // Remaining Professional Fee after 12% discount
+        }
+
+        // Apply Senior/PWD Discount (20%) to the remaining Professional Fee
+        if (discountCheckbox.checked) {
+            seniorPwdDiscountAmount = discountedProfessionalFee * 0.2; // 20% of the discounted Professional Fee
+            discountedProfessionalFee -= seniorPwdDiscountAmount; // Remaining Professional Fee after Senior/PWD discount
+        }
+
+        // Calculate total "Other Items" fee
+        othersFee = 0; // Reset othersFee before recalculation
+        const otherItems = document.querySelectorAll('#other-items-container .other-item input[name$="[cost]"]');
+        otherItems.forEach((input) => {
+            othersFee += parseFloat(input.value) || 0; // Add cost to othersFee, default to 0 if empty
+        });
+
+        // Combine Room/Lab/Med Fee and Other Charges
+        let combinedFee = roomFeeTotal + labFeeTotal + medicationFeeTotal + othersFee; // Include othersFee
+        let combinedFeeDiscount = 0;
+        if (discountCheckbox.checked) {
+            combinedFeeDiscount = combinedFee * 0.2; // Apply 20% Senior/PWD discount
+            combinedFee = combinedFee - combinedFeeDiscount; // Remaining combined fee after discount
+        }
+
+        // Calculate total due
+        totalDue = combinedFee + discountedProfessionalFee + readersFee;
+
+        // Calculate total discounts
+        const totalDiscount = professionalFeeDiscountAmount + seniorPwdDiscountAmount + combinedFeeDiscount;
+
+        // Update the displayed values
+        document.getElementById('total-due').textContent = '₱' + totalDue.toFixed(2);
+        document.getElementById('discount-amount').textContent = '₱' + totalDiscount.toFixed(2); // Total discount (Professional Fee + Combined Discounts)
+        document.getElementById('professional-fee-discount').textContent = '₱' + professionalFeeDiscountAmount.toFixed(2); // 12% Professional Fee discount
     }
 
-    // Apply Senior/PWD Discount (20%) to the remaining Professional Fee
-    if (discountCheckbox.checked) {
-        seniorPwdDiscountAmount = discountedProfessionalFee * 0.2; // 20% of the discounted Professional Fee
-        discountedProfessionalFee -= seniorPwdDiscountAmount; // Remaining Professional Fee after Senior/PWD discount
-    }
-
-    // Combine Room/Lab/Med Fee and Other Charges
-    let combinedFee = roomFeeTotal + labFeeTotal + medicationFeeTotal + 300; // Add Other Charges (₱300)
-    let combinedFeeDiscount = 0;
-    if (discountCheckbox.checked) {
-        combinedFeeDiscount = combinedFee * 0.2; // Apply 20% Senior/PWD discount
-        combinedFee = combinedFee - combinedFeeDiscount; // Remaining combined fee after discount
-    }
-
-    // Calculate total due
-    totalDue = combinedFee + discountedProfessionalFee + readersFee;
-
-    // Calculate total discounts
-    const totalDiscount = professionalFeeDiscountAmount + seniorPwdDiscountAmount + combinedFeeDiscount;
-
-    // Update the displayed values
-    document.getElementById('total-due').textContent = '₱' + totalDue.toFixed(2);
-    document.getElementById('discount-amount').textContent = '₱' + totalDiscount.toFixed(2); // Total discount (Professional Fee + Combined Discounts)
-    document.getElementById('professional-fee-discount').textContent = '₱' + professionalFeeDiscountAmount.toFixed(2); // 12% Professional Fee discount
-}
 
 
     // Event listeners for discount checkboxes and fee inputs

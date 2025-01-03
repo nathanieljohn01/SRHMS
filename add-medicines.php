@@ -64,7 +64,7 @@ if (isset($_REQUEST['add-medicine'])) {
                     </div>
                     <div class="form-group">
                         <label>Weight and Measurement</label>
-                        <input class="form-control" type="text" name="weight_measure" required>
+                        <input class="form-control" type="number" name="weight_measure" required>
                     </div>
                     <div class="form-group">
                         <label>Unit of Measurement</label>
@@ -96,7 +96,7 @@ if (isset($_REQUEST['add-medicine'])) {
                     </div>
                     <div class="form-group">
                         <label>Price</label>
-                        <input class="form-control" type="text" name="price" required>
+                        <input class="form-control" type="number" name="price" required>
                     </div>
                     <div class="m-t-20 text-center">
                         <button class="btn btn-primary submit-btn" name="add-medicine">Add Medicine</button>

@@ -139,8 +139,10 @@ ob_end_flush(); // Flush output buffer
                 <tbody>
                     <?php
                     if(isset($_GET['ids'])){
-                        $id = $_GET['ids'];
-                        $update_query = mysqli_query($connection, "UPDATE tbl_transfer SET deleted = 1 WHERE id='$id'");
+                        $id = sanitize($connection, $_GET['ids']);
+                        $update_query = $connection->prepare("UPDATE tbl_transfer SET deleted = 1 WHERE id = ?");
+                        $update_query->bind_param("s", $id);
+                        $update_query->execute();
                     }
                     $fetch_query = mysqli_query($connection, "select * from tbl_transfer");
                     while($row = mysqli_fetch_array($fetch_query))

@@ -7,19 +7,28 @@ if (empty($_SESSION['name'])) {
 include('header.php');
 include('includes/connection.php');
 
+// Function to sanitize user inputs
+function sanitize($connection, $input) {
+    return mysqli_real_escape_string($connection, htmlspecialchars(trim($input), ENT_QUOTES, 'UTF-8'));
+}
+
 // Sanitize the `id` parameter from the URL
-$id = mysqli_real_escape_string($connection, $_GET['id']);
-$fetch_query = mysqli_query($connection, "SELECT * FROM tbl_schedule WHERE id='$id'");
-$row = mysqli_fetch_array($fetch_query);
+$id = sanitize($connection, $_GET['id']);
+$fetch_query = mysqli_prepare($connection, "SELECT * FROM tbl_schedule WHERE id = ?");
+mysqli_stmt_bind_param($fetch_query, 'i', $id);
+mysqli_stmt_execute($fetch_query);
+$result = mysqli_stmt_get_result($fetch_query);
+$row = mysqli_fetch_array($result);
+mysqli_stmt_close($fetch_query);
 
 if (isset($_POST['save-schedule'])) {
     // Sanitize form inputs
-    $doctor_name = mysqli_real_escape_string($connection, $_POST['doctor_name']);
-    $days = mysqli_real_escape_string($connection, implode(", ", $_POST['days']));
-    $start_time = mysqli_real_escape_string($connection, $_POST['start_time']);
-    $end_time = mysqli_real_escape_string($connection, $_POST['end_time']);
-    $message = mysqli_real_escape_string($connection, $_POST['msg']);
-    $status = mysqli_real_escape_string($connection, $_POST['status']);
+    $doctor_name = sanitize($connection, $_POST['doctor_name']);
+    $days = sanitize($connection, implode(", ", $_POST['days']));
+    $start_time = sanitize($connection, $_POST['start_time']);
+    $end_time = sanitize($connection, $_POST['end_time']);
+    $message = sanitize($connection, $_POST['msg']);
+    $status = sanitize($connection, $_POST['status']);
 
     // Retrieve specialization based on the doctor's name
     $stmt = mysqli_prepare($connection, "SELECT specialization FROM tbl_employee WHERE CONCAT(first_name, ' ', last_name) = ?");
@@ -31,11 +40,11 @@ if (isset($_POST['save-schedule'])) {
     mysqli_stmt_close($stmt);
 
     // Update tbl_schedule with prepared statement
-    $update_query = mysqli_prepare($connection, "UPDATE tbl_schedule SET doctor_name=?, specialization=?, available_days=?, start_time=?, end_time=?, message=?, status=? WHERE id=?");
+    $update_query = mysqli_prepare($connection, "UPDATE tbl_schedule SET doctor_name = ?, specialization = ?, available_days = ?, start_time = ?, end_time = ?, message = ?, status = ? WHERE id = ?");
     mysqli_stmt_bind_param($update_query, 'sssssssi', $doctor_name, $specialization, $days, $start_time, $end_time, $message, $status, $id);
 
     // Update tbl_employee with available days, start_time, and end_time for role 2 (doctor)
-    $update_employee_query = mysqli_prepare($connection, "UPDATE tbl_employee SET available_days=?, start_time=?, end_time=? WHERE role=2");
+    $update_employee_query = mysqli_prepare($connection, "UPDATE tbl_employee SET available_days = ?, start_time = ?, end_time = ? WHERE role = 2");
     mysqli_stmt_bind_param($update_employee_query, 'sss', $days, $start_time, $end_time);
 
     // Execute the queries
@@ -45,8 +54,12 @@ if (isset($_POST['save-schedule'])) {
     if ($update_result && $update_employee_result) {
         $msg = "Schedule updated successfully";
         // Refetch the updated schedule data
-        $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_schedule WHERE id='$id'");
-        $row = mysqli_fetch_array($fetch_query);   
+        $fetch_query = mysqli_prepare($connection, "SELECT * FROM tbl_schedule WHERE id = ?");
+        mysqli_stmt_bind_param($fetch_query, 'i', $id);
+        mysqli_stmt_execute($fetch_query);
+        $result = mysqli_stmt_get_result($fetch_query);
+        $row = mysqli_fetch_array($result);
+        mysqli_stmt_close($fetch_query);   
     } else {
         $msg = "Error!";
     }
@@ -74,7 +87,7 @@ if (isset($_POST['save-schedule'])) {
                     <div class="col-md-6">
                             <div class="form-group">
                                 <label>Doctor Name</label>
-                                <select class="select" name="doctor_name" required>
+                                <select class="select" name="doctor_name" disabled>
                                     <?php
                                 $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_schedule WHERE id='$id'");
                                 $schedule= mysqli_fetch_array($fetch_query);

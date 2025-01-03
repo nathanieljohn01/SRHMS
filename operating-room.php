@@ -40,7 +40,7 @@ include('includes/connection.php');
                 <tbody>
                     <?php
                     if(isset($_GET['id'])){
-                        $id = $_GET['id'];
+                        $id = mysqli_real_escape_string($connection, $_GET['id']);
                         $update_query = mysqli_query($connection, "UPDATE tbl_operating_room SET deleted = 1 WHERE id='$id'");
                     }
                     $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_operating_room WHERE deleted = 0");

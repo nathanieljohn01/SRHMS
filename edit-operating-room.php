@@ -4,12 +4,18 @@ if (empty($_SESSION['name'])) {
     header('location:index.php');
     exit();
 }
+
 include('header.php');
 include('includes/connection.php');
 
+// Function to sanitize inputs
+function sanitize($connection, $input) {
+    return mysqli_real_escape_string($connection, htmlspecialchars(trim($input), ENT_QUOTES, 'UTF-8'));
+}
+
 // Get operating room ID from URL for editing
 if (isset($_GET['id'])) {
-    $operating_room_id = $_GET['id'];
+    $operating_room_id = sanitize($connection, $_GET['id']);
 
     // Fetch current operating room data using prepared statements
     $query = mysqli_prepare($connection, "SELECT * FROM tbl_operating_room WHERE id = ?");
@@ -32,16 +38,16 @@ if (isset($_GET['id'])) {
 // Handle form submission for editing
 if (isset($_REQUEST['edit-operating-room'])) {
     // Sanitize inputs
-    $patient_id = $_REQUEST['patient_id'];
-    $current_surgery = $_REQUEST['current_surgery'];
-    $surgeon = $_REQUEST['surgeon'];
-    $end_time = date("g:i A", strtotime($_REQUEST['end_time']));
-    $notes = $_REQUEST['notes'];
-    $operation_status = $_REQUEST['operation_status'];
-    
+    $patient_id = sanitize($connection, $_REQUEST['patient_id']);
+    $current_surgery = sanitize($connection, $_REQUEST['current_surgery']);
+    $surgeon = sanitize($connection, $_REQUEST['surgeon']);
+    $end_time = date("g:i A", strtotime(sanitize($connection, $_REQUEST['end_time'])));
+    $notes = sanitize($connection, $_REQUEST['notes']);
+    $operation_status = sanitize($connection, $_REQUEST['operation_status']);
+
     // Handle remarks based on operation status
     if ($operation_status == 'Cancelled') {
-        $remarks = $_REQUEST['remarks'];
+        $remarks = sanitize($connection, $_REQUEST['remarks']);
         $operation_status = "Cancelled - Remarks: " . $remarks;
     }
 
@@ -51,7 +57,7 @@ if (isset($_REQUEST['edit-operating-room'])) {
         WHERE id = ?");
     
     // Bind all parameters as strings
-    mysqli_stmt_bind_param($update_query, "ssssssi", $patient_id, $current_surgery, $surgeon, $end_time, $notes, $operation_status, $id);
+    mysqli_stmt_bind_param($update_query, "ssssssi", $patient_id, $current_surgery, $surgeon, $end_time, $notes, $operation_status, $operating_room_id);
     
     // Execute and check if successful
     if (mysqli_stmt_execute($update_query)) {

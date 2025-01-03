@@ -2,33 +2,52 @@
 session_start();
 if (empty($_SESSION['name'])) {
     header('location:index.php');
+    exit();
 }
+
 include('header.php');
 include('includes/connection.php');
 
-$id = $_GET['id'];
+// Function to sanitize inputs
+function sanitize($connection, $input) {
+    return mysqli_real_escape_string($connection, htmlspecialchars(trim($input), ENT_QUOTES, 'UTF-8'));
+}
+
+$id = sanitize($connection, $_GET['id']);
+
+// Fetch existing medicine data
 $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_medicines WHERE id='$id'");
 $row = mysqli_fetch_array($fetch_query);
 $expiryDate = $row['expiration_date'];
 
+$msg = ''; // Initialize message variable
+
 if (isset($_POST['save-medicine'])) {
-    $medicine_name = $_POST['medicine_name'];
-    $medicine_brand = $_POST['medicine_brand'];
-    $category = $_POST['category'];
-    $weight_measure = $_POST['weight_measure'];
-    $unit_measure = $_POST['unit_measure'];
-    $quantity = $_POST['quantity'];
-    $expiration_date = $_POST['expiration_date'];
-    $price = $_POST['price'];
+    // Sanitize user inputs
+    $medicine_name = sanitize($connection, $_POST['medicine_name']);
+    $medicine_brand = sanitize($connection, $_POST['medicine_brand']);
+    $category = sanitize($connection, $_POST['category']);
+    $weight_measure = sanitize($connection, $_POST['weight_measure']);
+    $unit_measure = sanitize($connection, $_POST['unit_measure']);
+    $quantity = sanitize($connection, $_POST['quantity']);
+    $expiration_date = sanitize($connection, $_POST['expiration_date']);
+    $price = sanitize($connection, $_POST['price']);
 
-    $update_query = "UPDATE tbl_medicines SET medicine_name='$medicine_name', medicine_brand='$medicine_brand', category='$category', weight_measure='$weight_measure', unit_measure='$unit_measure', quantity='$quantity', expiration_date='$expiration_date', price='$price' WHERE id='$id'";
+    // Prepare the update query using a prepared statement
+    $stmt = mysqli_prepare($connection, "UPDATE tbl_medicines SET medicine_name = ?, medicine_brand = ?, category = ?, weight_measure = ?, unit_measure = ?, quantity = ?, expiration_date = ?, price = ? WHERE id = ?");
 
-    // Execute the query
-    if (mysqli_query($connection, $update_query)) {
+    // Bind parameters
+    mysqli_stmt_bind_param($stmt, 'ssssssdsd', $medicine_name, $medicine_brand, $category, $weight_measure, $unit_measure, $quantity, $expiration_date, $price, $id);
+
+    // Execute the query and check if it was successful
+    if (mysqli_stmt_execute($stmt)) {
         $msg = "Medicine updated successfully";
     } else {
-        $msg = "Error!";
+        $msg = "Error updating medicine record: " . mysqli_error($connection);
     }
+
+    // Close the statement
+    mysqli_stmt_close($stmt);
 }
 ?>
 

@@ -7,8 +7,13 @@ if (empty($_SESSION['name'])) {
 include('header.php');
 include('includes/connection.php');
 
+// Sanitize function for input sanitization and XSS protection
+function sanitize($connection, $input) {
+    return mysqli_real_escape_string($connection, htmlspecialchars(trim($input), ENT_QUOTES, 'UTF-8'));
+}
+
 // Sanitize the `id` parameter
-$id = mysqli_real_escape_string($connection, $_GET['id']);
+$id = sanitize($connection, $_GET['id']);
 
 // Fetch existing employee data
 $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_employee WHERE id='$id'");
@@ -19,21 +24,21 @@ $msg = ''; // Initialize $msg
 // Update employee data
 if (isset($_POST['save-emp'])) {
     // Sanitize user inputs
-    $first_name = mysqli_real_escape_string($connection, $_POST['first_name']);
-    $last_name = mysqli_real_escape_string($connection, $_POST['last_name']);
-    $username = mysqli_real_escape_string($connection, $_POST['username']);
-    $emailid = mysqli_real_escape_string($connection, $_POST['emailid']);
-    $pwd = mysqli_real_escape_string($connection, $_POST['pwd']);  // Password entered by user
-    $dob = mysqli_real_escape_string($connection, $_POST['dob']);
-    $employee_id = mysqli_real_escape_string($connection, $_POST['employee_id']);
-    $joining_date = mysqli_real_escape_string($connection, $_POST['joining_date']);
-    $gender = mysqli_real_escape_string($connection, $_POST['gender']);
-    $phone = mysqli_real_escape_string($connection, $_POST['phone']);
-    $address = mysqli_real_escape_string($connection, $_POST['address']);
-    $bio = mysqli_real_escape_string($connection, $_POST['bio']);
-    $role = mysqli_real_escape_string($connection, $_POST['role']);
-    $status = mysqli_real_escape_string($connection, $_POST['status']);
-    $specialization = isset($_POST['specialization']) ? mysqli_real_escape_string($connection, $_POST['specialization']) : '';
+    $first_name = sanitize($connection, $_POST['first_name']);
+    $last_name = sanitize($connection, $_POST['last_name']);
+    $username = sanitize($connection, $_POST['username']);
+    $emailid = sanitize($connection, $_POST['emailid']);
+    $pwd = sanitize($connection, $_POST['pwd']);  // Password entered by user
+    $dob = sanitize($connection, $_POST['dob']);
+    $employee_id = sanitize($connection, $_POST['employee_id']);
+    $joining_date = sanitize($connection, $_POST['joining_date']);
+    $gender = sanitize($connection, $_POST['gender']);
+    $phone = sanitize($connection, $_POST['phone']);
+    $address = sanitize($connection, $_POST['address']);
+    $bio = sanitize($connection, $_POST['bio']);
+    $role = sanitize($connection, $_POST['role']);
+    $status = sanitize($connection, $_POST['status']);
+    $specialization = isset($_POST['specialization']) ? sanitize($connection, $_POST['specialization']) : '';
 
     // Encrypt the password before saving it
     $hashed_password = password_hash($pwd, PASSWORD_BCRYPT);  // Using Bcrypt hashing

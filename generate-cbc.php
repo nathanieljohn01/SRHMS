@@ -4,6 +4,7 @@ if (empty($_SESSION['name'])) {
     header('location:index.php');
     exit; // Ensure script stops execution after redirection
 }
+
 include('includes/connection.php');
 
 // Include TCPDF library
@@ -12,9 +13,9 @@ require_once('vendor/autoload.php');
 
 // Fetch CBC details
 if (isset($_GET['id'])) {
-    $cbc_id = $_GET['id'];
+    $cbc_id = mysqli_real_escape_string($connection, $_GET['id']); // Prevent SQL injection
     mysqli_query($connection, "SET NAMES 'utf8'");
-    $filename = isset($_GET['filename']) ? $_GET['filename'] : 'cbc_' . $cbc_id;
+    $filename = isset($_GET['filename']) ? htmlspecialchars($_GET['filename'], ENT_QUOTES, 'UTF-8') : 'cbc_' . $cbc_id;
 }
 
 // Create new PDF document
@@ -54,10 +55,14 @@ $pdf->AddPage();
 // Output CBC details
 $html = '';
 
-// Fetch CBC details
-$fetch_query = mysqli_query($connection, "SELECT * FROM tbl_cbc WHERE cbc_id = '$cbc_id'");
+// Prepare and fetch CBC details using a prepared statement
+$query = "SELECT * FROM tbl_cbc WHERE cbc_id = ?";
+$stmt = mysqli_prepare($connection, $query);
+mysqli_stmt_bind_param($stmt, 'i', $cbc_id); // Bind parameter to prevent SQL injection
+mysqli_stmt_execute($stmt);
+$result = mysqli_stmt_get_result($stmt);
 
-foreach ($fetch_query as $row) {
+while ($row = mysqli_fetch_assoc($result)) {
     // Calculate age
     $dob = date('Y-m-d', strtotime(str_replace('/', '-', $row['dob'])));
     $year = (date('Y') - date('Y', strtotime($dob)));
@@ -66,7 +71,10 @@ foreach ($fetch_query as $row) {
     $html .= '<div style="text-align: center; margin-bottom: 20px;">
                 <img src="assets/img/srchlogo.png" alt="Hospital Logo" style="max-width: 120px; height: 120px;">
                 <h3>Complete Blood Count</h3>
-                <p><strong>Patient Name:</strong> <strong>'.$row['patient_name'].'</strong> | <strong>Age:</strong> <strong>'.$year.'</strong> | <strong>Gender:</strong> <strong>'.$row['gender'].'</strong> | <strong>Date and Time:</strong> <strong>'.date('F d Y g:i A', strtotime($row['date_time'])).'</strong></p>
+                <p><strong>Patient Name:</strong> <strong>' . htmlspecialchars($row['patient_name'], ENT_QUOTES, 'UTF-8') . '</strong> | 
+                <strong>Age:</strong> <strong>' . $year . '</strong> | 
+                <strong>Gender:</strong> <strong>' . htmlspecialchars($row['gender'], ENT_QUOTES, 'UTF-8') . '</strong> | 
+                <strong>Date and Time:</strong> <strong>' . date('F d Y g:i A', strtotime($row['date_time'])) . '</strong></p>
             </div>';
 
     // CBC Table
@@ -87,32 +95,32 @@ foreach ($fetch_query as $row) {
                 </thead>
                 <tbody>
                     <tr>
-                        <td><strong>'.$row['hemoglobin'].'</strong></td>
-                        <td><strong>'.$row['hematocrit'].'</strong></td>
-                        <td><strong>'.$row['red_blood_cells'].'</strong></td>
-                        <td><strong>'.$row['white_blood_cells'].'</strong></td>
-                        <td><strong>'.$row['segmenters'].'</strong></td>
-                        <td><strong>'.$row['lymphocytes'].'</strong></td>
-                        <td><strong>'.$row['monocytes'].'</strong></td>
-                        <td><strong>'.$row['bands'].'</strong></td>
-                        <td><strong>'.$row['platelets'].'</strong></td>
+                        <td><strong>' . htmlspecialchars($row['hemoglobin'], ENT_QUOTES, 'UTF-8') . '</strong></td>
+                        <td><strong>' . htmlspecialchars($row['hematocrit'], ENT_QUOTES, 'UTF-8') . '</strong></td>
+                        <td><strong>' . htmlspecialchars($row['red_blood_cells'], ENT_QUOTES, 'UTF-8') . '</strong></td>
+                        <td><strong>' . htmlspecialchars($row['white_blood_cells'], ENT_QUOTES, 'UTF-8') . '</strong></td>
+                        <td><strong>' . htmlspecialchars($row['segmenters'], ENT_QUOTES, 'UTF-8') . '</strong></td>
+                        <td><strong>' . htmlspecialchars($row['lymphocytes'], ENT_QUOTES, 'UTF-8') . '</strong></td>
+                        <td><strong>' . htmlspecialchars($row['monocytes'], ENT_QUOTES, 'UTF-8') . '</strong></td>
+                        <td><strong>' . htmlspecialchars($row['bands'], ENT_QUOTES, 'UTF-8') . '</strong></td>
+                        <td><strong>' . htmlspecialchars($row['platelets'], ENT_QUOTES, 'UTF-8') . '</strong></td>
                     </tr>
                 </tbody>
             </table>';
 
-
-
-            $html .= '<div style="text-align: left; width: 150px; font-weight: bold; margin-top: 30px;">'; // Increased margin-top
-            $html .= '<br>'; //
-            $html .= '<br>'; //
-            $html .= '<strong>____________________</strong><br>'; // Space for signature
-            $html .= '<strong>Medical Technologist</strong><br>'; // Name for Medical Technologist
-            $html .= '<br>'; // Additional space
-            $html .= '<strong>____________________</strong><br>'; // Space for Pathologist signature
-            $html .= '<strong>Pathologist</strong><br>'; // Name for Pathologist
-            $html .= '</div>';
+    // Medical Technologist Signature
+    $html .= '<div style="position: absolute; bottom: 20px; left: 30px; text-align: left; width: 150px; font-weight: bold;">';
+    $html .= '<br>';
+    $html .= '<br>';
+    $html .= '<strong>____________________</strong><br>';
+    $html .= '<strong>Medical Technologist</strong><br>';
+    $html .= '<br>';
+    $html .= '<strong>____________________</strong><br>';
+    $html .= '<strong>Pathologist</strong><br>';
+    $html .= '</div>';
 }
 
+// Write HTML content to PDF
 $pdf->writeHTML($html, true, false, true, false, '');
 
 // Close and output PDF document

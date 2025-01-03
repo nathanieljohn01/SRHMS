@@ -1,6 +1,9 @@
 <?php
 include('includes/connection.php');
 
+// Start output buffering
+ob_start();
+
 if (isset($_GET['id'])) {
     $id = $_GET['id'];
 
@@ -14,8 +17,13 @@ if (isset($_GET['id'])) {
     mysqli_stmt_close($stmt);
 
     if ($radiographic_image) {
-        // Set the content type based on the image format
+        // Clean the output buffer to avoid any unwanted content before sending the image
+        ob_clean();
+
+        // Set the content type for the image (JPEG in this case)
         header("Content-Type: image/jpeg");
+
+        // Output the image data
         echo $radiographic_image;
     } else {
         echo "Image not found.";
@@ -23,4 +31,8 @@ if (isset($_GET['id'])) {
 } else {
     echo "Invalid image ID.";
 }
+
+// End the output buffering
+ob_end_flush();
 ?>
+

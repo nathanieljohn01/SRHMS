@@ -29,15 +29,14 @@ $row = $result->fetch_assoc();
 if (isset($_POST['save-hemopatient'])) {
     // Sanitize form inputs
     $dialysis_report = sanitize($connection, $_POST['dialysis_report']);
-    $date_time = sanitize($connection, $_POST['date_time']);
     $follow_up_date = sanitize($connection, $_POST['follow_up_date']); // Follow-up Date
 
     // Prepare the UPDATE query using a prepared statement
-    $update_query = $connection->prepare("UPDATE tbl_hemodialysis SET dialysis_report = ?, date_time = ?, follow_up_date = ? WHERE id = ?");
+    $update_query = $connection->prepare("UPDATE tbl_hemodialysis SET dialysis_report = ?, follow_up_date = ? WHERE id = ?");
     if (!$update_query) {
         die("Error in prepared statement: " . $connection->error);
     }
-    $update_query->bind_param("sssi", $dialysis_report, $date_time, $follow_up_date, $id); // Bind the parameters
+    $update_query->bind_param("ssi", $dialysis_report, $follow_up_date, $id); // Bind the parameters
 
     // Execute the statement
     if ($update_query->execute()) {
@@ -78,16 +77,12 @@ if (isset($_POST['save-hemopatient'])) {
             <div class="col-lg-8 offset-lg-2">
                 <form method="post">
                     <div class="form-group">
-                        <label>Inpatient ID <span class="text-danger">*</span></label>
+                        <label>Hemo-patient ID <span class="text-danger">*</span></label>
                         <input class="form-control" type="text" name="inpatient_id" value="<?php echo $row['hemopatient_id']; ?>" disabled>
                     </div>
                     <div class="form-group">
                         <label>Patient Name <span class="text-danger">*</span></label>
                         <input class="form-control" type="text" name="patient_name" value="<?php echo $row['patient_name']; ?>" disabled>
-                    </div>
-                    <div class="form-group">
-                        <label>Date and Time</label>
-                        <input type="datetime-local" class="form-control" name="date_time" value="<?php echo $row['date_time']; ?>" disabled>
                     </div>
                     <div class="form-group">
                         <label for="dialysis_report">Dialysis Report <span class="text-danger">*</span></label>

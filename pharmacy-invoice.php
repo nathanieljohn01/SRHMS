@@ -2,9 +2,33 @@
 session_start();
 if (empty($_SESSION['name'])) {
     header('location:index.php');
+    exit();
 }
+
 include('header.php');
 include('includes/connection.php');
+
+// Sanitize the GET parameter for deleting an invoice
+if (isset($_GET['ids'])) {
+    $id = filter_var($_GET['ids'], FILTER_SANITIZE_NUMBER_INT);
+    if ($id) {
+        // Using prepared statement to prevent SQL injection
+        $update_query = mysqli_prepare($connection, "UPDATE tbl_pharmacy_invoice SET deleted = 1 WHERE invoice_id = ?");
+        mysqli_stmt_bind_param($update_query, "i", $id);
+        mysqli_stmt_execute($update_query);
+        mysqli_stmt_close($update_query);
+    }
+}
+
+// Fetch data using a safe query
+$fetch_query = mysqli_query($connection, "
+    SELECT invoice_id, patient_id, patient_name, 
+    GROUP_CONCAT(CONCAT(medicine_name, ' - ', medicine_brand, ' (₱', price, ') - ', quantity, ' pcs (₱', price * quantity, ')') SEPARATOR '\n') as medicine_details, 
+    SUM(price * quantity) as total_price, invoice_datetime 
+    FROM tbl_pharmacy_invoice 
+    GROUP BY invoice_id
+");
+
 ?>
 <div class="page-wrapper">
     <div class="content">
@@ -32,41 +56,44 @@ include('includes/connection.php');
                 </thead>
                 <tbody>
                     <?php
-                    if(isset($_GET['ids'])){
-                    $id = $_GET['ids'];
-                    $update_query = mysqli_query($connection, "UPDATE tbl_pharmacy_invoice SET deleted = 1 WHERE id='$id'");
-                    }
-                   $fetch_query = mysqli_query($connection, "SELECT invoice_id, patient_id, patient_name, GROUP_CONCAT(CONCAT(medicine_name, ' - ', medicine_brand, ' (₱', price, ') - ', quantity, ' pcs (₱', price * quantity, ')') SEPARATOR '<br>') as medicine_details, SUM(price * quantity) as total_price, invoice_datetime FROM tbl_pharmacy_invoice GROUP BY invoice_id");
                     while ($row = mysqli_fetch_array($fetch_query)) {
-                        ?>
-                        <tr>
-                            <td><?php echo $row['patient_id']; ?></td>
-                            <td><?php echo $row['invoice_id']; ?></td>
-                            <td><?php echo $row['patient_name']; ?></td>
-                            <td><?php echo $row['medicine_details']; ?></td>
-                            <td><?php echo $row['total_price']; ?></td>
-                            <td><?php echo date('F d, Y g:i A', strtotime($row['invoice_datetime'])); ?></td>
-                            <td>
-                                <div class="dropdown dropdown-action">
-                                    <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><i class="fa fa-file-pdf-o"></i></a>
-                                    <div class="dropdown-menu dropdown-menu-right">
-                                        <form action="generate-pharmacy-pdf.php" method="get">
-                                            <input type="hidden" name="id" value="<?php echo $row['invoice_id']; ?>">
-                                            <div class="form-group">
-                                                <input type="text" class="form-control" id="filename" name="filename" placeholder="Enter File Name" aria-label="Enter File Name" aria-describedby="basic-addon2">
-                                            </div>
-                                            <button class="btn btn-primary btn-block mt-1" type="submit"><i class="fa fa-file-pdf-o m-r-5"></i>Generate Invoice</button>
-                                        </form>
-                                    </div>
+                        // Sanitize the output to avoid XSS attacks
+                        $patient_id = htmlspecialchars($row['patient_id'], ENT_QUOTES, 'UTF-8');
+                        $invoice_id = htmlspecialchars($row['invoice_id'], ENT_QUOTES, 'UTF-8');
+                        $patient_name = htmlspecialchars($row['patient_name'], ENT_QUOTES, 'UTF-8');
+                        $medicine_details = htmlspecialchars($row['medicine_details'], ENT_QUOTES, 'UTF-8'); // Sanitize
+                        $medicine_details = nl2br($medicine_details); // Convert newlines to <br> for display
+                        $total_price = htmlspecialchars($row['total_price'], ENT_QUOTES, 'UTF-8');
+                        $invoice_datetime = htmlspecialchars($row['invoice_datetime'], ENT_QUOTES, 'UTF-8');
+                    ?>
+                    <tr>
+                        <td><?php echo htmlspecialchars($row['patient_id'], ENT_QUOTES, 'UTF-8'); ?></td>
+                        <td><?php echo htmlspecialchars($row['invoice_id'], ENT_QUOTES, 'UTF-8'); ?></td>
+                        <td><?php echo htmlspecialchars($row['patient_name'], ENT_QUOTES, 'UTF-8'); ?></td>
+                        <td><?php echo $medicine_details; ?></td> <!-- Display medicine details with line breaks -->
+                        <td><?php echo number_format($row['total_price'], 2); ?></td>
+                        <td><?php echo date('F d, Y g:i A', strtotime($row['invoice_datetime'])); ?></td>
+                        <td>
+                            <div class="dropdown dropdown-action">
+                                <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><i class="fa fa-file-pdf-o"></i></a>
+                                <div class="dropdown-menu dropdown-menu-right">
+                                    <form action="generate-pharmacy-pdf.php" method="get">
+                                        <input type="hidden" name="id" value="<?php echo htmlspecialchars($row['invoice_id'], ENT_QUOTES, 'UTF-8'); ?>">
+                                        <div class="form-group">
+                                            <input type="text" class="form-control" id="filename" name="filename" placeholder="Enter File Name" aria-label="Enter File Name" aria-describedby="basic-addon2">
+                                        </div>
+                                        <button class="btn btn-primary btn-block mt-1" type="submit"><i class="fa fa-file-pdf-o m-r-5"></i> Generate Invoice</button>
+                                    </form>
                                 </div>
-                            </td>
-                        </tr>
+                            </div>
+                        </td>
+                    </tr>
                     <?php } ?>
                 </tbody>
             </table>
         </div>
     </div>
-</div>
+</div> 
 
 <?php
 include('footer.php');

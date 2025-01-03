@@ -163,8 +163,10 @@ ob_end_flush(); // Flush output buffer
                 <tbody>
                     <?php
                     if(isset($_GET['ids'])){
-                    $id = $_GET['ids'];
-                    $update_query = mysqli_query($connection, "UPDATE tbl_urinalysis SET deleted = 1 WHERE id='$id'");
+                        $id = sanitize($connection, $_GET['ids']);
+                        $update_query = $connection->prepare("UPDATE tbl_urinalysis SET deleted = 1 WHERE urinalysis_id = ?");
+                        $update_query->bind_param("s", $id);
+                        $update_query->execute();
                     }
                     $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_urinalysis WHERE deleted = 0 ORDER BY date_time ASC");
                     while ($row = mysqli_fetch_array($fetch_query)) {

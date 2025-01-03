@@ -114,116 +114,142 @@
 session_start();
 include('includes/connection.php');
 
+$stmt_cleanup = $connection->prepare("DELETE FROM tbl_attempts WHERE attempt_time < DATE_SUB(NOW(), INTERVAL 24 HOUR)");
+$stmt_cleanup->execute();
+
+if (!isset($_SESSION['attempts'])) {
+    $_SESSION['attempts'] = 0;
+    $_SESSION['last_attempt_time'] = time();
+}
+
 if (isset($_REQUEST['login'])) {
     $username = mysqli_real_escape_string($connection, $_REQUEST['username']);
-    $pwd = mysqli_real_escape_string($connection, $_REQUEST['pwd']);  // Plain password input from user
+    $pwd = mysqli_real_escape_string($connection, $_REQUEST['pwd']); // User input password
+    
+    // Prepare statement to fetch user record
+    $stmt = $connection->prepare("SELECT * FROM tbl_employee WHERE username = ?");
+    $stmt->bind_param("s", $username);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    if ($result->num_rows > 0) {
+        $data = $result->fetch_assoc();
+        $stored_hash = $data['password']; // Hashed password from the database
 
-    // Fetch the user record by username
-    $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_employee WHERE username = '$username'");
-    $res = mysqli_num_rows($fetch_query);
+        // Prepare statement to check attempts from tbl_attempts
+        $stmt_attempt = $connection->prepare("SELECT * FROM tbl_attempts WHERE username = ? ORDER BY attempt_time DESC LIMIT 1");
+        $stmt_attempt->bind_param("s", $username);
+        $stmt_attempt->execute();
+        $attempt_result = $stmt_attempt->get_result();
+        $attempt_data = $attempt_result->fetch_assoc();
 
-    if ($res > 0) {
-        $data = mysqli_fetch_array($fetch_query);
-        
-        // Get the stored hashed password
-        $stored_hash = $data['password'];  // This is the hashed password stored in the database
+        $current_time = time();
+        $time_diff = isset($attempt_data['last_attempt_time']) ? $current_time - strtotime($attempt_data['last_attempt_time']) : 0;
 
-        // Verify the password using password_verify()
-        if (password_verify($pwd, $stored_hash)) {
-            // If the password is correct, proceed with login
-            $name = $data['first_name'] . ' ' . $data['last_name'];
-            $role = $data['role'];
-            $_SESSION['name'] = $name;
-            $_SESSION['role'] = $role;
-
-        if ($role == '1') {
-            header('location: dashboard.php');
-            exit;
-        } else if ($role == '2') {
-            $_SESSION['dashboard'] = true;
-            header('location: dashboard-doctor.php');
-            exit;
-        } else if ($role == '3') {
-            $_SESSION['dashboard'] = true;
-            header('location: dashboard-nurse.php');
-            exit;
-        } else if ($role == '10') {
-            $_SESSION['dashboard'] = true;
-            header('location: dashboard-nurse.php');
-            exit;
-        } else if ($role == '4') {
-            $_SESSION['dashboard'] = true;
-            header('location: dashboard-pharmacy.php');
-            exit;
-        } else if ($role == '5') {
-            $_SESSION['dashboard'] = true;
-            header('location: dashboard-lab.php');
-            exit;
-        } else if ($role == '6') {
-            $_SESSION['dashboard'] = true;
-            header('location: dashboard-rad.php');
-            exit;
-        } else if ($role == '7') {
-            $_SESSION['dashboard'] = true;
-            header('location: dashboard-lab.php');
-            exit;
-        } else if ($role == '8') {
-            $_SESSION['dashboard'] = true;
-            header('location: dashboard-lab.php');
-            exit;
-        } else if ($role == '9') {
-            $_SESSION['dashboard'] = true;
-            header('location: dashboard-lab.php');
-            exit;
-        }
-        
-    } else {
-        // Password mismatch error
-        echo "<script>
-        Swal.fire({
-            icon: 'error',
-            title: 'Login Failed',
-            text: 'Incorrect username or password. Please try again.',
-            confirmButtonColor: '#12369e',
-            confirmButtonText: 'OK',
-            backdrop: 'rgba(0, 0, 0, 0.3)',
-            customClass: {
-                confirmButton: 'swal2-confirm-btn'
-            },
-            showClass: {
-                popup: 'animate__animated animate__fadeInDown'
-            },
-            hideClass: {
-                popup: 'animate__animated animate__fadeOutUp'
+        if ($attempt_data['attempts'] >= 5 && $time_diff < 60) {
+            // Too many failed attempts
+            echo "<script>
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Too Many Attempts',
+                    text: 'Please wait for 1 minute before trying again.',
+                    confirmButtonColor: '#12369e',
+                    confirmButtonText: 'OK'
+                });
+            </script>";
+        } else {
+            if ($time_diff >= 60) {
+                // Reset attempts if more than 1 minute has passed
+                $attempt_time = date('Y-m-d H:i:s');
+                $stmt_reset = $connection->prepare("UPDATE tbl_attempts SET attempts = 0, last_attempt_time = ? WHERE username = ?");
+                $stmt_reset->bind_param("ss", $attempt_time, $username);
+                $stmt_reset->execute();
             }
-        });
-        </script>";
-        }
 
+            if (password_verify($pwd, $stored_hash)) {
+                // Successful login
+                $_SESSION['name'] = $data['first_name'] . ' ' . $data['last_name'];
+                $_SESSION['role'] = $data['role'];
+
+                $attempt_time = date('Y-m-d H:i:s');
+                $stmt_success = $connection->prepare("INSERT INTO tbl_attempts (username, attempt_time, success, attempts, last_attempt_time) 
+                                                      VALUES (?, ?, 1, 0, ?)");
+                $stmt_success->bind_param("sss", $username, $attempt_time, $attempt_time);
+                $stmt_success->execute();
+
+                // Redirect based on role
+                $role = $data['role'];
+                switch ($role) {
+                    case '1':
+                        header('location: dashboard.php');
+                        break;
+                    case '2':
+                        header('location: dashboard-doctor.php');
+                        break;
+                    case '3': // Nurse 1
+                    case '10': // Nurse 2
+                        header('location: dashboard-nurse.php');
+                        break;
+                    case '4':
+                        header('location: dashboard-pharmacy.php');
+                        break;
+                    case '5':
+                        header('location: dashboard-lab.php');
+                        break;
+                    case '6':
+                        header('location: dashboard-rad.php');
+                        break;
+                    case '7':
+                    case '8':
+                        header('location: dashboard-pharmacy.php');
+                        break;
+                    case '9':
+                        header('location: dashboard-lab.php');
+                        break;
+                    default:
+                        echo "<script>alert('Invalid role');</script>";
+                }
+                exit;
+            } else {
+                // Password mismatch - increment attempts
+                $attempt_time = date('Y-m-d H:i:s');
+                $new_attempts = isset($attempt_data['attempts']) ? $attempt_data['attempts'] + 1 : 1;
+                $stmt_fail = $connection->prepare("INSERT INTO tbl_attempts (username, attempt_time, success, attempts, last_attempt_time) 
+                                                   VALUES (?, ?, 0, ?, ?)");
+                $stmt_fail->bind_param("ssis", $username, $attempt_time, $new_attempts, $attempt_time);
+                $stmt_fail->execute();
+
+                echo "<script>
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Login Failed',
+                        text: 'Incorrect username or password. Please try again.',
+                        confirmButtonColor: '#12369e',
+                        confirmButtonText: 'OK'
+                    });
+                </script>";
+            }
+        }
     } else {
         // Username not found
+        $attempt_time = date('Y-m-d H:i:s');
+        $stmt_not_found = $connection->prepare("INSERT INTO tbl_attempts (username, attempt_time, success, attempts, last_attempt_time) 
+                                                VALUES (?, ?, 0, 1, ?)");
+        $stmt_not_found->bind_param("sss", $username, $attempt_time, $attempt_time);
+        $stmt_not_found->execute();
         echo "<script>
-        Swal.fire({
-            icon: 'error',
-            title: 'Login Failed',
-            text: 'Incorrect username or password. Please try again.',
-            confirmButtonColor: '#12369e',
-            confirmButtonText: 'OK',
-            backdrop: 'rgba(0, 0, 0, 0.3)',
-            customClass: {
-                confirmButton: 'swal2-confirm-btn'
-            },
-            showClass: {
-                popup: 'animate__animated animate__fadeInDown'
-            },
-            hideClass: {
-                popup: 'animate__animated animate__fadeOutUp'
-            }
-        });
+            Swal.fire({
+                icon: 'error',
+                title: 'Login Failed',
+                text: 'Incorrect username or password. Please try again.',
+                confirmButtonColor: '#12369e',
+                confirmButtonText: 'OK'
+            });
         </script>";
     }
 }
 ?>
+
     <div class="main-wrapper">
         <div class="account-page">
             <div class="account-box">

@@ -2,30 +2,43 @@
 session_start();
 if (empty($_SESSION['name'])) {
     header('location:index.php');
+    exit();
 }
+
 include('header.php');
 include('includes/connection.php');
 
-$id = $_GET['id'];
-$fetch_query = mysqli_query($connection, "SELECT * FROM tbl_visitorpass WHERE id='$id'");
-$row = mysqli_fetch_array($fetch_query);
+// Function to sanitize inputs
+function sanitize($connection, $input) {
+    return mysqli_real_escape_string($connection, htmlspecialchars(trim($input), ENT_QUOTES, 'UTF-8'));
+}
 
+$id = sanitize($connection, $_GET['id']);
+
+// Fetch the visitor pass data using prepared statements
+$fetch_query = mysqli_prepare($connection, "SELECT * FROM tbl_visitorpass WHERE id = ?");
+mysqli_stmt_bind_param($fetch_query, "s", $id);
+mysqli_stmt_execute($fetch_query);
+$result = mysqli_stmt_get_result($fetch_query);
+$row = mysqli_fetch_array($result);
+mysqli_stmt_close($fetch_query);
+
+// Handle form submission for updating the visitor pass
 if (isset($_POST['save-pass'])) {
-    $visitor_name = $_POST['visitor_name'];
-    $contact_number = $_POST['contact_number'];
-    $purpose = $_POST['purpose'];
+    // Sanitize user inputs
+    $visitor_name = sanitize($connection, $_POST['visitor_name']);
+    $contact_number = sanitize($connection, $_POST['contact_number']);
+    $purpose = sanitize($connection, $_POST['purpose']);
 
-    // Use prepared statements to prevent SQL injection
-    $update_query = mysqli_prepare($connection, "UPDATE tbl_visitorpass SET visitor_name=?, contact_number=?, purpose=? WHERE id=?");
-
-    // Bind the parameters (s = string, i = integer)
+    // Update the visitor pass record using prepared statements
+    $update_query = mysqli_prepare($connection, "UPDATE tbl_visitorpass SET visitor_name = ?, contact_number = ?, purpose = ? WHERE id = ?");
     mysqli_stmt_bind_param($update_query, 'sssi', $visitor_name, $contact_number, $purpose, $id);
 
-    // Execute the query
+    // Execute the update query
     if (mysqli_stmt_execute($update_query)) {
         $msg = "Visitor pass updated successfully";
     } else {
-        $msg = "Error!";
+        $msg = "Error updating visitor pass";
     }
 
     // Close the prepared statement
@@ -70,7 +83,7 @@ if (isset($_POST['save-pass'])) {
                         <div class="col-md-6">
                             <div class="form-group">
                                 <label>Purpose</label>
-                                <input class="form-control" type="text" name="purpose" value="<?php echo $row['purpose']; ?>" required>
+                                <input class="form-control" type="text" name="purpose" value="<?php echo $row['purpose']; ?>" disabled>
                             </div>
                         </div>
                     </div>

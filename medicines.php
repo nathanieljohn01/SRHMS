@@ -2,9 +2,25 @@
 session_start();
 if (empty($_SESSION['name'])) {
     header('location:index.php');
+    exit();
 }
+
 include('header.php');
 include('includes/connection.php');
+
+// Sanitize GET parameters
+if (isset($_GET['ids'])) {
+    $id = filter_var($_GET['ids'], FILTER_SANITIZE_NUMBER_INT);
+    if ($id) {
+        $update_query = mysqli_prepare($connection, "UPDATE tbl_medicines SET deleted = 1 WHERE id = ?");
+        mysqli_stmt_bind_param($update_query, "i", $id);
+        mysqli_stmt_execute($update_query);
+        mysqli_stmt_close($update_query);
+    }
+}
+
+// Fetch data with prepared statement
+$fetch_query = mysqli_query($connection, "SELECT * FROM tbl_medicines WHERE deleted = 0 ORDER BY expiration_date ASC");
 ?>
 
 <div class="page-wrapper">
@@ -22,8 +38,8 @@ include('includes/connection.php');
             <table class="datatable table table-hover" id="medicineTable">
                 <thead style="background-color: #CCCCCC;">
                     <tr>
-                        <th>Brand Name</th>
                         <th>Generic Name</th>
+                        <th>Brand Name</th>
                         <th>Drug Classification</th>
                         <th>Weight and Measurement</th>
                         <th>Unit of Measurement</th>
@@ -36,26 +52,27 @@ include('includes/connection.php');
                 </thead>
                 <tbody>
                     <?php
-                     if(isset($_GET['ids'])){
-                        $id = $_GET['ids'];
-                        $update_query = mysqli_query($connection, "UPDATE tbl_medicines SET deleted = 1 WHERE id='$id'");
-                        }
-                    $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_medicines WHERE deleted = 0 ORDER BY expiration_date ASC");
                     while ($row = mysqli_fetch_array($fetch_query)) {
+                        // Sanitize output to prevent XSS
+                        $medicine_name = htmlspecialchars($row['medicine_name'], ENT_QUOTES, 'UTF-8');
+                        $medicine_brand = htmlspecialchars($row['medicine_brand'], ENT_QUOTES, 'UTF-8');
+                        $category = htmlspecialchars($row['category'], ENT_QUOTES, 'UTF-8');
+                        $weight_measure = htmlspecialchars($row['weight_measure'], ENT_QUOTES, 'UTF-8');
+                        $unit_measure = htmlspecialchars($row['unit_measure'], ENT_QUOTES, 'UTF-8');
+                        $price = htmlspecialchars($row['price'], ENT_QUOTES, 'UTF-8');
+                        
                         $expiration_date = strtotime($row['expiration_date']);
                         $current_date = strtotime(date('Y-m-d'));
                         $days_to_expire = round(($expiration_date - $current_date) / (60 * 60 * 24));
-                        
-                        $is_low_stock = $row['quantity'] <= 20;
 
-                        if ($days_to_expire > 1) { // Medicine is still valid
+                        $is_low_stock = $row['quantity'] <= 20;
                     ?>
-                       <tr>
-                            <td><?php echo $row['medicine_brand']; ?></td>
-                            <td><?php echo $row['medicine_name']; ?></td>
-                            <td><?php echo $row['category']; ?></td>
-                            <td><?php echo $row['weight_measure']; ?></td>
-                            <td><?php echo $row['unit_measure']; ?></td>
+                        <tr>
+                            <td><?php echo $medicine_name; ?></td>
+                            <td><?php echo $medicine_brand; ?></td>
+                            <td><?php echo $category; ?></td>
+                            <td><?php echo $weight_measure; ?></td>
+                            <td><?php echo $unit_measure; ?></td>
                             <td>
                                 <div style="display: flex; flex-direction: column; align-items: center;">
                                     <span><?php echo $row['quantity']; ?></span>
@@ -74,7 +91,7 @@ include('includes/connection.php');
                                     <span><?php echo $days_to_expire . ' Days'; ?></span>
                                 <?php endif; ?>
                             </td>
-                            <td><?php echo $row['price']; ?></td>
+                            <td><?php echo $price; ?></td>
                             <td class="text-right">
                                 <div class="dropdown dropdown-action">
                                     <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
@@ -92,14 +109,13 @@ include('includes/connection.php');
                             </td>
                         </tr>
                     <?php 
-                        }
                     } 
                     ?>
                 </tbody>
             </table>
         </div>
     </div>
-</div>
+</div> 
 
 <?php
 include('footer.php');
@@ -173,6 +189,6 @@ include('footer.php');
     }
     .badge-danger {
     color: #ECECEC;
-	background-color: #a6131b !important;
+    background-color: #a6131b !important;
 }
 </style>
