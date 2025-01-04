@@ -14,7 +14,7 @@ $patientType = isset($_GET['patient_type']) ? $_GET['patient_type'] : 'inpatient
 if ($patientType === 'hemodialysis') {
     $query = "
         SELECT b.billing_id, b.patient_id, b.patient_name, b.dob, b.address, b.diagnosis, b.admission_date, b.discharge_date, b.room_fee, b.lab_fee, b.medication_fee, b.operating_room_fee, 
-               b.professional_fee, b.pf_discount_amount, b.readers_fee, b.discount_amount, b.total_due, b.non_discounted_total, 
+               b.supplies_fee, b.professional_fee, b.pf_discount_amount, b.readers_fee, b.discount_amount, b.vat_exempt_discount_amount, b.total_due, b.non_discounted_total, 
                GROUP_CONCAT(o.item_name ORDER BY o.date_time DESC SEPARATOR ', ') AS other_items, 
                GROUP_CONCAT(o.item_cost ORDER BY o.date_time DESC SEPARATOR ', ') AS other_costs
         FROM tbl_billing_hemodialysis b
@@ -22,10 +22,21 @@ if ($patientType === 'hemodialysis') {
         WHERE b.deleted = 0
         GROUP BY b.billing_id
     ";
+} elseif ($patientType === 'newborn') {
+    $query = "
+        SELECT b.billing_id, b.patient_id, b.patient_name, b.dob, b.address, b.diagnosis, b.admission_date, b.discharge_date, b.room_fee, b.lab_fee, b.medication_fee, b.operating_room_fee, 
+               b.supplies_fee, b.professional_fee, b.pf_discount_amount, b.readers_fee, b.discount_amount, b.vat_exempt_discount_amount, b.total_due, b.non_discounted_total, 
+               GROUP_CONCAT(o.item_name ORDER BY o.date_time DESC SEPARATOR ', ') AS other_items, 
+               GROUP_CONCAT(o.item_cost ORDER BY o.date_time DESC SEPARATOR ', ') AS other_costs
+        FROM tbl_billing_newborn b
+        LEFT JOIN tbl_billing_others o ON b.billing_id = o.billing_id
+        WHERE b.deleted = 0
+        GROUP BY b.billing_id
+    ";
 } else {
     $query = "
         SELECT b.billing_id, b.patient_id, b.patient_name, b.dob, b.address, b.diagnosis, b.admission_date, b.discharge_date, b.room_fee, b.lab_fee, b.medication_fee, b.operating_room_fee, 
-               b.professional_fee, b.pf_discount_amount, b.readers_fee, b.discount_amount, b.total_due, b.non_discounted_total, 
+               b.supplies_fee, b.professional_fee, b.pf_discount_amount, b.readers_fee, b.discount_amount, b.vat_exempt_discount_amount, b.total_due, b.non_discounted_total, 
                GROUP_CONCAT(o.item_name ORDER BY o.date_time DESC SEPARATOR ', ') AS other_items, 
                GROUP_CONCAT(o.item_cost ORDER BY o.date_time DESC SEPARATOR ', ') AS other_costs
         FROM tbl_billing_inpatient b
@@ -51,8 +62,9 @@ if ($patientType === 'hemodialysis') {
         <!-- Buttons to filter by Patient Type -->
         <div class="row mb-3">
             <div class="col-sm-4 col-3">
-                <button id="inpatient-btn" class="btn btn-rounded btn-info mr-3 <?php echo ($patientType === 'inpatient') ? 'btn-black' : ''; ?>" onclick="showTable('inpatient')">Inpatient</button>
-                <button id="hemodialysis-btn" class="btn btn-rounded btn-info <?php echo ($patientType === 'hemodialysis') ? 'btn-black' : ''; ?>" onclick="showTable('hemodialysis')">Hemodialysis</button>
+            <button id="inpatient-btn" class="btn btn-rounded btn-info mr-3 <?php echo ($patientType === 'inpatient') ? 'btn-black' : ''; ?>" onclick="showTable('inpatient')">Inpatient</button>
+            <button id="hemodialysis-btn" class="btn btn-rounded btn-info mr-3 <?php echo ($patientType === 'hemodialysis') ? 'btn-black' : ''; ?>" onclick="showTable('hemodialysis')">Hemodialysis</button>
+            <button id="newborn-btn" class="btn btn-rounded btn-info <?php echo ($patientType === 'newborn') ? 'btn-black' : ''; ?>" onclick="showTable('newborn')">Newborn</button>
             </div>
         </div>
 
@@ -111,22 +123,20 @@ if ($patientType === 'hemodialysis') {
                     <?php } ?>
                 </tbody>
             </table>
-            <!-- Billing Details Table -->
-            <h4 class="mt-6">Billing Details</h4>
+            <!-- Charges Details Table -->
+            <h4 class="mt-6">Charges Details</h4>
             <table class="datatable table table-bordered" id="billingTable">
                 <thead style="background-color: #CCCCCC;">
                     <tr>
                         <th>Room Charges</th>
                         <th>Laboratory Charges</th>
                         <th>Medication Charges</th>
-                        <th>Other Charges</th> 
                         <th>Operating Room Charges</th>
+                        <th>Supplies Charges</th> 
+                        <th>Other Charges</th> 
                         <th>Professional's Fee</th>
                         <th>Reader's Fee</th>
-                        <th>Senior/PWD Discount</th>
-                        <th>Professional's Fee Discount</th>
                         <th>Subtotal</th>
-                        <th>Amount Due</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -141,13 +151,37 @@ if ($patientType === 'hemodialysis') {
                         <td><?php echo number_format($row['room_fee'], 2); ?></td>
                         <td><?php echo number_format($row['lab_fee'], 2); ?></td>
                         <td><?php echo number_format($row['medication_fee'], 2); ?></td>
-                        <td><?php echo $otherItems . ' (' . $otherCosts . ')'; ?></td>
                         <td><?php echo number_format($row['operating_room_fee'], 2); ?></td>
+                        <td><?php echo $row['supplies_fee']; ?></td>
+                        <td><?php echo $otherItems . ' (' . $otherCosts . ')'; ?></td>
                         <td><?php echo number_format($row['professional_fee'], 2); ?></td>
                         <td><?php echo number_format($row['readers_fee'], 2); ?></td>
-                        <td><?php echo number_format($row['discount_amount'], 2); ?></td>
-                        <td><?php echo number_format($row['pf_discount_amount'], 2); ?></td>
                         <td><?php echo number_format($row['non_discounted_total'], 2); ?></td>
+                    </tr>
+                    <?php } ?>
+                </tbody>
+            </table>
+            <!-- Discount Details Table -->
+            <h4 class="mt-6">Discount Details</h4>
+            <table class="datatable table table-bordered" id="discountTable">
+                <thead style="background-color: #CCCCCC;">
+                    <tr>
+                        <th>Professional Fee Discount</th>
+                        <th>VAT Exempt Discount</th>
+                        <th>Senior/PWD Discount</th>
+                        <th>Amount Due</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php
+                    // Fetch discount details
+                    $discount_query = mysqli_query($connection, $query); 
+                    while ($row = mysqli_fetch_array($discount_query)) {
+                    ?>
+                    <tr data-billing-id="<?php echo $row['billing_id']; ?>">
+                        <td><?php echo number_format($row['pf_discount_amount'], 2); ?></td>
+                        <td><?php echo number_format($row['vat_exempt_discount_amount'], 2); ?></td>
+                        <td><?php echo number_format($row['discount_amount'], 2); ?></td>      
                         <td><strong><?php echo number_format($row['total_due'], 2); ?></strong></td>
                     </tr>
                     <?php } ?>
@@ -169,15 +203,16 @@ function showTable(patientType) {
     // This will reload the page with the selected patient type as part of the URL
     window.location.href = "billing.php?patient_type=" + patientType;
 }
-
 // JavaScript function for filtering patients
 function filterPatients() {
     var input = document.getElementById("patientSearchInput");
     var filter = input.value.toUpperCase();
     var patientTable = document.getElementById("patientInfoTable");
     var billingTable = document.getElementById("billingTable");
+    var discountTable = document.getElementById("discountTable");
     var patientRows = patientTable.getElementsByTagName("tr");
     var billingRows = billingTable.getElementsByTagName("tr");
+    var discountRows = discountTable.getElementsByTagName("tr");
 
     var patientMatchIds = [];
 
@@ -206,9 +241,17 @@ function filterPatients() {
         billingRows[i].style.display = patientMatchIds.includes(billingId) ? "" : "none";
     }
 
-    // Show or hide Billing Table if no matches are found
+    // Filter Discount Details Table based on Patient Information Table results
+    for (let i = 1; i < discountRows.length; i++) {
+        let billingId = discountRows[i].getAttribute("data-billing-id");
+        discountRows[i].style.display = patientMatchIds.includes(billingId) ? "" : "none";
+    }
+
+    // Show or hide Billing and Discount Tables if no matches are found
     billingTable.style.display = patientMatchIds.length > 0 ? "" : "none";
+    discountTable.style.display = patientMatchIds.length > 0 ? "" : "none";
 }
+
 $('.dropdown-toggle').on('click', function (e) {
     var $el = $(this).next('.dropdown-menu');
     var isVisible = $el.is(':visible');
@@ -231,7 +274,8 @@ $('.dropdown-toggle').on('click', function (e) {
 </script>
 
 <style>
- #billingTable_wrapper .dataTables_length {
+#billingTable_wrapper .dataTables_length,
+#discountTable_wrapper .dataTables_length {
     display: none;
 }
 .btn-primary {

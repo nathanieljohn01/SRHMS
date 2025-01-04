@@ -72,7 +72,7 @@ if (isset($_POST['add-billing'])) {
             $others_fee_query = "
             SELECT SUM(item_cost) AS others_fee
             FROM tbl_billing_others
-            WHERE billing_id = '$billing_id' AND deleted = 0 AND date_time = (SELECT MAX(date_time) FROM tbl_billing_others WHERE billing_id = '$billing_id' AND deleted = 0)
+            WHERE billing_id = '$billing_id' AND deleted = 0
             ";
 
             $others_fee_result = mysqli_query($connection, $others_fee_query);
@@ -82,63 +82,51 @@ if (isset($_POST['add-billing'])) {
 
         // Apply discounts if checked
         $apply_discount = isset($_POST['discount_checkbox']) && $_POST['discount_checkbox'] == 'on';
-        $discounted_room_fee = $apply_discount ? $room_fee * 0.8 : $room_fee;
-        $discounted_lab_fee = $apply_discount ? $lab_fee * 0.8 : $lab_fee;
-        $discounted_medication_fee = $apply_discount ? $medication_fee * 0.8 : $medication_fee;
-        $others_fee_discounted = $apply_discount ? $others_fee * 0.8 : $others_fee;
+        $room_fee = isset($_POST['room_fee']) ? floatval($_POST['room_fee']) : 0;
+        $lab_fee = isset($_POST['lab_fee']) ? floatval($_POST['lab_fee']) : 0;
+        $medication_fee = isset($_POST['medication_fee']) ? floatval($_POST['medication_fee']) : 0;
+        $supplies_fee = isset($_POST['supplies_fee']) ? floatval($_POST['supplies_fee']) : 0;
+        $professional_fee = isset($_POST['professional_fee']) ? floatval($_POST['professional_fee']) : 0;
+        $readers_fee = isset($_POST['readers_fee']) ? floatval($_POST['readers_fee']) : 0;
 
-        // Professional fee and discount handling
-        $professional_fee = isset($_POST['professional_fee']) && $_POST['professional_fee'] !== '' ? floatval($_POST['professional_fee']) : 0;
+        // Fixed operating room fee
+        $operating_room_fee = isset($_POST['operating_room_fee_checkbox']) && $_POST['operating_room_fee_checkbox'] == 'on' ? 1150 : 0;
+
+        // Calculate combined fees before applying any discounts
+        $combined_fees = $room_fee + $lab_fee + $medication_fee + $operating_room_fee + $supplies_fee + $others_fee + $professional_fee + $readers_fee;
+
+        // Apply Professional Fee Discount (12%)
         $apply_professional_fee_discount = isset($_POST['professional_fee_discount_checkbox']) && $_POST['professional_fee_discount_checkbox'] == 'on';
-
-        // Calculate 12% Professional Fee Discount
         $pf_discount_amount = $apply_professional_fee_discount ? $professional_fee * 0.12 : 0; // 12% of the original professional fee
-        $discounted_professional_fee = $professional_fee - $pf_discount_amount; // Subtract the 12% discount from the professional fee
 
-        // Apply Senior/PWD Discount (20%) to the discounted professional fee
-        if ($apply_discount) {
-            $senior_pwd_discount_amount = $discounted_professional_fee * 0.2; // 20% of the already discounted professional fee
-            $discounted_professional_fee -= $senior_pwd_discount_amount; // Subtract the Senior/PWD discount
-        } else {
-            $senior_pwd_discount_amount = 0;
-        }
+        // Apply VAT Exempt Discount (12%)
+        $apply_vat_exempt_discount = isset($_POST['vat_exempt_checkbox']) && $_POST['vat_exempt_checkbox'] == 'on';
+        $vat_exempt_discount_amount = $apply_vat_exempt_discount ? $combined_fees * 0.12 : 0;
+
+        // Apply Senior/PWD Discount (20%) to the remaining combined fees after VAT Exempt Discount
+        $senior_pwd_discount_amount = $apply_discount ? ($combined_fees - $vat_exempt_discount_amount) * 0.2 : 0;
+
+        // Calculate total due after applying all discounts
+        $total_due = $combined_fees - $pf_discount_amount - $vat_exempt_discount_amount - $senior_pwd_discount_amount;
 
         // Calculate total discounts
-        $total_discount = ($room_fee - $discounted_room_fee) +
-                        ($lab_fee - $discounted_lab_fee) +
-                        ($medication_fee - $discounted_medication_fee) +
-                        ($others_fee - $others_fee_discounted) +
-                        $pf_discount_amount +
-                        $senior_pwd_discount_amount;
-
-        // Calculate total due (fully discounted)
-        $total_due = $discounted_room_fee +
-                    $discounted_lab_fee +
-                    $discounted_medication_fee +
-                    $discounted_professional_fee +
-                    $readers_fee +
-                    $others_fee_discounted;
+        $total_discount = $pf_discount_amount + $vat_exempt_discount_amount + $senior_pwd_discount_amount;
 
         // Calculate non-discounted total
-        $non_discounted_total = $room_fee +
-                                $lab_fee +
-                                $medication_fee +
-                                $professional_fee +
-                                $readers_fee +
-                                $others_fee;
+        $non_discounted_total = $room_fee + $lab_fee + $medication_fee + $operating_room_fee + $supplies_fee + $professional_fee + $readers_fee + $others_fee;
 
         // Insert billing details
         if ($patient_type == 'inpatient') {
             $query = "
-                INSERT INTO tbl_billing_inpatient
-                (billing_id, patient_id, patient_name, dob, gender, admission_date, discharge_date, diagnosis, address, lab_fee, room_fee, medication_fee, total_due, non_discounted_total, discount_amount, professional_fee, pf_discount_amount, readers_fee, others_fee) 
-                VALUES ('$billing_id', '$patient_id', '$patient_name', $dob, $gender, $admission_date, $discharge_date, $diagnosis, $address, $lab_fee, $room_fee, $medication_fee, $total_due, $non_discounted_total, $total_discount, $professional_fee, $pf_discount_amount, $readers_fee, $others_fee)
+            INSERT INTO tbl_billing_inpatient
+            (billing_id, patient_id, patient_name, dob, gender, admission_date, discharge_date, diagnosis, address, lab_fee, room_fee, medication_fee, operating_room_fee, supplies_fee, total_due, non_discounted_total, discount_amount, professional_fee, pf_discount_amount, readers_fee, others_fee, vat_exempt_discount_amount) 
+            VALUES ('$billing_id', '$patient_id', '$patient_name', $dob, $gender, $admission_date, $discharge_date, $diagnosis, $address, $lab_fee, $room_fee, $medication_fee, $operating_room_fee, $supplies_fee, $total_due, $non_discounted_total, $total_discount, $professional_fee, $pf_discount_amount, $readers_fee, $others_fee, $vat_exempt_discount_amount)
             ";
         } elseif ($patient_type == 'hemodialysis') {
             $query = "
-                INSERT INTO tbl_billing_hemodialysis
-                (billing_id, patient_id, patient_name, dob, gender, admission_date, discharge_date, diagnosis, address, lab_fee, room_fee, medication_fee, total_due, non_discounted_total, discount_amount, professional_fee, pf_discount_amount, readers_fee, others_fee) 
-                VALUES ('$billing_id', '$patient_id', '$patient_name', $dob, $gender, $admission_date, $discharge_date, $diagnosis, $address, $lab_fee, $room_fee, $medication_fee, $total_due, $non_discounted_total, $total_discount, $professional_fee, $pf_discount_amount, $readers_fee, $others_fee)
+            INSERT INTO tbl_billing_hemodialysis
+            (billing_id, patient_id, patient_name, dob, gender, admission_date, discharge_date, diagnosis, address, lab_fee, room_fee, medication_fee, operating_room_fee, supplies_fee, total_due, non_discounted_total, discount_amount, professional_fee, pf_discount_amount, readers_fee, others_fee) 
+            VALUES ('$billing_id', '$patient_id', '$patient_name', $dob, $gender, $admission_date, $discharge_date, $diagnosis, $address, $lab_fee, $room_fee, $medication_fee, $operating_room_fee, $supplies_fee, $total_due, $non_discounted_total, $total_discount, $professional_fee, $pf_discount_amount, $readers_fee, $others_fee)
             ";
         } else {
             $msg = "Error: Patient type not selected.";
@@ -151,10 +139,10 @@ if (isset($_POST['add-billing'])) {
         }
 
         $medication_query->close();
-    }
+        }
 
-    $patient_query->close();
-}
+        $patient_query->close();
+    }
 ?>
 
 <div class="page-wrapper">
@@ -167,88 +155,49 @@ if (isset($_POST['add-billing'])) {
                 <a href="billing.php" class="btn btn-primary btn-rounded float-right">Back</a>
             </div>
         </div>
-        <div class="row">
-            <div class="col-lg-8 offset-lg-2">
-                <form method="post">
-                    <input type="hidden" name="lab_fee" id="lab-fee-input">
-                    <input type="hidden" name="room_fee" id="room-fee-input">
-
-                    <!-- Patient Type Dropdown -->
-                    <div class="form-group row">
-                        <div class="col-sm-12">
-                            <label for="patient-type-select">Patient Type</label>
-                            <select class="form-control" id="patient-type-select" name="patient_type" required>
-                                <option value="">Select Patient Type</option>
-                                <option value="inpatient">Inpatient</option>
-                                <option value="hemodialysis">Hemodialysis</option>
-                            </select>
-                        </div>
+        <div class="col-lg-10 offset-lg-1">
+            <form method="post" action="">
+                <!-- Patient Type Dropdown -->
+                <div class="form-group row">
+                    <div class="col-sm-12">
+                        <label for="patient-type-select">Patient Type</label>
+                        <select class="form-control" id="patient-type-select" name="patient_type" required>
+                            <option value="">Select Patient Type</option>
+                            <option value="inpatient">Inpatient</option>
+                            <option value="hemodialysis">Hemodialysis</option>
+                            <option value="newborn">Newborn</option>
+                        </select>
                     </div>
-
-                    <!-- Billing ID -->
-                    <div class="form-group row">
-                        <div class="col-sm-6">
-                            <label>Billing ID</label>
-                            <input class="form-control" type="text" value="<?php echo 'BL-' . $bl_id; ?>" disabled>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="patient-search">Patient Name</label>
-                            <input type="text" class="form-control" id="patient-search" name="patient_name" placeholder="Search for patient" autocomplete="off" required>
-                            <div id="patient-list" class="patient-list"></div>
-                        </div>
+                </div>
+                <!-- Billing ID -->
+                <div class="form-group row">
+                    <div class="col-sm-6">
+                        <label>Billing ID</label>
+                        <input class="form-control" type="text" value="<?php echo 'BL-' . $bl_id; ?>" disabled>
                     </div>
-
-                    <!-- Senior Citizen / PWD Discount Checkbox -->
-                    <div class="form-group row">
-                        <div class="col-sm-6">
-                            <label for="discount-checkbox">Senior Citizen/PWD Discount (20%)</label>
-                            <input type="checkbox" class="form-control" id="discount-checkbox" name="discount_checkbox" value="on">
-                        </div>
-                        <div class="col-sm-6">
-                            <label for="professional-fee-discount-checkbox">Professional's Fee Discount (12%)</label>
-                            <input type="checkbox" class="form-control" id="professional-fee-discount-checkbox" name="professional_fee_discount_checkbox" value="on">
-                        </div>
+                    <div class="col-md-6">
+                        <label for="patient-search">Patient Name</label>
+                        <input type="text" class="form-control" id="patient-search" name="patient_name" placeholder="Search for patient" autocomplete="off" required>
+                        <div id="patient-list" class="patient-list"></div>
                     </div>
-
-                    <!-- Inpatient Fields Section (Initially Hidden) -->
-                    <div id="inpatient-section" class="patient-type-section" style="display:none;">
-                        <table class="table table-bordered">
-                            <thead style="background-color: #CCCCCC;">
-                                <tr>
-                                    <th>Lab Test</th>
-                                    <th>Price</th>
-                                </tr>
-                            </thead>
-                            <tbody id="lab-tests-container"></tbody>
-                        </table>
-                        <table class="table table-bordered">
-                            <thead style="background-color: #CCCCCC;">
-                                <tr>
-                                    <th>Admission Date</th>
-                                    <th>Discharge Date</th>
-                                    <th>Room Type</th>
-                                </tr>
-                            </thead>
-                            <tbody id="room-fee-container"></tbody>
-                        </table>
-                    </div>
-
-                    <!-- Hemodialysis Fields Section (Initially Hidden) -->
-                    <div id="hemodialysis-section" class="patient-type-section" style="display:none;">
-                        <table class="table table-bordered">
-                            <thead style="background-color: #CCCCCC;">
-                                <tr>
-                                    <th>Lab Test</th>
-                                    <th>Price</th>
-                                </tr>
-                            </thead>
-                            <tbody id="lab-tests-container-hemo"></tbody>
-                        </table>
-                    </div>
-
-                    <!-- Medication Fee Section -->
+                </div>
+                <!-- Inpatient Fields Section (Initially Hidden) -->
+                <div id="inpatient-section" class="patient-type-section" style="display:none;">
+                    <h4>Room Charges</h4> 
                     <table class="table table-bordered">
-                        <thead style="background-color: #CCCCCC;">
+                        <thead style="background-color:rgba(204, 204, 204, 0.1);">
+                            <tr>
+                                <th>Admission Date</th>
+                                <th>Discharge Date</th>
+                                <th>Room Type</th>
+                            </tr>
+                        </thead>
+                        <tbody id="room-fee-container"></tbody>
+                    </table>
+                    <!-- Medication Fee Section -->
+                    <h4>Medicine Charges</h4>    
+                    <table class="table table-bordered">
+                        <thead style="background-color:rgba(204, 204, 204, 0.1);">
                             <tr>
                                 <th>Medicine Name (Brand)</th>
                                 <th>Total Quantity</th>
@@ -258,61 +207,169 @@ if (isset($_POST['add-billing'])) {
                         </thead>
                         <tbody id="medication-fee-container"></tbody>
                     </table>
-                    <!-- Others Fee Section -->
-                    <div class="form-group row">
-                        <div class="col-sm-12">
-                            <label>Other Items</label>
-                            <div id="other-items-container" class="row">
-                                <div class="other-item col-md-6">
-                                    <input type="text" class="form-control mb-2" name="others[0][name]" placeholder="Item Name">
-                                </div>
-                                <div class="other-item col-md-6">
-                                    <input type="number" class="form-control mb-2" name="others[0][cost]" placeholder="Item Cost">
-                                </div>
+                    <!-- Lab Fee Section -->
+                    <h4>Lab Charges</h4> 
+                    <table class="table table-bordered">
+                        <thead style="background-color:rgba(204, 204, 204, 0.1);">
+                            <tr>
+                                <th>Lab Test</th>
+                                <th>Price</th>
+                            </tr>
+                        </thead>
+                        <tbody id="lab-tests-container"></tbody>
+                    </table>
+                </div>
+                <!-- Hemodialysis Fields Section (Initially Hidden) -->
+                <div id="hemodialysis-section" class="patient-type-section" style="display:none;">
+                    <!-- Medication Fee Section -->
+                    <h4>Medicine Charges</h4>                        
+                    <table class="table table-bordered">
+                        <thead style="background-color:rgba(204, 204, 204, 0.1);">
+                            <tr>
+                                <th>Medicine Name (Brand)</th>
+                                <th>Total Quantity</th>
+                                <th>Price</th>
+                                <th>Total Price</th>
+                            </tr>
+                        </thead>
+                        <tbody id="medication-fee-container-hemo"></tbody>
+                    </table>
+                    <!-- Lab Fee Section -->
+                    <h4>Lab Charges</h4> 
+                    <table class="table table-bordered">
+                        <thead style="background-color:rgba(204, 204, 204, 0.1);">
+                            <tr>
+                                <th>Lab Test</th>
+                                <th>Price</th>
+                            </tr>
+                        </thead>
+                        <tbody id="lab-tests-container-hemo"></tbody>
+                    </table>
+                </div>
+
+                <!-- Newborn Fields Section (Initially Hidden) -->
+                <div id="newborn-section" class="patient-type-section" style="display:none;">
+                    <h4>Room Charges</h4> 
+                    <table class="table table-bordered">
+                        <thead style="background-color:rgba(204, 204, 204, 0.1);">
+                            <tr>
+                                <th>Admission Date</th>
+                                <th>Discharge Date</th>
+                                <th>Room Type</th>
+                            </tr>
+                        </thead>
+                        <tbody id="room-fee-container-newborn"></tbody>
+                    </table>
+                    <!-- Medication Fee Section -->
+                    <h4>Medicine Charges</h4> 
+                    <table class="table table-bordered">
+                        <thead style="background-color:rgba(204, 204, 204, 0.1);">
+                            <tr>
+                                <th>Medicine Name (Brand)</th>
+                                <th>Total Quantity</th>
+                                <th>Price</th>
+                                <th>Total Price</th>
+                            </tr>
+                        </thead>
+                        <tbody id="medication-fee-container-newborn"></tbody>
+                    </table>
+                    <!-- Lab Fee Section -->
+                    <h4>Lab Charges</h4> 
+                    <table class="table table-bordered">
+                        <thead style="background-color:rgba(204, 204, 204, 0.1);">
+                            <tr>
+                                <th>Lab Test</th>
+                                <th>Price</th>
+                            </tr>
+                        </thead>
+                        <tbody id="lab-tests-container-newborn"></tbody>
+                    </table>
+                </div>
+                <!-- Operating Room Fee Section -->
+                <div class="form-group row">
+                    <div class="col-sm-4">
+                        <label for="operating-room-fee-checkbox">Include Operating Room Fee (₱1150)</label>
+                        <input type="checkbox" class="form-control" id="operating-room-fee-checkbox" name="operating_room_fee_checkbox" value="on">
+                    </div>
+                </div>
+                <!-- Add Supplies Section in HTML -->
+                <div class="form-group">
+                    <label for="supplies-fee">Supplies</label>
+                    <input type="number" class="form-control" id="supplies-fee" name="supplies_fee" placeholder="Enter supplies fee">
+                </div>
+                <!-- Others Fee Section -->
+                <div class="form-group row">
+                    <div class="col-sm-12">
+                        <label>Others:</label>
+                        <div id="other-items-container" class="row">
+                            <div class="other-item col-md-6">
+                                <input type="text" class="form-control mb-2" name="others[0][name]" placeholder="Item Name">
                             </div>
-                            <button type="button" id="add-other-item" class="btn btn-info mt-3">Add More Items</button>
+                            <div class="other-item col-md-6">
+                                <input type="number" class="form-control mb-2" name="others[0][cost]" placeholder="Item Cost">
+                            </div>
+                        </div>
+                        <button type="button" id="add-other-item" class="btn btn-info mt-3">Add More Items</button>
+                    </div>
+                </div>
+                <div class="form-group row d-flex align-items-center">
+                    <div class="col-sm-4">
+                        <label for="professional-fee-discount-checkbox">Professional's Fee Discount (12%)</label>
+                        <input type="checkbox" class="form-control" id="professional-fee-discount-checkbox" name="professional_fee_discount_checkbox" value="on">
+                    </div>
+                    <div class="col-sm-4">
+                        <label for="vat-exempt-checkbox">VAT Exempt Discount (12%)</label>
+                        <input type="checkbox" class="form-control" id="vat-exempt-checkbox" name="vat_exempt_checkbox" value="on">
+                    </div>
+                    <div class="col-sm-4">
+                        <label for="discount-checkbox">Senior/PWD Discount (20%)</label>
+                        <input type="checkbox" class="form-control" id="discount-checkbox" name="discount_checkbox" value="on">
+                    </div>
+                </div>
+                <!-- Professional Fee and Readers Fee -->
+                <div class="form-group row">
+                    <div class="col-sm-6">
+                        <label for="professional-fee">Professional's Fee</label>
+                        <input type="number" class="form-control" id="professional-fee" name="professional_fee" placeholder="Enter Professional Fee" required>
+                    </div>
+                    <div class="col-sm-6">
+                        <label for="readers-fee">Reader's Fee</label>
+                        <input type="number" class="form-control" id="readers-fee" name="readers_fee" placeholder="Enter Readers Fee">
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <div class="col-sm-6 mb-3">
+                        <div class="professional-fee-discount-box">
+                            <h5>Professional Fee Discount (12%):</h5>
+                            <p id="professional-fee-discount">₱0.00</p> <!-- Display professional fee discount here -->
                         </div>
                     </div>
-                    <!-- Professional Fee and Readers Fee -->
-                    <div class="form-group row">
-                        <div class="col-sm-6">
-                            <label for="professional-fee">Professional's Fee</label>
-                            <input type="number" class="form-control" id="professional-fee" name="professional_fee" placeholder="Enter Professional Fee" required>
-                        </div>
-                        <div class="col-sm-6">
-                            <label for="readers-fee">Reader's Fee</label>
-                            <input type="number" class="form-control" id="readers-fee" name="readers_fee" placeholder="Enter Readers Fee">
+                    <div class="col-sm-6 mb-3">
+                        <div class="vat-exempt-discount-box">
+                            <h5>VAT Exempt Discount (12%):</h5>
+                            <p id="vat-exempt-discount">₱0.00</p> <!-- Display VAT exempt discount here -->
                         </div>
                     </div>
-                    <div class="form-group row">
-                        <div class="col-sm-6 mb-3">
-                            <div class="total-due-box">
-                                <h5>Total Due:</h5>
-                                <p id="total-due">₱0.00</p> <!-- Display total due here -->
-                            </div>
-                        </div>
-                        <div class="col-sm-6 mb-3">
-                            <div class="discount-amount-box">
-                                <h5>Discount Amount (Senior/PWD):</h5>
-                                <p id="discount-amount">₱0.00</p> <!-- Display discount amount here -->
-                            </div>
-                        </div>
-                        <div class="col-sm-6 mb-3">
-                            <div class="professional-fee-discount-box">
-                                <h5>Professional Fee Discount (12%):</h5>
-                                <p id="professional-fee-discount">₱0.00</p> <!-- Display professional fee discount here -->
-                            </div>
+                    <div class="col-sm-6 mb-3">
+                        <div class="discount-amount-box">
+                            <h5>Senior/PWD Discount (20%):</h5>
+                            <p id="discount-amount">₱0.00</p> <!-- Display discount amount here -->
                         </div>
                     </div>
-                    <div class="mt-3 text-center">
-                        <button class="btn btn-primary submit-btn" name="add-billing">Add Account</button>
+                    <div class="col-sm-6 mb-3">
+                        <div class="total-due-box">
+                            <h5>Total Due: (Amount to pay)</h5>
+                            <p id="total-due">₱0.00</p> <!-- Display total due here -->
+                        </div>
                     </div>
-                </form>
-            </div>
+                </div>
+                <div class="mt-3 text-center">
+                    <button class="btn btn-primary submit-btn" name="add-billing">Add Account</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
-
 
 <?php
 include('footer.php');
@@ -328,12 +385,13 @@ if (isset($msg)) {
     echo 'swal("' . $msg . '");';
 }
 ?>
-
 document.addEventListener('DOMContentLoaded', function () { 
     // Select relevant elements
     const patientTypeSelect = document.getElementById('patient-type-select');
     const professionalFeeDiscountCheckbox = document.getElementById('professional-fee-discount-checkbox');
     const discountCheckbox = document.getElementById('discount-checkbox');
+    const vatExemptCheckbox = document.getElementById('vat-exempt-checkbox');
+    const operatingRoomFeeCheckbox = document.getElementById('operating-room-fee-checkbox');
     const searchInput = document.getElementById('patient-search');
     const patientList = document.getElementById('patient-list');
     const labTestsContainer = document.getElementById('lab-tests-container');
@@ -341,76 +399,95 @@ document.addEventListener('DOMContentLoaded', function () {
     const medicationFeeContainer = document.getElementById('medication-fee-container');
     const readersFeeInput = document.getElementById('readers-fee');
     const othersContainer = document.getElementById('other-items-container'); // Container for others items
+    const suppliesFeeInput = document.getElementById('supplies-fee'); // Supplies fee input
     let labFeeTotal = 0;
     let roomFeeTotal = 0;
     let medicationFeeTotal = 0;
     let othersFee = 0; // Track total others fee
+    let suppliesFee = 0; // Track total supplies fee
     let discountAmount = 0;
     let totalDue = 0;
-
 
     function calculateTotalDue() {
         const professionalFee = parseFloat(document.getElementById('professional-fee').value) || 0;
         const readersFee = parseFloat(document.getElementById('readers-fee').value) || 0;
+        suppliesFee = parseFloat(suppliesFeeInput.value) || 0;
 
-        let discountedProfessionalFee = professionalFee;
-
-        // Variables for discount amounts
-        let professionalFeeDiscountAmount = 0; // For the 12% discount
-        let seniorPwdDiscountAmount = 0; // For the Senior/PWD discount (20%)
-
-        // Apply Professional Fee Discount (12%) first
-        if (professionalFeeDiscountCheckbox.checked) {
-            professionalFeeDiscountAmount = professionalFee * 0.12; // 12% of the original Professional Fee
-            discountedProfessionalFee = professionalFee - professionalFeeDiscountAmount; // Remaining Professional Fee after 12% discount
-        }
-
-        // Apply Senior/PWD Discount (20%) to the remaining Professional Fee
-        if (discountCheckbox.checked) {
-            seniorPwdDiscountAmount = discountedProfessionalFee * 0.2; // 20% of the discounted Professional Fee
-            discountedProfessionalFee -= seniorPwdDiscountAmount; // Remaining Professional Fee after Senior/PWD discount
-        }
-
-        // Calculate total "Other Items" fee
-        othersFee = 0; // Reset othersFee before recalculation
-        const otherItems = document.querySelectorAll('#other-items-container .other-item input[name$="[cost]"]');
-        otherItems.forEach((input) => {
-            othersFee += parseFloat(input.value) || 0; // Add cost to othersFee, default to 0 if empty
+        // Calculate others fee from input fields
+        othersFee = 0;
+        document.querySelectorAll('#other-items-container input[name^="others"]').forEach(input => {
+            if (input.name.includes('[cost]')) {
+                othersFee += parseFloat(input.value) || 0;
+            }
         });
 
-        // Combine Room/Lab/Med Fee and Other Charges
-        let combinedFee = roomFeeTotal + labFeeTotal + medicationFeeTotal + othersFee; // Include othersFee
-        let combinedFeeDiscount = 0;
-        if (discountCheckbox.checked) {
-            combinedFeeDiscount = combinedFee * 0.2; // Apply 20% Senior/PWD discount
-            combinedFee = combinedFee - combinedFeeDiscount; // Remaining combined fee after discount
+        // Operating room fee based on checkbox
+        const operatingRoomFee = operatingRoomFeeCheckbox.checked ? 1150 : 0;
+
+        // Calculate combined fees before applying any discounts
+        let combinedFees = labFeeTotal + roomFeeTotal + medicationFeeTotal + othersFee + suppliesFee + operatingRoomFee + professionalFee + readersFee;
+
+        // Variables for discount amounts
+        let professionalFeeDiscountAmount = 0; // For the Professional Fee discount (12%)
+        let vatExemptDiscountAmount = 0; // For the VAT Exempt discount (12%)
+        let seniorPwdDiscountAmount = 0; // For the Senior/PWD discount (20%)
+
+        // Apply Professional Fee Discount (12%)
+        if (professionalFeeDiscountCheckbox.checked) {
+            professionalFeeDiscountAmount = professionalFee * 0.12; // 12% of the original Professional Fee
         }
 
-        // Calculate total due
-        totalDue = combinedFee + discountedProfessionalFee + readersFee;
+        // Apply VAT Exempt Discount (12%)
+        if (vatExemptCheckbox.checked) {
+            vatExemptDiscountAmount = combinedFees * 0.12; // 12% of the combined fees
+            combinedFees -= vatExemptDiscountAmount;
+        }
+
+        // Apply Senior/PWD Discount (20%)
+        if (discountCheckbox.checked) {
+            seniorPwdDiscountAmount = combinedFees * 0.20; // 20% of the remaining combined fees after VAT Exempt Discount
+            combinedFees -= seniorPwdDiscountAmount;
+        }
+
+        // Calculate total due after applying all discounts
+        totalDue = combinedFees - professionalFeeDiscountAmount;
 
         // Calculate total discounts
-        const totalDiscount = professionalFeeDiscountAmount + seniorPwdDiscountAmount + combinedFeeDiscount;
+        discountAmount = professionalFeeDiscountAmount + vatExemptDiscountAmount + seniorPwdDiscountAmount;
 
-        // Update the displayed values
-        document.getElementById('total-due').textContent = '₱' + totalDue.toFixed(2);
-        document.getElementById('discount-amount').textContent = '₱' + totalDiscount.toFixed(2); // Total discount (Professional Fee + Combined Discounts)
-        document.getElementById('professional-fee-discount').textContent = '₱' + professionalFeeDiscountAmount.toFixed(2); // 12% Professional Fee discount
+        // Update the total due on the page
+        document.getElementById('total-due').innerText = totalDue.toFixed(2);
+
+        // Update the discount boxes
+        document.getElementById('professional-fee-discount').innerText = '₱' + professionalFeeDiscountAmount.toFixed(2);
+        document.getElementById('vat-exempt-discount').innerText = '₱' + vatExemptDiscountAmount.toFixed(2);
+        document.getElementById('discount-amount').innerText = '₱' + seniorPwdDiscountAmount.toFixed(2);
     }
 
-
-
-    // Event listeners for discount checkboxes and fee inputs
-    discountCheckbox.addEventListener('change', calculateTotalDue);
-    professionalFeeDiscountCheckbox.addEventListener('change', calculateTotalDue);
+    // Add event listeners to recalculate total due when inputs change
     document.getElementById('professional-fee').addEventListener('input', calculateTotalDue);
-    readersFeeInput.addEventListener('input', calculateTotalDue);
+    document.getElementById('readers-fee').addEventListener('input', calculateTotalDue);
+    suppliesFeeInput.addEventListener('input', calculateTotalDue);
+    professionalFeeDiscountCheckbox.addEventListener('change', calculateTotalDue);
+    vatExemptCheckbox.addEventListener('change', calculateTotalDue);
+    discountCheckbox.addEventListener('change', calculateTotalDue);
+    operatingRoomFeeCheckbox.addEventListener('change', calculateTotalDue); // Add event listener for operating room fee checkbox
+    othersContainer.addEventListener('input', calculateTotalDue); // Add event listener for others fee inputs
 
     // Handle search input for patients
     searchInput.addEventListener('keyup', function () {
         const query = searchInput.value.trim();
         if (query.length > 2) {
-            fetch('search-billing.php?query=' + query)
+            const patientType = patientTypeSelect.value;
+            let searchUrl = 'search-billing.php?query=' + query;
+
+            if (patientType === 'newborn') {
+                searchUrl = 'search-nb-billing.php?query=' + query;
+            } else if (patientType === 'hemodialysis') {
+                searchUrl = 'search-hemo-billing.php?query=' + query;
+            }
+
+            fetch(searchUrl)
                 .then(response => response.text())
                 .then(data => {
                     patientList.innerHTML = '';
@@ -602,10 +679,8 @@ document.addEventListener('DOMContentLoaded', function () {
         othersFeeInput.name = 'others_fee';
         othersFeeInput.value = othersFee.toFixed(2);  // Ensure it's passed as a number with two decimal places
         this.appendChild(othersFeeInput);
-
     });
 });
-
 </script>
 
 <style>
@@ -682,5 +757,83 @@ document.addEventListener('DOMContentLoaded', function () {
         .total-due-box, .discount-amount-box {
             text-align: left; /* Left-align text for mobile screens */
         }
+    }
+
+    /* Professional Fee Discount Box */
+    .professional-fee-discount-box {
+        padding: 15px;
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        text-align: center; /* Center the content */
+    }
+
+    .professional-fee-discount-box h5 {
+        font-size: 18px;
+        color: #343a40;
+        margin-bottom: 10px;
+    }
+
+    .professional-fee-discount-box p {
+        font-size: 24px;
+        color: black; /* Color for professional fee discount */
+    }
+
+    /* VAT Exempt Discount Box */
+    .vat-exempt-discount-box {
+        padding: 15px;
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        text-align: center; /* Center the content */
+    }
+
+    .vat-exempt-discount-box h5 {
+        font-size: 18px;
+        color: #343a40;
+        margin-bottom: 10px;
+    }
+
+    .vat-exempt-discount-box p {
+        font-size: 24px;
+        color: black; /* Color for VAT exempt discount */
+    }
+    /* Add responsive adjustments */
+    .form-group {
+        margin-bottom: 15px;
+    }
+
+    .col-sm-6, .col-sm-12 {
+        margin-bottom: 15px;
+    }
+
+    /* Ensure form elements scale properly on mobile devices */
+    @media (max-width: 768px) {
+        .col-sm-6 {
+            width: 100%;
+        }
+    }
+
+    /* Card design for sections */
+    .patient-type-section {
+        border: 1px solid #ccc;
+        padding: 15px;
+        border-radius: 8px;
+        box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
+        margin-bottom: 20px;
+    }
+
+
+    table th, table td {
+        padding: 8px;
+        text-align: left;
+    }
+
+    table th {
+        background-color: #cccccc;
+    }
+
+    .float-right {
+        float: right;
     }
 </style>
