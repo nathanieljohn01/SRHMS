@@ -31,7 +31,7 @@ if (isset($_GET['query'])) {
             }
         } else {
             // No matches found
-            echo '<div class="patient-option text-muted">No matching patients found</div>';
+            echo '<li class="search-result-none" style="pointer-events: none; color: gray; padding: 8px 12px;">No matching patients found</li>';
         }
 
         // Close the statement

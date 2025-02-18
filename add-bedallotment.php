@@ -25,27 +25,52 @@ if (isset($_POST['add-bed-allotment'])) {
     $check_stmt->execute();
     $check_result = $check_stmt->get_result();
     
-    if ($check_result->num_rows > 0) {
-        // Set the message for output
-        $msg = "Bed already allotted for this room and bed number combination.";
-    } else {
-        // Proceed with allotment and set status to "Available"
-        $insert_stmt = $connection->prepare("INSERT INTO tbl_bedallocation (room_type, room_number, bed_number, status) VALUES (?, ?, ?, 'Available')");
-        $insert_stmt->bind_param("sss", $room_type, $room_number, $bed_number);
-        
-        if ($insert_stmt->execute()) {
-            // Set the message for output
-            $msg = "Bed allotted successfully";
-        } else {
-            // Set the message for output
-            $msg = "Error!";
-        }
-        
-        $insert_stmt->close();
-    }
+    if ($bed_available) {
+        // Update the bed allotment with sanitized values
+        $update_query = $connection->prepare("UPDATE tbl_bedallocation SET room_type = ?, room_number = ?, bed_number = ? WHERE id = ?");
+        $update_query->bind_param("sssi", $room_type, $room_number, $bed_number, $id);  // "s" for string, "i" for integer
     
-    $check_stmt->close();
-}
+        if ($update_query->execute()) {
+            // SweetAlert success message
+            echo "
+            <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
+            <script>
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Success!',
+                    text: 'Bed allotment updated successfully',
+                    confirmButtonColor: '#12369e'
+                }).then(() => {
+                    window.location.href = 'bed-allotment.php'; // Adjust the redirection URL if needed
+                });
+            </script>";
+        } else {
+            // SweetAlert error message
+            echo "
+            <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
+            <script>
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Error updating bed allotment',
+                    confirmButtonColor: '#12369e'
+                });
+            </script>";
+        }
+    } else {
+        // SweetAlert info message
+        echo "
+        <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
+        <script>
+            Swal.fire({
+                icon: 'info',
+                title: 'No Available Beds',
+                text: 'No available beds in the selected category.',
+                confirmButtonColor: '#12369e'
+            });
+        </script>";
+    }
+}    
 ?>
 
 <div class="page-wrapper">
@@ -55,7 +80,7 @@ if (isset($_POST['add-bed-allotment'])) {
                 <h4 class="page-title">Add Bed Allotment</h4>
             </div>
             <div class="col-sm-8 text-right m-b-20">
-                <a href="bedallotment.php" class="btn btn-primary btn-rounded float-right">Back</a>
+                <a href="bedallotment.php" class="btn btn-primary float-right">Back</a>
             </div>
         </div>
         <div class="row">
@@ -94,16 +119,23 @@ if (isset($msg)) {
 ?>
 </script>
 <style>
-        .btn-primary {
-            background: #12369e;
-            border: none;
-        }
-        .btn-primary:hover {
-            background: #05007E;
-        }
-        .form-control {
-            border-radius: .375rem; /* Rounded corners */
-            border-color: #ced4da; /* Border color */
-            background-color: #f8f9fa; /* Background color */
+.btn-primary {
+    background: #12369e;
+    border: none;
 }
-    </style>
+.btn-primary:hover {
+    background: #05007E;
+}
+.form-control {
+    border-radius: .375rem; /* Rounded corners */
+    border-color: #ced4da; /* Border color */
+    background-color: #f8f9fa; /* Background color */
+}
+</style>
+<style>
+  .btn-primary.submit-btn {
+    border-radius: 4px; /* Mas maliit para hindi sobrang rounded */
+    padding: 10px 20px;
+    font-size: 16px;
+  }
+</style>

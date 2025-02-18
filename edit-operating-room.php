@@ -62,11 +62,44 @@ if (isset($_REQUEST['edit-operating-room'])) {
     // Execute and check if successful
     if (mysqli_stmt_execute($update_query)) {
         $msg = "Operating room record updated successfully!";
+
+        // SweetAlert success message
+        echo "
+        <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Success',
+                    text: 'Operating room record updated successfully!',
+                    confirmButtonColor: '#12369e'
+                }).then(() => {
+                    // Optional: Redirect after success
+                    window.location.href = 'operating-room.php'; // Adjust the URL to your target page
+                });
+            });
+        </script>";
     } else {
         $msg = "Error updating the operating room record!";
+
+        // SweetAlert error message
+        echo "
+        <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Error updating the operating room record!',
+                    confirmButtonColor: '#12369e'
+                });
+            });
+        </script>";
     }
-    
+
+    // Close the update statement
     mysqli_stmt_close($update_query);
+
 }
 ?>
 
@@ -77,7 +110,7 @@ if (isset($_REQUEST['edit-operating-room'])) {
                 <h4 class="page-title">Edit Operating Room</h4>
             </div>
             <div class="col-sm-8 text-right m-b-20">
-                <a href="operating-room.php" class="btn btn-primary btn-rounded float-right">Back</a>
+                <a href="operating-room.php" class="btn btn-primary float-right">Back</a>
             </div>
         </div>
 
@@ -237,6 +270,11 @@ document.addEventListener("DOMContentLoaded", function() {
 </script>
 
 <style>
+    .btn-primary.submit-btn {
+        border-radius: 4px; 
+        padding: 10px 20px;
+        font-size: 16px;
+    }
     .btn-primary {
         background: #12369e;
         border: none;

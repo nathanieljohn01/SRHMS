@@ -12,59 +12,124 @@ function sanitize_input($connection, $input) {
     return mysqli_real_escape_string($connection, htmlspecialchars(trim($input), ENT_QUOTES, 'UTF-8'));
 }
 
-// Handle form submission
 if (isset($_REQUEST['add-operating-room'])) {
-    // Sanitize inputs
+    // Sanitize and prepare inputs
     $patient_id = sanitize_input($connection, $_REQUEST['patient_id']);
     
     // Fetch patient name based on selected patient_id using prepared statement
     $patient_query = mysqli_prepare($connection, "SELECT CONCAT(first_name, ' ', last_name) AS patient_name FROM tbl_patient WHERE patient_id = ?");
-    mysqli_stmt_bind_param($patient_query, 's', $patient_id); // Binding parameter for patient_id
+    mysqli_stmt_bind_param($patient_query, 's', $patient_id); 
     mysqli_stmt_execute($patient_query);
     $patient_result = mysqli_stmt_get_result($patient_query);
     $patient_row = mysqli_fetch_assoc($patient_result);
     $patient_name = $patient_row['patient_name'];
 
-    // Sanitize and prepare other inputs
+    // Sanitize other inputs
     $current_surgery = sanitize_input($connection, $_REQUEST['current_surgery']);
     $surgeon = sanitize_input($connection, $_REQUEST['surgeon']);
     $start_time = date("g:i A", strtotime(sanitize_input($connection, $_REQUEST['start_time'])));
     $notes = sanitize_input($connection, $_REQUEST['notes']);
+    $operation_type = sanitize_input($connection, $_REQUEST['operation_type']);
 
-    // Check if the patient with the same name already exists in the operating room using prepared statement
-    $check_query = mysqli_prepare($connection, "SELECT * FROM tbl_operating_room WHERE patient_name = ?");
-    mysqli_stmt_bind_param($check_query, 's', $patient_name);
-    mysqli_stmt_execute($check_query);
-    $check_result = mysqli_stmt_get_result($check_query);
+    // Fetch the price for the selected operation type
+    $fetch_price_query = mysqli_prepare($connection, "SELECT operation_type, price FROM tbl_operation WHERE id = ?");
+    mysqli_stmt_bind_param($fetch_price_query, 'i', $operation_type);
+    mysqli_stmt_execute($fetch_price_query);
+    mysqli_stmt_store_result($fetch_price_query);
+    mysqli_stmt_bind_result($fetch_price_query, $operation_type, $price);
 
-    if (mysqli_num_rows($check_result) > 0) {
-        $msg = "Patient with the same name already exists in the operating room.";
+    // Check if any rows were returned
+    if (mysqli_stmt_num_rows($fetch_price_query) > 0) {
+        mysqli_stmt_fetch($fetch_price_query);
     } else {
-        // Insert new operating room record using prepared statement
-        $insert_query = mysqli_prepare($connection, "INSERT INTO tbl_operating_room (patient_id, patient_name, current_surgery, surgeon, start_time, notes) VALUES (?, ?, ?, ?, ?, ?)");
-        mysqli_stmt_bind_param($insert_query, 'ssssss', $patient_id, $patient_name, $current_surgery, $surgeon, $start_time, $notes);
-
-        if (mysqli_stmt_execute($insert_query)) {
-            // Now update the operation_status to 'In-progress' after insertion using prepared statement
-            $update_status_query = mysqli_prepare($connection, "UPDATE tbl_operating_room SET operation_status = 'In-Progress' WHERE patient_id = ?");
-            mysqli_stmt_bind_param($update_status_query, 's', $patient_id);
-            
-            if (mysqli_stmt_execute($update_status_query)) {
-                $msg = "Operating room record added successfully, and operation status updated to 'In-Progress'.";
-            } else {
-                $msg = "Error updating operation status!";
-            }
-        } else {
-            $msg = "Error adding the operating room record!";
-        }
+        $msg = "Invalid operation type selected.";
+        $msg = addslashes($msg); // Escape the message for JavaScript
+        echo "
+        <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: '$msg'
+                });
+            });
+        </script>";
+        exit;
     }
+    
+    // Insert new operating room record using prepared statement
+    $insert_query = mysqli_prepare($connection, "INSERT INTO tbl_operating_room (patient_id, patient_name, current_surgery, surgeon, start_time, notes, operation_type, price) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+    mysqli_stmt_bind_param($insert_query, 'sssssssd', $patient_id, $patient_name, $current_surgery, $surgeon, $start_time, $notes, $operation_type, $price);
 
+    if (mysqli_stmt_execute($insert_query)) {
+        // Update operation status to 'In-progress'
+        $update_status_query = mysqli_prepare($connection, "UPDATE tbl_operating_room SET operation_status = 'In-Progress' WHERE patient_id = ?");
+        mysqli_stmt_bind_param($update_status_query, 's', $patient_id);
+    
+        if (mysqli_stmt_execute($update_status_query)) {
+            // Success message
+            $msg = "Operating room record added successfully.";
+            $msg = addslashes($msg); // Escape the message for JavaScript
+            echo "
+            <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
+            <script>
+                var style = document.createElement('style');
+                style.innerHTML = '.swal2-confirm { background-color: #12369e !important; color: white !important; border: none !important; } .swal2-confirm:hover { background-color: #05007E !important; } .swal2-confirm:focus { box-shadow: 0 0 0 0.2rem rgba(18, 54, 158, 0.5) !important; }';
+                document.head.appendChild(style);
+
+                // Trigger SweetAlert
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Success!',
+                    text: '$msg',
+                    confirmButtonColor: '#12369e'
+                }).then(() => {
+                    window.location.href = 'operating-room.php'; // Redirect after SweetAlert
+                });
+            </script>";
+            exit; // Make sure the script stops after this point
+        } else {
+            // Error updating operation status
+            $msg = "Error updating operation status!";
+            $msg = addslashes($msg); // Escape the message for JavaScript
+            echo "
+            <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: '$msg'
+                    });
+                });
+            </script>";
+            exit; // Make sure the script stops here as well
+        }
+    } else {
+        // Error inserting operating room record
+        $msg = "Error adding the operating room record!";
+        $msg = addslashes($msg); // Escape the message for JavaScript
+        echo "
+        <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: '$msg'
+                });
+            });
+        </script>";
+        exit; // Ensure script stops here if this block executes
+    }
+    
     // Close prepared statements
     mysqli_stmt_close($patient_query);
-    mysqli_stmt_close($check_query);
+    mysqli_stmt_close($fetch_price_query);
     mysqli_stmt_close($insert_query);
     mysqli_stmt_close($update_status_query);
-}
+} 
 ?>
 
 <div class="page-wrapper">
@@ -74,7 +139,7 @@ if (isset($_REQUEST['add-operating-room'])) {
                 <h4 class="page-title">Add Operating Room</h4>
             </div>
             <div class="col-sm-8 text-right m-b-20">
-                <a href="operating-room.php" class="btn btn-primary btn-rounded float-right">Back</a>
+                <a href="operating-room.php" class="btn btn-primary float-right">Back</a>
             </div>
         </div>
 
@@ -101,7 +166,7 @@ if (isset($_REQUEST['add-operating-room'])) {
                         <!-- Current Surgery -->
                         <div class="col-md-6">
                             <div class="form-group">
-                                <label>Current Surgery</label>
+                                <label>Surgery Name</label>
                                 <input type="text" class="form-control" name="current_surgery" required>
                             </div>
                         </div>
@@ -110,7 +175,7 @@ if (isset($_REQUEST['add-operating-room'])) {
                         <div class="col-md-6">
                             <div class="form-group">
                                 <label>Surgeon</label>
-                                <select class="select form-control" name="surgeon" required>
+                                <select class="form-control" name="surgeon" required>
                                     <option value="">Select Surgeon</option>
                                     <?php
                                     // Fetch doctors with role=2 and display their name with specialization
@@ -128,10 +193,32 @@ if (isset($_REQUEST['add-operating-room'])) {
                             </div>
                         </div>
                     </div>
-
-
-                    <!-- Start Time -->
+                
+                    <!-- Operation Type and Start Time -->
                     <div class="row">
+                        <!-- Operation Type -->
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Operation Type</label>
+                                <select class="form-control" name="operation_type" id="operation_type" required>
+                                    <option value="">Select Operation Type</option>
+                                    <?php
+                                    // Fetch operation types and prices from the database
+                                    $fetch_operations_query = mysqli_query($connection, "SELECT id, operation_type, price FROM tbl_operation");
+
+                                    if (!$fetch_operations_query) {
+                                        echo '<option value="">Error fetching operations</option>';
+                                    } else {
+                                        while ($row = mysqli_fetch_array($fetch_operations_query)) {
+                                            echo '<option value="' . $row['id'] . '" data-price="' . $row['price'] . '">' . htmlspecialchars($row['operation_type']) . '</option>';
+                                        }
+                                    }
+                                    ?>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Start Time -->
                         <div class="col-md-6">
                             <div class="form-group position-relative">
                                 <label for="start_time">Start Time</label>
@@ -140,10 +227,12 @@ if (isset($_REQUEST['add-operating-room'])) {
                                 </div>
                             </div>
                         </div>
+                    </div>
 
                     <!-- Notes -->
-                    <div class="col-md-6">
-                        <div class="form-group">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="form-group">
                                 <label>Notes</label>
                                 <textarea cols="30" rows="4" class="form-control" name="notes"></textarea>
                             </div>
@@ -209,12 +298,6 @@ include('footer.php');
 ?>
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script type="text/javascript">
-    <?php
-        if(isset($msg)) {
-            echo 'swal("' . $msg . '");';
-        }
-    ?>
-
 $(document).ready(function() {
     $('#patient_name_search').keyup(function() {
         var query = $(this).val();
@@ -251,6 +334,11 @@ $(document).ready(function() {
 </script>
 
 <style>
+.btn-primary.submit-btn {
+        border-radius: 4px; 
+        padding: 10px 20px;
+        font-size: 16px;
+    }    
 .btn-primary {
     background: #12369e;
     border: none;

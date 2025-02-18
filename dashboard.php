@@ -124,24 +124,37 @@ for ($i = $current_month; $i <= 12; $i++) {
         </div>
         <div class="card-body">
             <ul class="contact-list">
-                <?php 
-                // Fetch the list of doctors
-                $fetch_query = mysqli_query($connection, "SELECT doctor_name, specialization, available_days, CONCAT(start_time, ' - ', end_time) AS available_time
-                FROM tbl_schedule
-                WHERE status = 1
-                LIMIT 5");
+                <?php
+                $fetch_query = mysqli_query($connection, "
+                    SELECT 
+                        tbl_employee.id,
+                        CONCAT(tbl_employee.first_name, ' ', tbl_employee.last_name) AS doctor_name,
+                        tbl_employee.specialization,
+                        tbl_schedule.available_days,
+                        CONCAT(tbl_schedule.start_time, ' - ', tbl_schedule.end_time) AS available_time
+                    FROM tbl_schedule
+                    JOIN tbl_employee ON tbl_schedule.doctor_name = CONCAT(tbl_employee.first_name, ' ', tbl_employee.last_name)
+                    WHERE tbl_schedule.status = 1 AND tbl_employee.role = 2
+                    LIMIT 5
+                ");
                 
-                // Loop through the results
                 while($row = mysqli_fetch_array($fetch_query)) {
+                    $profile_picture_src = 'fetch-image-employee.php?id=' . $row['id'];
                 ?>
-                <li>
-                    <div class="contact-info" style="display: flex; flex-direction: column;">
-                        <span class="contact-name"><?php echo htmlspecialchars($row['doctor_name']); ?></span>
-                        <span class="contact-bio text-ellipsis"><?php echo htmlspecialchars($row['specialization']); ?></span>
-                        <span class="contact-bio text-ellipsis"><?php echo htmlspecialchars($row['available_days']); ?></span>
-                        <span class="contact-bio text-ellipsis"><?php echo htmlspecialchars($row['available_time']); ?></span>
+                <li class="doctor-card">
+                    <div class="contact-info">
+                        <div class="doctor-image">
+                            <img src="<?php echo $profile_picture_src; ?>" alt="Doctor Image">
+                        </div>
+                        <div class="doctor-details">
+                            <h5 class="doctor-name"><?php echo htmlspecialchars($row['doctor_name']); ?></h5>
+                            <p class="specialization"><?php echo htmlspecialchars($row['specialization']); ?></p>
+                            <p class="schedule">
+                                <i class="fa fa-calendar"></i> <?php echo htmlspecialchars($row['available_days']); ?><br>
+                                <i class="fa fa-clock"></i> <?php echo htmlspecialchars($row['available_time']); ?>
+                            </p>
+                        </div>
                     </div>
-                    <div style="clear:both;"></div> <!-- clear float -->
                 </li>
                 <?php } ?>
             </ul>
@@ -149,11 +162,83 @@ for ($i = $current_month; $i <= 12; $i++) {
     </div>
 </div>
 
-
-
 <?php 
  include('footer.php');
 ?>
+
+<style>
+/* Updated CSS for doctor name */
+.contact-name {
+    font-size: 1.1em; /* Slightly larger text */
+    font-weight: bold; /* Bold text */
+    color: #3c3c3c; /* Highlight color */
+}
+.contact-info {
+    padding: 10px;
+    border-bottom: 1px solid #ddd; /* Optional: Adds a bottom border for separation */
+}
+canvas {
+    width: 100% !important;
+    height: 300px !important; /* Palitan depende sa gusto mong height */
+}
+.contact-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.doctor-card {
+    padding: 15px;
+    border-bottom: 1px solid #eee;
+    transition: all 0.3s ease;
+}
+
+.doctor-card:hover {
+    background-color: #f8f9fa;
+}
+
+.contact-info {
+    display: flex;
+    align-items: center;
+}
+
+.doctor-image img {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid #fff;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+.doctor-details {
+    margin-left: 20px;
+}
+
+.doctor-name {
+    margin: 0;
+    color: #333;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.specialization {
+    color: rgba(15, 54, 159, 1);
+    margin: 5px 0;
+    font-weight: 500;
+}
+
+.schedule {
+    color: #666;
+    margin: 5px 0;
+    font-size: 14px;
+}
+
+.schedule i {
+    margin-right: 5px;
+    color: gray;
+}
+</style>
 
 <!-- Include Chart.js library -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -219,7 +304,9 @@ for ($i = $current_month; $i <= 12; $i++) {
                 }
             ]
         },
-        options: {
+        options: {  
+            responsive: true,
+            maintainAspectRatio: false,
             scales: {
                 yAxes: [{
                     ticks: {
@@ -259,6 +346,8 @@ for ($i = $current_month; $i <= 12; $i++) {
             }]
         },
         options: {
+            responsive: true,
+            maintainAspectRatio: false,
             scales: {
                 yAxes: [{
                     ticks: {

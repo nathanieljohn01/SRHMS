@@ -126,8 +126,8 @@ ob_end_flush(); // Flush output buffer
                                 name="patientSearchInput"
                                 placeholder="Enter Patient"
                                 onkeyup="searchPatients()">
-                            <div class="input-group-append">
-                                <button type="submit" class="btn btn-primary" id="addPatientBtn" disabled>Add</button>
+                                <div class="input-group-append">
+                                <button type="submit" class="btn btn-outline-secondary" id="addPatientBtn" disabled>Add</button>
                             </div>
                         </div>
                         <input type="hidden" name="patientId" id="patientId">
@@ -137,9 +137,24 @@ ob_end_flush(); // Flush output buffer
             <?php endif; ?>
         </div>
         <div class="table-responsive">
-        <label for="patientSearchInput" class="font-weight-bold">Search Patient:</label>
-        <input class="form-control" type="text" id="cbcSearchInput" onkeyup="filterCBC()" placeholder="Search Patient ID or Patient Name">
-            <table class="datatable table table-stripped" id="cbcTable">
+            <div class="sticky-search">
+            <h5 class="font-weight-bold mb-2">Search Patient:</h5>
+                <div class="input-group mb-3">
+                    <div class="position-relative w-100">
+                        <!-- Search Icon -->
+                        <i class="fa fa-search position-absolute text-secondary" style="top: 50%; left: 12px; transform: translateY(-50%);"></i>
+                        <!-- Input Field -->
+                        <input class="form-control" type="text" id="cbcSearchInput" onkeyup="filterCBC()" style="padding-left: 35px; padding-right: 35px;">
+                        <!-- Clear Button -->
+                        <button class="position-absolute border-0 bg-transparent text-secondary" type="button" onclick="clearSearch()" style="top: 50%; right: 10px; transform: translateY(-50%);">
+                            <i class="fa fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="datatable table table-bordered table-hover" id="cbcTable">
                 <thead style="background-color: #CCCCCC;">
                     <tr>
                         <th>CBC ID</th>
@@ -236,68 +251,176 @@ include('footer.php');
 ?>
 
 <script language="JavaScript" type="text/javascript">
-    function confirmDelete() {
-        return confirm('Are you sure you want to delete this item?');
-    }
+function confirmDelete() {
+    return confirm('Are you sure you want to delete this item?');
+}
 
-    function filterCBC() {
-        var input, filter, table, tr, td, i, txtValue;
-        input = document.getElementById("cbcSearchInput");
-        filter = input.value.toUpperCase();
-        table = document.getElementById("cbcTable");
-        tr = table.getElementsByTagName("tr");
+function clearSearch() {
+    document.getElementById("cbcSearchInput").value = '';
+    filterCBC();
+}
 
-        for (i = 0; i < tr.length; i++) {
-            var matchFound = false;
-            for (var j = 0; j < tr[i].cells.length; j++) {
-                td = tr[i].cells[j];
-                if (td) {
-                    txtValue = td.textContent || td.innerText;
-                    if (txtValue.toUpperCase().indexOf(filter) > -1) {
-                        matchFound = true;
-                        break;
-                    }
-                }
-            }
-            if (matchFound || i === 0) {
-                tr[i].style.display = "";
-            } else {
-                tr[i].style.display = "none";
-            }
+let canPrint, userRole;
+
+$(document).ready(function() {
+    canPrint = <?php echo $can_print ? 'true' : 'false' ?>;
+    userRole = <?php echo $_SESSION['role']; ?>;
+});
+
+function filterCBC() {
+    var input = document.getElementById("cbcSearchInput").value;
+    
+    $.ajax({
+        url: 'fetch_cbc.php',
+        type: 'GET',
+        data: { query: input },
+        success: function(response) {
+            var data = JSON.parse(response);
+            updateCBCTable(data);
+        },
+        error: function(xhr, status, error) {
+            alert('Error fetching data. Please try again.');
         }
-    }
-
-    function searchPatients() {
-        var input = document.getElementById("patientSearchInput").value;
-        if (input.length < 2) {
-            document.getElementById("searchResults").style.display = "none";
-            document.getElementById("searchResults").innerHTML = "";
-            return;
-        }
-        $.ajax({
-            url: "search-cbc.php", // Backend script to fetch patients
-            method: "GET",
-            data: { query: input },
-            success: function (data) {
-                var results = document.getElementById("searchResults");
-                results.innerHTML = data;
-                results.style.display = "block";
-            },
-        });
-    }
-
-    // Select Patient from Search Results
-    $(document).on("click", ".search-result", function () {
-        var patientId = $(this).data("id");
-        var patientName = $(this).text();
-
-        $("#patientId").val(patientId); // Set the hidden input value
-        $("#patientSearchInput").val(patientName); // Set input to selected patient name
-        $("#addPatientBtn").prop("disabled", false); // Enable the Add button
-        $("#searchResults").html("").hide(); // Clear and hide the dropdown
     });
+}
+
+function updateCBCTable(data) {
+    var tbody = $('#cbcTable tbody');
+    tbody.empty();
+    
+    data.forEach(function(record) {
+        tbody.append(`
+            <tr>
+                <td>${record.cbc_id}</td>
+                <td>${record.patient_id}</td>
+                <td>${record.patient_name}</td>
+                <td>${record.gender}</td>
+                <td>${record.age}</td>
+                <td>${record.date_time}</td>
+                <td>${record.hemoglobin}</td>
+                <td>${record.hematocrit}</td>
+                <td>${record.red_blood_cells}</td>
+                <td>${record.white_blood_cells}</td>
+                <td>${record.esr}</td>
+                <td>${record.segmenters}</td>
+                <td>${record.lymphocytes}</td>
+                <td>${record.monocytes}</td>
+                <td>${record.bands}</td>
+                <td>${record.platelets}</td>
+                <td class="text-right">
+                    <div class="dropdown dropdown-action">
+                        <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
+                            <i class="fa fa-ellipsis-v"></i>
+                        </a>
+                        <div class="dropdown-menu dropdown-menu-right">
+                            ${getActionButtons(record.cbc_id)}
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        `);
+    });
+}
+
+function getActionButtons(cbcId) {
+    let buttons = '';
+    
+    if (canPrint) {
+        buttons += `
+            <form action="generate-cbc.php" method="get">
+                <input type="hidden" name="id" value="${cbcId}">
+                <div class="form-group">
+                    <input type="text" class="form-control" id="filename" name="filename" placeholder="Enter File Name" aria-label="Enter File Name" aria-describedby="basic-addon2">
+                </div>
+                <button class="btn btn-primary btn-sm custom-btn" type="submit">
+                    <i class="fa fa-file-pdf-o m-r-5"></i> Generate Result
+                </button>
+            </form>
+        `;
+    }
+    
+    if (userRole === 1) {
+        buttons += `
+            <a class="dropdown-item" href="edit-cbc.php?id=${cbcId}">
+                <i class="fa fa-pencil m-r-5"></i> Insert and Edit
+            </a>
+            <a class="dropdown-item" href="cbc.php?ids=${cbcId}" onclick="return confirmDelete()">
+                <i class="fa fa-trash-o m-r-5"></i> Delete
+            </a>
+        `;
+    } else {
+        buttons += `
+            <a class="dropdown-item disabled" href="#">
+                <i class="fa fa-pencil m-r-5"></i> Edit
+            </a>
+            <a class="dropdown-item disabled" href="#">
+                <i class="fa fa-trash-o m-r-5"></i> Delete
+            </a>
+        `;
+    }
+    
+    return buttons;
+}
+
+function searchPatients() {
+    var input = document.getElementById("patientSearchInput").value;
+    if (input.length < 2) {
+        document.getElementById("searchResults").style.display = "none";
+        document.getElementById("searchResults").innerHTML = "";
+        return;
+    }
+    $.ajax({
+        url: "search-cbc.php",
+        method: "GET",
+        data: { query: input },
+        success: function (data) {
+            var results = document.getElementById("searchResults");
+            results.innerHTML = data;
+            results.style.display = "block";
+        }
+    });
+}
+
+$(document).on("click", ".search-result", function () {
+    var patientId = $(this).data("id");
+    var patientName = $(this).text();
+
+    $("#patientId").val(patientId);
+    $("#patientSearchInput").val(patientName);
+    $("#addPatientBtn").prop("disabled", false);
+    $("#searchResults").html("").hide();
+});
+
 </script>
 <style>
+.sticky-search {
+    position: sticky;
+    left: 0;
+    z-index: 100;
+    width: 100%;
+}  
+.btn-outline-primary {
+    background-color:rgb(252, 252, 252);
+    color: gray;
+    border: 1px solid rgb(228, 228, 228);
+}
+.btn-outline-primary:hover {
+    background-color: #12369e;
+    color: #fff;
+}
+.btn-outline-secondary {
+    color: gray;
+    border: 1px solid rgb(228, 228, 228);
+}
+.btn-outline-secondary:hover {
+    background-color: #12369e;
+    color: #fff;
+}
+.input-group-text {
+    background-color:rgb(255, 255, 255);
+    border: 1px solid rgb(228, 228, 228);
+    color: gray;
+}
 .btn-primary {
             background: #12369e;
             border: none;
@@ -330,10 +453,6 @@ include('footer.php');
     .form-inline .input-group {
         width: 100%;
     }
-    .search-icon-bg {
-    background-color: #fff; 
-    border: none; 
-    color: #6c757d; 
-    }
+    
 </style> 
 

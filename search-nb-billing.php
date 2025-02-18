@@ -30,7 +30,7 @@ if (!empty($query)) {
             }
         } else {
             // If no newborns were found, display a message
-            echo '<div class="patient-option text-muted">No matching newborns found</div>';
+            echo '<li class="search-result-none" style="pointer-events: none; color: gray; padding: 8px 12px;">No matching newborns found</li>';
         }
 
         // Close the prepared statement

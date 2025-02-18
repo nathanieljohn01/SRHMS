@@ -15,14 +15,21 @@ include('includes/connection.php');
             <div class="col-sm-8 col-9 text-right m-b-20">
                 <?php 
                 if ($_SESSION['role'] == 1 || $_SESSION['role'] == 3) {  
-                    echo '<a href="add-deceased.php" class="btn btn-primary btn-rounded float-right"><i class="fa fa-plus"></i> Add Deceased </a>';
+                    echo '<a href="add-deceased.php" class="btn btn-primary float-right"><i class="fa fa-plus"></i> Add Deceased </a>';
                 }
                 ?>
             </div>
         </div>
         <div class="table-responsive">
-            <input class="form-control" type="text" id="deceasedSearchInput" onkeyup="filterDeceased()" placeholder="Search for Deceased">
-            <table class="datatable table table-hover" id="deceasedTable">
+        <div class="input-group">
+            <input class="form-control" type="text" id="deceasedSearchInput" onkeyup="filterDeceased()" placeholder="Search for Patient">
+            <div class="input-group-append">
+                    <button class="btn btn-outline-primary" type="button" onclick="clearSearch()">
+                        <i class="fa fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            <table class="datatable table table-hover table-striped" id="deceasedTable">
                 <thead style="background-color: #CCCCCC;">
                     <tr>
                         <th>Deceased ID</th>
@@ -104,35 +111,103 @@ function confirmDelete(){
 </script>
 
 <script>
-    function filterDeceased() {
-        var input, filter, table, tr, td, i, txtValue;
-        input = document.getElementById("deceasedSearchInput");
-        filter = input.value.toUpperCase();
-        table = document.getElementById("deceasedTable");
-        tr = table.getElementsByTagName("tr");
+    function clearSearch() {
+        document.getElementById("deceasedSearchInput").value = '';
+        filterDeceased();
+    }
 
-        for (i = 0; i < tr.length; i++) {
-            var matchFound = false;
-            for (var j = 0; j < tr[i].cells.length; j++) {
-                td = tr[i].cells[j];
-                if (td) {
-                    txtValue = td.textContent || td.innerText;
-                    if (txtValue.toUpperCase().indexOf(filter) > -1) {
-                        matchFound = true;
-                        break;
-                    }
-                }
+    function filterDeceased() {
+        var input = document.getElementById("deceasedSearchInput").value;
+
+        $.ajax({
+            url: 'fetch_deceased.php',
+            type: 'GET',
+            data: { query: input },
+            success: function(response) {
+                var data = JSON.parse(response);
+                updateDeceasedTable(data);
+            },
+            error: function(xhr, status, error) {
+                alert('Error fetching data. Please try again.');
             }
-            if (matchFound || i === 0) {
-                tr[i].style.display = "";
-            } else {
-                tr[i].style.display = "none";
-            }
+        });
+    }
+
+
+    function updateDeceasedTable(data) {
+        var tbody = $('#deceasedTable tbody');
+        tbody.empty();
+        
+        data.forEach(function(record) {
+            tbody.append(`
+                <tr>
+                    <td>${record.deceased_id}</td>
+                    <td>${record.patient_id}</td>
+                    <td>${record.patient_name}</td>
+                    <td>${record.dod}</td>
+                    <td>${record.tod}</td>
+                    <td>${record.cod}</td>
+                    <td>${record.physician}</td>
+                    <td>${record.next_of_kin_contact}</td>
+                    <td>${record.discharge_status}</td>
+                    <td class="text-right">
+                        <div class="dropdown dropdown-action">
+                            <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
+                                <i class="fa fa-ellipsis-v"></i>
+                            </a>
+                            <div class="dropdown-menu dropdown-menu-right">
+                                ${getActionButtons(record.deceased_id)}
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            `);
+        });
+    }
+
+    var role = <?php echo json_encode($_SESSION['role']); ?>;
+
+    function getActionButtons(deceasedId) {
+        let buttons = '';
+        
+        if (role == 1 || role == 3) {
+            buttons += `
+                <a class="dropdown-item" href="edit-deceased.php?id=${deceasedId}">
+                    <i class="fa fa-pencil m-r-5"></i> Edit
+                </a>
+                <a class="dropdown-item" href="deceased.php?ids=${deceasedId}" onclick="return confirmDelete()">
+                    <i class="fa fa-trash-o m-r-5"></i> Delete
+                </a>
+            `;
         }
+        
+        return buttons;
     }
 </script>
 
 <style>
+    .btn-outline-primary {
+        background-color:rgb(252, 252, 252);
+        color: gray;
+        border: 1px solid rgb(228, 228, 228);
+    }
+    .btn-outline-primary:hover {
+        background-color: #12369e;
+        color: #fff;
+    }
+    .btn-outline-secondary {
+        color:rgb(90, 90, 90);
+        border: 1px solid rgb(228, 228, 228);
+    }
+    .btn-outline-secondary:hover {
+        background-color: #12369e;
+        color: #fff;
+    }
+    .input-group-text {
+        background-color:rgb(255, 255, 255);
+        border: 1px solid rgb(228, 228, 228);
+        color: gray;
+    }   
     .btn-primary {
         background: #12369e;
         border: none;

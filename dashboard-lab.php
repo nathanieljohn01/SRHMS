@@ -149,6 +149,8 @@ $stat_tests = mysqli_fetch_row(mysqli_query($connection, "
                 }]
             },
             options: {
+                responsive: true,
+                maintainAspectRatio: false,
                 scales: {
                     y: { beginAtZero: true }
                 }
@@ -168,6 +170,8 @@ $stat_tests = mysqli_fetch_row(mysqli_query($connection, "
                 }]
             },
             options: {
+                responsive: true,
+                maintainAspectRatio: false,
                 scales: {
                     y: { beginAtZero: true }
                 }
@@ -178,11 +182,15 @@ $stat_tests = mysqli_fetch_row(mysqli_query($connection, "
 </script>
 
 <style>
-    .btn-primary {
-        background: #12369e;
-        border: none;
-    }
-    .btn-primary:hover {
-        background: #05007E;
-    }
+.btn-primary {
+    background: #12369e;
+    border: none;
+}
+.btn-primary:hover {
+    background: #05007E;
+}
+canvas {
+    width: 100% !important;
+    height: 300px !important; /* Palitan depende sa gusto mong height */
+}
 </style>

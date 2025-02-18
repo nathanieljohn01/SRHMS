@@ -29,8 +29,38 @@ if (isset($_REQUEST['add-housekeeping-schedule'])) {
     // Execute the statement
     if ($insert_query->execute()) {
         $msg = "Housekeeping schedule added successfully";
+        // SweetAlert success message
+        echo "
+        <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                var style = document.createElement('style');
+                style.innerHTML = '.swal2-confirm { background-color: #12369e !important; color: white !important; border: none !important; } .swal2-confirm:hover { background-color: #05007E !important; } .swal2-confirm:focus { box-shadow: 0 0 0 0.2rem rgba(18, 54, 158, 0.5) !important; }';
+                document.head.appendChild(style);
+
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Success!',
+                    text: '$msg',
+                    confirmButtonColor: '#12369e'
+                }).then(() => {
+                    window.location.href = 'housekeeping-schedule.php'; // Adjust the redirection URL as needed
+                });
+            });
+        </script>";
     } else {
         $msg = "Error: " . $connection->error;
+        // SweetAlert error message
+        echo "
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: '$msg'
+                });
+            });
+        </script>";
     }
 
     // Close the prepared statement
@@ -45,7 +75,7 @@ if (isset($_REQUEST['add-housekeeping-schedule'])) {
                 <h4 class="page-title">Add Housekeeping Schedule</h4>
             </div>
             <div class="col-sm-8 text-right m-b-20">
-                <a href="housekeeping-schedule.php" class="btn btn-primary btn-rounded float-right">Back</a>
+                <a href="housekeeping-schedule.php" class="btn btn-primary float-right">Back</a>
             </div>
         </div>
         <div class="row">
@@ -109,15 +139,12 @@ if (isset($_REQUEST['add-housekeeping-schedule'])) {
 include('footer.php');
 ?>
 
-<script type="text/javascript">
-<?php
-if(isset($msg)) {
-    echo 'swal("' . $msg . '");';
-}
-?>
-</script>
-
 <style>
+        .btn-primary.submit-btn {
+        border-radius: 4px; 
+        padding: 10px 20px;
+        font-size: 16px;
+    }
         .btn-primary {
             background: #12369e;
             border: none;

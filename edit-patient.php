@@ -70,8 +70,38 @@ if (isset($_POST['save-patient'])) {
         $result = mysqli_stmt_get_result($fetch_query_stmt);
         $row = mysqli_fetch_array($result, MYSQLI_ASSOC);
         mysqli_stmt_close($fetch_query_stmt);
+        
+        // Success message for SweetAlert
+        echo "
+        <script src='https://cdn.jsdelivr.net/npm/sweetalert2@11'></script>
+        <script>
+            Swal.fire({
+                title: 'Success!',
+                text: '$msg',
+                icon: 'success',
+                confirmButtonColor: '#12369e',
+                confirmButtonText: 'OK'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    window.location.href = 'patients.php?id=$id'; // Redirect to updated patient details page
+                }
+            });
+        </script>";
     } else {
-        $msg = "Error!";
+        $msg = "Error updating patient details!";
+        
+        // Error message for SweetAlert
+        echo "
+        <script src='https://cdn.jsdelivr.net/npm/sweetalert2@11'></script>
+        <script>
+            Swal.fire({
+                title: 'Error!',
+                text: '$msg',
+                icon: 'error',
+                confirmButtonColor: '#12369e',
+                confirmButtonText: 'OK'
+            });
+        </script>";
     }
 
     mysqli_stmt_close($update_query_stmt);
@@ -280,15 +310,12 @@ include('footer.php');
 });
 </script>
 
-<script type="text/javascript">
-    <?php
-    if (isset($msg)) {
-        echo 'swal("' . $msg . '");';
-    }
-    ?>
-</script>
-
 <style>
+    .btn-primary.submit-btn {
+        border-radius: 4px; 
+        padding: 10px 20px;
+        font-size: 16px;
+    }
 .btn-primary {
             background: #12369e;
             border: none;

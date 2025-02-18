@@ -16,12 +16,29 @@ include('includes/connection.php');
                 <h4 class="page-title">Visitor Pass</h4>
             </div>
             <div class="col-sm-8 col-9 text-right m-b-20">
-                <a href="add-pass.php" class="btn btn-primary btn-rounded float-right"><i class="fa fa-plus"></i> Issue Pass</a>
+                <a href="add-pass.php" class="btn btn-primary float-right"><i class="fa fa-plus"></i> Issue Pass</a>
             </div>
         </div>
         <div class="table-responsive">
-            <table class="datatable table table-hover">
-                <thead>
+            <div class="sticky-search">
+            <h5 class="font-weight-bold mb-2">Search Patient:</h5>
+                <div class="input-group mb-3">
+                    <div class="position-relative w-100">
+                        <!-- Search Icon -->
+                        <i class="fa fa-search position-absolute text-secondary" style="top: 50%; left: 12px; transform: translateY(-50%);"></i>
+                        <!-- Input Field -->
+                        <input class="form-control" type="text" id="visitorSearchInput" onkeyup="filterVisitor()" style="padding-left: 35px; padding-right: 35px;">
+                        <!-- Clear Button -->
+                        <button class="position-absolute border-0 bg-transparent text-secondary" type="button" onclick="clearSearch()" style="top: 50%; right: 10px; transform: translateY(-50%);">
+                            <i class="fa fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="datatable table table-hover" id="visitorTable">
+                <thead style="background-color: #CCCCCC;">
                     <tr>
                         <th>Visitor ID</th>
                         <th>Visitor Name</th>
@@ -83,7 +100,105 @@ include('footer.php');
         return confirm('Are you sure you want to check out this visitor?');
     }
 </script>
+<script>
+    function clearSearch() {
+        document.getElementById("visitorSearchInput").value = '';
+        filterVisitor();
+    }
+
+    function filterVisitor() {
+        var input = document.getElementById("visitorSearchInput").value;
+        
+        $.ajax({
+            url: 'fetch_visitor.php',
+            type: 'GET',
+            data: { query: input },
+            success: function(response) {
+                try {
+                    var data = JSON.parse(response);
+                    updateVisitorTable(data);
+                } catch (e) {
+                    console.error('JSON parse error:', e);
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('Ajax error:', error);
+            }
+        });
+    }
+
+    function updateVisitorTable(data) {
+        var tbody = $('#visitorTable tbody');
+        tbody.empty();
+        
+        data.forEach(function(record) {
+            tbody.append(`
+                <tr>
+                    <td>${record.visitor_id}</td>
+                    <td>${record.visitor_name}</td>
+                    <td>${record.contact_number}</td>
+                    <td>${record.purpose}</td>
+                    <td>${record.check_in_time}</td>
+                    <td>${record.check_out_time}</td>
+                    <td class="text-right">
+                        <div class="dropdown dropdown-action">
+                            <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
+                                <i class="fa fa-ellipsis-v"></i>
+                            </a>
+                            <div class="dropdown-menu dropdown-menu-right">
+                                ${getActionButtons(record)}
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            `);
+        });
+    }
+
+    function getActionButtons(record) {
+        let buttons = '';
+        
+        if (!record.check_out_time) {
+            buttons += `
+                <a class="dropdown-item" href="checkout.php?id=${record.id}" onclick="return confirmCheckout()">
+                    <i class="fa fa-sign-out-alt m-r-5"></i> Check Out
+                </a>
+            `;
+        }
+        
+        buttons += `
+            <a class="dropdown-item" href="visitor-pass.php?ids=${record.id}" onclick="return confirmDelete()">
+                <i class="fa fa-trash-o m-r-5"></i> Delete
+            </a>
+        `;
+        
+        return buttons;
+    }
+
+</script>
 <style>
+.btn-outline-primary {
+    background-color:rgb(252, 252, 252);
+    color: gray;
+    border: 1px solid rgb(228, 228, 228);
+}
+.btn-outline-primary:hover {
+    background-color: #12369e;
+    color: #fff;
+}
+.btn-outline-secondary {
+    color:rgb(90, 90, 90);
+    border: 1px solid rgb(228, 228, 228);
+}
+.btn-outline-secondary:hover {
+    background-color: #12369e;
+    color: #fff;
+}
+.input-group-text {
+    background-color:rgb(255, 255, 255);
+    border: 1px solid rgb(228, 228, 228);
+    color: gray;
+}       
 .btn-primary {
             background: #12369e;
             border: none;

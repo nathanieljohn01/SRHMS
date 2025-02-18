@@ -37,7 +37,7 @@ if (isset($_POST['save-emp'])) {
     $address = sanitize($connection, $_POST['address']);
     $bio = sanitize($connection, $_POST['bio']);
     $role = sanitize($connection, $_POST['role']);
-    $status = sanitize($connection, $_POST['status']);
+    $status = isset($_POST['status']) ? sanitize($connection, $_POST['status']) : '';
     $specialization = isset($_POST['specialization']) ? sanitize($connection, $_POST['specialization']) : '';
 
     // Encrypt the password before saving it
@@ -66,26 +66,55 @@ if (isset($_POST['save-emp'])) {
         // Prepare the update statement
         if ($profile_picture_updated) {
             $stmt = mysqli_prepare($connection, "UPDATE tbl_employee SET first_name=?, last_name=?, specialization=?, username=?, emailid=?, password=?, dob=?, employee_id=?, joining_date=?, gender=?, address=?, phone=?, bio=?, role=?, status=?, profile_picture=? WHERE id=?");
-
+    
             // Bind parameters with 'b' for BLOB (image data)
-            mysqli_stmt_bind_param($stmt, 'ssssssssssssssbsi', $first_name, $last_name, $specialization, $username, $emailid, $hashed_password, $dob, $employee_id, $joining_date, $gender, $address, $phone, $bio, $role, $status, $profile_picture, $id);
+            mysqli_stmt_bind_param($stmt, 'ssssssssssssssssi', $first_name, $last_name, $specialization, $username, $emailid, $hashed_password, $dob, $employee_id, $joining_date, $gender, $address, $phone, $bio, $role, $status, $profile_picture, $id);
         } else {
             // Update employee data without profile picture
             $stmt = mysqli_prepare($connection, "UPDATE tbl_employee SET first_name=?, last_name=?, specialization=?, username=?, emailid=?, password=?, dob=?, employee_id=?, joining_date=?, gender=?, address=?, phone=?, bio=?, role=?, status=? WHERE id=?");
-
+    
             // Bind parameters excluding 'profile_picture'
-            mysqli_stmt_bind_param($stmt, 'ssssssssssssssi', $first_name, $last_name, $specialization, $username, $emailid, $hashed_password, $dob, $employee_id, $joining_date, $gender, $address, $phone, $bio, $role, $status, $id);
+            mysqli_stmt_bind_param($stmt, 'sssssssssssssssi', $first_name, $last_name, $specialization, $username, $emailid, $hashed_password, $dob, $employee_id, $joining_date, $gender, $address, $phone, $bio, $role, $status, $id);
         }
-
+    
         // Execute the query and check for errors
         if (mysqli_stmt_execute($stmt)) {
             $msg = "Employee updated successfully";
+    
+            // SweetAlert success message
+            echo "
+            <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Success',
+                        text: 'Employee updated successfully',
+                        confirmButtonColor: '#12369e'
+                    }).then(() => {
+                        window.location.href = 'employees.php'; // Adjust the page to redirect to after success
+                    });
+                });
+            </script>";
         } else {
             $msg = "Error: " . mysqli_error($connection);
+    
+            // SweetAlert error message
+            echo "
+            <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Error updating employee: " . mysqli_error($connection) . "',
+                    });
+                });
+            </script>";
         }
-
+    
         mysqli_stmt_close($stmt);
-    }
+    }    
 }
 ?>
 
@@ -96,7 +125,7 @@ if (isset($_POST['save-emp'])) {
                 <h4 class="page-title">Edit Employee</h4>
             </div>
             <div class="col-sm-8 text-right mb-3">
-                <a href="employees.php" class="btn btn-primary btn-rounded">Back</a>
+                <a href="employees.php" class="btn btn-primary float-right">Back</a>
             </div>
         </div>
         <div class="row">
@@ -256,7 +285,6 @@ if (isset($_POST['save-emp'])) {
                                 </div>
                             </div>
                         </div>
-                        
                         <!-- Submit Button -->
                         <div class="col-sm-12 text-center mt-3">
                             <button class="btn btn-primary submit-btn" name="save-emp">Save</button>
@@ -271,14 +299,12 @@ if (isset($_POST['save-emp'])) {
 <?php 
 include('footer.php');
 ?>
-<script type="text/javascript">
-    <?php
-    if(isset($msg) && $msg) {
-        echo 'swal("' . $msg . '");';
-    }
-    ?>
-</script>
 <style>
+    .btn-primary.submit-btn {
+        border-radius: 4px; 
+        padding: 10px 20px;
+        font-size: 16px;
+    }
     .btn-primary {
         background: #12369e;
         border: none;

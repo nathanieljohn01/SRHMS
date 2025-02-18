@@ -7,7 +7,7 @@ $query = isset($_GET['query']) ? trim($_GET['query']) : '';
 // Check if the query is not empty
 if (!empty($query)) {
     // Prepare the SQL query to search for patients by name and check for discharge_date being non-null
-    $sql = "SELECT patient_id, patient_name FROM tbl_inpatient_record WHERE patient_name LIKE ? AND discharge_date IS NOT NULL";
+    $sql = "SELECT patient_id, patient_name FROM tbl_hemodialysis WHERE patient_name LIKE ? AND date_time IS NOT NULL";
     
     // Prepare the statement
     if ($stmt = mysqli_prepare($connection, $sql)) {
@@ -30,7 +30,7 @@ if (!empty($query)) {
             }
         } else {
             // If no patients were found, display a message
-            echo '<div class="patient-option text-muted">No matching patients found</div>';
+            echo '<li class="search-result-none" style="pointer-events: none; color: gray; padding: 8px 12px;">No matching patients found</li>';
         }
 
         // Close the prepared statement

@@ -19,29 +19,58 @@ if (isset($_GET['id'])) {
     $filename = isset($_GET['filename']) ? mysqli_real_escape_string($connection, $_GET['filename']) : 'urinalysis_' . $urinalysis_id;
 }
 
-// Create new PDF document
-$pdf = new TCPDF('L', 'mm', 'A4', true, 'UTF-8', false);
+// Extend TCPDF class to create custom Header
+class MYPDF extends TCPDF {
+    // Page header
+    public function Header() {
+        // Logo
+        $image_file = __DIR__ . '/assets/img/srchlogo.png'; // Use absolute path
+        $this->Image($image_file, 15, 5, 22, '', 'PNG', '', 'T', false, 300, '', false, false, 0, false, false, false);
+
+        // Set font for the title
+        $this->SetFont('helvetica', 'B', 16);
+
+        // Calculate X position for center alignment
+        $title = 'Santa Rosa Community Hospital';
+        $this->SetY(15); // Set Y position
+        $this->Cell(0, 5, $title, 0, 1, 'C', 0, '', 0, false, 'M', 'M'); // Centered title
+
+        // Add some spacing after the title
+        $this->Ln(2);
+
+        // Set font for the subtitle
+        $this->SetFont('helvetica', '', 14);
+        $subtitle = 'City of Santa Rosa, Laguna';
+        $this->Cell(0, 5, $subtitle, 0, 1, 'C', 0, '', 0, false, 'M', 'M'); // Centered subtitle
+
+        // Draw a line below the header
+        $this->Line(0, 30, 300, 30); // (X1, Y1, X2, Y2)
+
+        // Add some spacing after the header
+        $this->Ln(5);
+    }
+}
+
+// Create new PDF document using the extended class
+$pdf = new MYPDF('L', 'mm', 'A4', true, 'UTF-8', false);
 
 // Set document information
-$pdf->SetCreator('Your Creator');
-$pdf->SetAuthor('Your Name');
+$pdf->SetCreator('Santa Rosa Hospital');
+$pdf->SetAuthor('Santa Rosa Community Hospital');
 $pdf->SetTitle('Urinalysis Report');
 $pdf->SetSubject('Urinalysis');
 $pdf->SetKeywords('Urinalysis, Report');
 
-// Set default header data
-$pdf->SetHeaderData('assets/img/srchlogo.png', 78, 'Santa Rosa Community Hospital', '    City Government of Santa Rosa');
-
 // Set header and footer fonts
-$pdf->setHeaderFont(Array('helvetica', '', 14));
-$pdf->setFooterFont(Array('helvetica', '', 14));
+$pdf->setHeaderFont(['helvetica', '', 16]);
+$pdf->setFooterFont(['helvetica', '', 14]);
 
 // Set default monospaced font
 $pdf->SetDefaultMonospacedFont(PDF_FONT_MONOSPACED);
 
 // Set margins
-$pdf->SetMargins(20, 20, 20);
-$pdf->SetHeaderMargin(5);
+$pdf->SetMargins(15, 30, 15);
+$pdf->SetHeaderMargin(10);
 $pdf->SetFooterMargin(10);
 
 // Set auto page breaks
@@ -57,22 +86,27 @@ $pdf->AddPage();
 $html = '';
 
 // Prepare the query using a prepared statement to prevent SQL injection
-$fetch_query = $connection->prepare("SELECT * FROM tbl_urinalysis WHERE urinalysis_id = ?");
-$fetch_query->bind_param('s', $urinalysis_id);
-$fetch_query->execute();
-$result = $fetch_query->get_result();
+$query = "SELECT * FROM tbl_urinalysis WHERE urinalysis_id = ?";
+$stmt = mysqli_prepare($connection, $query);
+mysqli_stmt_bind_param($stmt, 's', $urinalysis_id); // Bind parameter to prevent SQL injection
+mysqli_stmt_execute($stmt);
+$result = mysqli_stmt_get_result($stmt);
+
 
 while ($row = $result->fetch_assoc()) {
     // Calculate age
     $dob = date('Y-m-d', strtotime(str_replace('/', '-', $row['dob'])));
     $year = (date('Y') - date('Y', strtotime($dob)));
 
-    // Patient Information (sanitized with htmlspecialchars)
+    // Patient Information
     $html .= '<div style="text-align: center; margin-bottom: 20px;">
-                <img src="assets/img/srchlogo.png" alt="Hospital Logo" style="max-width: 120px; height: 108px;">
                 <h3>Urinalysis</h3>
-                <p><strong>Patient Name:</strong> <strong>' . htmlspecialchars($row['patient_name']) . '</strong> | <strong>Age:</strong> <strong>' . $year . '</strong> | <strong>Gender:</strong> <strong>' . htmlspecialchars($row['gender']) . '</strong> | <strong>Date and Time:</strong> <strong>' . date('F d Y g:i A', strtotime($row['date_time'])) . '</strong></p>
+                <p><strong>Patient Name:</strong> ' . htmlspecialchars($row['patient_name'], ENT_QUOTES, 'UTF-8') . ' | 
+                <strong>Age:</strong> ' . $year . ' | 
+                <strong>Gender:</strong> ' . htmlspecialchars($row['gender'], ENT_QUOTES, 'UTF-8') . ' | 
+                <strong>Date and Time:</strong> ' . date('F d Y g:i A', strtotime($row['date_time'])) . '</p>
             </div>';
+
 
     // Macroscopic Table (sanitized with htmlspecialchars)
     $html .= '<h4 style="font-size: 16px; text-align: center;">Macroscopic</h4>';
@@ -92,7 +126,7 @@ while ($row = $result->fetch_assoc()) {
                 </thead>
                 <tbody>
                     <tr>
-                        <td><strong>' . htmlspecialchars($row['color']) . '</strong></td>
+                        <td><strong>' . htmlspecialchars($row['color']) . '<strong><strong></td>
                         <td><strong>' . htmlspecialchars($row['transparency']) . '</strong></td>
                         <td><strong>' . htmlspecialchars($row['reaction']) . '</strong></td>
                         <td><strong>' . htmlspecialchars($row['protein']) . '</strong></td>

@@ -77,11 +77,39 @@ if (isset($_POST['edit-urinalysis'])) {
 
     // Execute the update query
     if (mysqli_stmt_execute($update_query)) {
-        $msg = "Urinalysis result updated successfully";
+        // SweetAlert success message
+        echo "
+        <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Success',
+                    text: 'Urinalysis result updated successfully!',
+                    confirmButtonColor: '#12369e'
+                }).then(() => {
+                    // Redirect to the relevant page or refresh
+                    window.location.href = 'urinalysis.php'; // Adjust the URL as needed
+                });
+            });
+        </script>";
     } else {
-        $msg = "Error updating the urinalysis result!";
+        // SweetAlert error message
+        echo "
+        <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Error updating the urinalysis result!',
+                    confirmButtonColor: '#12369e'
+                });
+            });
+        </script>";
     }
 
+    // Close the prepared statement
     mysqli_stmt_close($update_query);
 }
 ?>
@@ -93,7 +121,7 @@ if (isset($_POST['edit-urinalysis'])) {
                 <h4 class="page-title">Edit Urinalysis Result</h4>
             </div>
             <div class="col-sm-8 text-right mb-3">
-                <a href="urinalysis.php" class="btn btn-primary btn-rounded">Back</a>
+                <a href="urinalysis.php" class="btn btn-primary">Back</a>
             </div>
         </div>
         <div class="row">
@@ -220,6 +248,11 @@ include('footer.php');
     ?>
 </script>
 <style>
+    .btn-primary.submit-btn {
+        border-radius: 4px; 
+        padding: 10px 20px;
+        font-size: 16px;
+    }
     .btn-primary {
             background: #12369e;
             border: none;

@@ -23,7 +23,7 @@ if (isset($_GET['query'])) {
             echo '<div class="patient-option" data-id="' . $row['inpatient_id'] . '">' . $row['patient_name'] . '</div>';
         }
     } else {
-        echo '<div class="patient-option text-muted">No matching patients found</div>';
+        echo '<li class="search-result-none" style="pointer-events: none; color: gray; padding: 8px 12px;">No matching patients found</li>';
     }
 
     // Close the statement

@@ -43,11 +43,42 @@ if (isset($_POST['update-housekeeping-schedule'])) {
     // Execute the query and check if it was successful
     if (mysqli_stmt_execute($stmt)) {
         $msg = "Housekeeping schedule updated successfully.";
+
+        // SweetAlert success message
+        echo "
+        <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Success',
+                    text: 'Housekeeping schedule updated successfully.',
+                    confirmButtonColor: '#12369e'
+                }).then(() => {
+                    // Optional: Redirect after success, adjust the URL as necessary
+                    window.location.href = 'housekeeping-schedule.php'; // Change to your relevant page
+                });
+            });
+        </script>";
     } else {
         $msg = "Error updating schedule: " . mysqli_error($connection);
+
+        // SweetAlert error message
+        echo "
+        <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Error updating schedule: " . mysqli_error($connection) . "',
+                });
+            });
+        </script>";
     }
 
     mysqli_stmt_close($stmt);
+
 }
 ?>
 
@@ -58,7 +89,7 @@ if (isset($_POST['update-housekeeping-schedule'])) {
                 <h4 class="page-title">Edit Housekeeping Schedule</h4>
             </div>
             <div class="col-sm-8 text-right m-b-20">
-                <a href="housekeeping-schedule.php" class="btn btn-primary btn-rounded float-right">Back</a>
+                <a href="housekeeping-schedule.php" class="btn btn-primary float-right">Back</a>
             </div>
         </div>
         <div class="row">
@@ -138,6 +169,11 @@ if(isset($msg)) {
 </script>
 
 <style>
+.btn-primary.submit-btn {
+    border-radius: 4px; 
+    padding: 10px 20px;
+    font-size: 16px;
+}
 .btn-primary {
             background: #12369e;
             border: none;

@@ -1,11 +1,23 @@
 <?php
 session_start();
-if(empty($_SESSION['name'])) {
+ob_start();
+if (empty($_SESSION['name'])) {
     header('location:index.php');
+    exit;
 }
 include('header.php');
 include('includes/connection.php');
+
+// Function to sanitize inputs
+function sanitize($connection, $input) {
+    return mysqli_real_escape_string($connection, trim($input));
+}
+
+$role = isset($_SESSION['role']) ? $_SESSION['role'] : null;
+$doctor_name = isset($_SESSION['name']) ? $_SESSION['name'] : null;
+
 ?>
+
 <div class="page-wrapper">
     <div class="content">
         <div class="row">
@@ -17,16 +29,25 @@ include('includes/connection.php');
                 // Check user role
                 if ($_SESSION['role'] == 1) {
                     // Show Add Schedule button for roles 1 and 2
-                    echo '<a href="add-schedule.php" class="btn btn-primary btn-rounded float-right"><i class="fa fa-plus"></i> Add Schedule</a>';
+                    echo '<a href="add-schedule.php" class="btn btn-primary float-right"><i class="fa fa-plus"></i> Add Schedule</a>';
                 }
                 ?>
             </div>
         </div>
         <div class="table-responsive">
-            <table class="datatable table table-hover">
-            <thead style="background-color: #CCCCCC;">
+        <label for="scheduleSearchInput" class="font-weight-bold">Search Doctor:</label>
+            <div class="input-group">
+            <input class="form-control" type="text" id="scheduleSearchInput" onkeyup="filterSchedule()" placeholder="Search Doctor">
+            <div class="input-group-append">
+                    <button class="btn btn-outline-primary" type="button" onclick="clearSearch()">
+                        <i class="fa fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            <table class="datatable table table-hover" id="scheduleTable">
+                <thead style="background-color: #CCCCCC;">
                     <tr>
-                        <th>Doctor Name</th>
+                        <th>Doctor Name</th>    
                         <th>Doctor Specialist</th>    
                         <th>Available Days</th>
                         <th>Available Time</th>
@@ -37,16 +58,20 @@ include('includes/connection.php');
                 </thead>
                 <tbody>
                     <?php
-                    if (isset($_GET['ids'])) {
-                        $id = $_GET['ids'];
-                        // Sanitize $id before using it in the query
-                        $id = mysqli_real_escape_string($connection, $id);
-                        // Update query to set deleted = 1
-                        $update_query = mysqli_query($connection, "UPDATE tbl_schedule SET deleted = 1 WHERE id='$id'");
+                    // Filter schedules by doctor_name if role is 2 (doctor)
+                    if ($role == 2) {
+                        $fetch_query = $connection->prepare("SELECT * FROM tbl_schedule WHERE deleted = 0 AND doctor_name = ?");
+                        $fetch_query->bind_param("s", $doctor_name);
+                    } else {
+                        $fetch_query = $connection->prepare("SELECT * FROM tbl_schedule WHERE deleted = 0");
                     }
 
-                    $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_schedule WHERE deleted = 0");
-                    while ($row = mysqli_fetch_array($fetch_query)) {
+                    $fetch_query->execute();
+                    $result = $fetch_query->get_result();
+
+                    while ($row = $result->fetch_assoc()) {
+                        $status = $row['status'] == 1 ? 'Available' : 'Not Available';
+                        $status_class = $row['status'] == 1 ? 'status-green' : 'status-red';
                     ?>
                     <tr>
                         <td><?php echo $row['doctor_name']; ?></td>
@@ -54,21 +79,18 @@ include('includes/connection.php');
                         <td><?php echo $row['available_days']; ?></td>
                         <td><?php echo $row['start_time'] . ' - ' . $row['end_time']; ?></td>
                         <td><?php echo $row['message']; ?></td>
-                        <?php if ($row['status'] == 1) { ?>
-                            <td><span class="custom-badge status-green">Available</span></td>
-                        <?php } else { ?>
-                            <td><span class="custom-badge status-red">Not Available</span></td>
-                        <?php } ?>
+                        <td><span class="custom-badge <?php echo $status_class; ?>"><?php echo $status; ?></span></td>
                         <td class="text-right">
                             <div class="dropdown dropdown-action">
                                 <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><i class="fa fa-ellipsis-v"></i></a>
                                 <div class="dropdown-menu dropdown-menu-right">
-                                    <?php 
-                                    if ($_SESSION['role'] == 1 ) {
-                                        echo '<a class="dropdown-item" href="edit-schedule.php?id=' . $row['id'] . '"><i class="fa fa-pencil m-r-5"></i> Edit</a>';
-                                        echo '<a class="dropdown-item" href="schedule.php?ids=' . $row['id'] . '" onclick="return confirmDelete()"><i class="fa fa-trash-o m-r-5"></i> Delete</a>';
-                                    }
-                                    ?>
+                                    <?php if ($role == 2 && $doctor_name == $row['doctor_name']) { ?>
+                                        <a class="dropdown-item" href="edit-schedule.php?id=<?php echo $row['id']; ?>"><i class="fa fa-pencil m-r-5"></i> Edit</a>
+                                    <?php } ?>
+                                    <?php if ($role == 1) { ?>
+                                        <a class="dropdown-item" href="edit-schedule.php?id=<?php echo $row['id']; ?>"><i class="fa fa-pencil m-r-5"></i> Edit</a>
+                                        <a class="dropdown-item" href="schedule.php?ids=<?php echo $row['id']; ?>" onclick="return confirmDelete()"><i class="fa fa-trash-o m-r-5"></i> Delete</a>
+                                    <?php } ?>
                                 </div>
                             </div>
                         </td>
@@ -87,12 +109,80 @@ include('footer.php');
         return confirm('Are you sure you want to delete this Schedule?');
     }
 </script>
+<script>
+    function filterSchedule() {
+    var input, filter, table, tr, td, i, j, txtValue;
+    input = document.getElementById("scheduleSearchInput");
+    filter = input.value.toUpperCase();
+    table = document.getElementById("scheduleTable");
+    tr = table.getElementsByTagName("tr");
+
+    // If DataTable is initialized, clear its search and use manual filtering
+    if ($.fn.DataTable.isDataTable("#scheduleTable")) {
+        var scheduleTableInstance = $('#scheduleTable').DataTable();
+        scheduleTableInstance.search('').draw();  // Clear DataTable search
+        scheduleTableInstance.page.len(-1).draw();  // Show all rows temporarily
+    }
+
+    // Manual filtering logic
+    for (i = 1; i < tr.length; i++) {  // Start from 1 to skip the header row
+        tr[i].style.display = "none";  // Hide all rows initially
+        td = tr[i].getElementsByTagName("td");
+        for (j = 0; j < td.length; j++) {
+            if (td[j]) {
+                txtValue = td[j].textContent || td[j].innerText;
+                if (txtValue.toUpperCase().indexOf(filter) > -1) {
+                    tr[i].style.display = "";  // Show the row if a match is found
+                    break;
+                }
+            }
+        }
+    }
+
+    // Restore DataTable pagination if input is empty
+    if (filter.trim() === "") {
+        if ($.fn.DataTable.isDataTable("#scheduleTable")) {
+            var scheduleTableInstance = $('#scheduleTable').DataTable();
+            scheduleTableInstance.page.len(10).draw();  // Reset pagination to default
+        }
+    }
+}
+
+// Initialize DataTable
+$(document).ready(function() {
+    $('#scheduleTable').DataTable();
+});
+</script>
+
 <style>
-    .btn-primary {
-            background: #12369e;
-            border: none;
-        }
-        .btn-primary:hover {
-            background: #05007E;
-        }
+    
+    .btn-outline-primary {
+    background-color:rgb(252, 252, 252);
+    color: gray;
+    border: 1px solid rgb(228, 228, 228);
+}
+.btn-outline-primary:hover {
+    background-color: #12369e;
+    color: #fff;
+}
+.btn-outline-secondary {
+    color:rgb(90, 90, 90);
+    border: 1px solid rgb(228, 228, 228);
+}
+.btn-outline-secondary:hover {
+    background-color: #12369e;
+    color: #fff;
+}
+.input-group-text {
+    background-color:rgb(255, 255, 255);
+    border: 1px solid rgb(228, 228, 228);
+    color: gray;
+} 
+.btn-primary {
+    background: #12369e;
+    border: none;
+}
+.btn-primary:hover {
+    background: #05007E;
+}
 </style>

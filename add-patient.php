@@ -76,6 +76,42 @@ if (isset($_REQUEST['save-patient'])) {
 
     // Close the check query statement
     mysqli_stmt_close($check_query);
+
+    // Display SweetAlert message
+    echo "
+    <script src='https://cdn.jsdelivr.net/npm/sweetalert2@11'></script>
+    <script>
+        Swal.fire({
+            title: '" . (strpos($msg, 'successfully') !== false ? 'Success!' : 'Error!') . "',
+            text: '$msg',
+            icon: '" . (strpos($msg, 'successfully') !== false ? 'success' : 'error') . "',
+            confirmButtonColor: '#12369e',
+            confirmButtonText: 'OK'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                window.location.href = 'patients.php';  // You can change the redirection URL here if needed
+            }
+        });
+    </script>
+    <style>
+        /* Custom SweetAlert Button Color */
+        .swal2-confirm {
+            background-color: #12369e !important;
+            color: white !important;
+            border: none !important;
+        }
+
+        /* Hover color for the confirm button */
+        .swal2-confirm:hover {
+            background-color: #05007E !important;
+        }
+
+        /* Adjust button focus styles (optional) */
+        .swal2-confirm:focus {
+            box-shadow: 0 0 0 0.2rem rgba(18, 54, 158, 0.5) !important;
+        }
+    </style>
+    ";
 }
 ?>
 
@@ -86,7 +122,7 @@ if (isset($_REQUEST['save-patient'])) {
                 <h4 class="page-title">Add Patient</h4>
             </div>
             <div class="col-sm-8 text-right mb-3">
-                <a href="patients.php" class="btn btn-primary btn-rounded float-right">Back</a>
+                <a href="patients.php" class="btn btn-primary float-right">Back</a>
             </div>
         </div>
         <div class="row">
@@ -128,7 +164,7 @@ if (isset($_REQUEST['save-patient'])) {
                         <div class="col-sm-6">
                             <div class="form-group">
                                 <label>Contact Number</label>
-                                <input class="form-control" type="text" name="contact_number" required>
+                                <input class="form-control" type="number" name="contact_number" required>
                             </div>
                         </div>
                         <div class="col-sm-6">
@@ -279,14 +315,12 @@ $(document).ready(function() {
 
 </script>
 
-<script type="text/javascript">
-    <?php
-    if(isset($msg)) {
-        echo 'swal("' . $msg . '");';
-    }
-    ?>
-</script>
 <style>
+    .btn-primary.submit-btn {
+        border-radius: 4px; 
+        padding: 10px 20px;
+        font-size: 16px;
+    }
 .btn-primary {
             background: #12369e;
             border: none;

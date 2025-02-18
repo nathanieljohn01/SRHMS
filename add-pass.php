@@ -16,13 +16,12 @@ $fetch_query = mysqli_query($connection, "SELECT MAX(id) as id FROM tbl_visitorp
 $row = mysqli_fetch_row($fetch_query);
 $vst_id = $row[0] == 0 ? 1 : $row[0] + 1;
 
-
 // Handle form submission
 if (isset($_POST['save-pass'])) {
-    $visitor_id = 'VST-' . sanitize($connection, $_POST['vst_id']); // Ensure visitor ID is sanitized
+    $visitor_id = 'VST-' . $vst_id;
     $visitor_name = sanitize($connection, $_POST['visitor_name']);
     $contact_number = sanitize($connection, $_POST['contact_number']);
-    $purpose = sanitize($connection, $_POST['purpose']);
+    $purpose = sanitize($connection, $_POST['purpose']); // Ensure purpose is sanitized
 
     // Use prepared statements for insertion to prevent SQL injection
     $stmt = mysqli_prepare($connection, "INSERT INTO tbl_visitorpass (visitor_id, visitor_name, contact_number, purpose) VALUES (?, ?, ?, ?)");
@@ -31,8 +30,41 @@ if (isset($_POST['save-pass'])) {
     // Execute the query and check if insertion was successful
     if (mysqli_stmt_execute($stmt)) {
         $msg = "Visitor pass issued successfully";
+
+        // SweetAlert success message
+        echo "
+        <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                var style = document.createElement('style');
+                style.innerHTML = '.swal2-confirm { background-color: #12369e !important; color: white !important; border: none !important; } .swal2-confirm:hover { background-color: #05007E !important; } .swal2-confirm:focus { box-shadow: 0 0 0 0.2rem rgba(18, 54, 158, 0.5) !important; }';
+                document.head.appendChild(style);
+
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Success!',
+                    text: 'Visitor pass issued successfully',
+                    confirmButtonColor: '#12369e'
+                }).then(() => {
+                    window.location.href = 'visitor-pass.php'; // Adjust to the page you want to redirect to after success
+                });
+            });
+        </script>";
     } else {
         $msg = "Error issuing visitor pass";
+
+        // SweetAlert error message
+        echo "
+        <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Error issuing visitor pass: " . mysqli_error($connection) . "' 
+                });
+            });
+        </script>";
     }
 
     // Close the statement
@@ -47,7 +79,7 @@ if (isset($_POST['save-pass'])) {
                 <h4 class="page-title">Add Visitor Pass</h4>
             </div>
             <div class="col-sm-8 text-right m-b-20">
-                <a href="visitor-pass.php" class="btn btn-primary btn-rounded float-right">Back</a>
+                <a href="visitor-pass.php" class="btn btn-primary float-right">Back</a>
             </div>
         </div>
         <div class="row">
@@ -82,7 +114,7 @@ if (isset($_POST['save-pass'])) {
                         <div class="col-md-6">
                             <div class="form-group">
                                 <label>Purpose</label>
-                                <input type="text" class="form-control" id="patient-search" placeholder="Search for patient" autocomplete="off" />
+                                <input type="text" class="form-control" id="patient-search" name="purpose" placeholder="Search for patient" autocomplete="off" />
                                 <div id="patient-list" class="patient-list"></div>
                             </div>
                         </div>
@@ -103,11 +135,6 @@ include('footer.php');
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
 <script type="text/javascript">
-<?php
-    if(isset($msg)) {
-        echo 'swal("' . $msg . '");';
-    }
-    ?>
 
 document.addEventListener('DOMContentLoaded', function () {
     const searchInput = document.getElementById('patient-search');
@@ -149,6 +176,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
 <style>
+    .btn-primary.submit-btn {
+        border-radius: 4px; 
+        padding: 10px 20px;
+        font-size: 16px;
+    }
     .btn-primary {
         background: #12369e;
         border: none;

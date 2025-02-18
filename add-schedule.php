@@ -43,114 +43,145 @@ if (isset($_REQUEST['add-schedule'])) {
 
     if ($insert_schedule_result && $update_employee_result) {
         $msg = "Schedule created successfully";
+    
+        // SweetAlert success message
+        echo "
+        <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                var style = document.createElement('style');
+                style.innerHTML = '.swal2-confirm { background-color: #12369e !important; color: white !important; border: none !important; } .swal2-confirm:hover { background-color: #05007E !important; } .swal2-confirm:focus { box-shadow: 0 0 0 0.2rem rgba(18, 54, 158, 0.5) !important; }';
+                document.head.appendChild(style);
+    
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Success!',
+                    text: 'Schedule created successfully',
+                    confirmButtonColor: '#12369e'
+                }).then(() => {
+                    window.location.href = 'schedule.php'; // Adjust to the page you want to redirect to after success
+                });
+            });
+        </script>";
     } else {
         $msg = "Error!";
-    }
+    
+        // SweetAlert error message
+        echo "
+        <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'An error occurred while creating the schedule.'
+                });
+            });
+        </script>";
+    }    
 }
 ?>
-
-        <div class="page-wrapper">
-            <div class="content">
-                <div class="row">
-                    <div class="col-sm-4 ">
-                        <h4 class="page-title">Add Schedule</h4>
-                         
-                    </div>
-                    <div class="col-sm-8  text-right m-b-20">
-                        <a href="schedule.php" class="btn btn-primary btn-rounded float-right">Back</a>
-                    </div>
-                </div>
-                <div class="row">
-                    <div class="col-lg-8 offset-lg-2">
-                        <form method="post">
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label>Doctor Name</label>
-                                        <select class="select" name="doctor" required>
-                                            <option value="">Select</option>
-                                            <?php
-                                        $fetch_query = mysqli_query($connection, "select concat(first_name,' ',last_name) as name from tbl_employee where role=2 and status=1");
-                                        while($row = mysqli_fetch_array($fetch_query)){
-                                        ?>
-                                            <option><?php echo $row['name']; ?></option>
-                                            <?php } ?>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label>Available Days</label>
-                                        <select class="select" multiple name="days[]" required>
-                                            <option value="">Select Days</option>
-                                            <option>Sunday</option>
-                                            <option>Monday</option>
-                                            <option>Tuesday</option>
-                                            <option>Wednesday</option>
-                                            <option>Thursday</option>
-                                            <option>Friday</option>
-                                            <option>Saturday</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label>Start Time</label>
-                                        <div class="time-icon">
-                                            <input type="text" class="form-control" id="datetimepicker3" name="start_time" required>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label>End Time</label>
-                                        <div class="time-icon">
-                                            <input type="text" class="form-control" id="datetimepicker4" name="end_time" required>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label>Message</label>
-                                <textarea cols="30" rows="4" class="form-control" name="message"></textarea>
-                            </div>
-                            <div class="form-group">
-                                <label class="display-block">Schedule Status</label>
-                                <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="radio" name="status" id="product_active" value="1" checked>
-                                    <label class="form-check-label" for="product_active">
-                                    Available
-                                    </label>
-                                </div>
-                                <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="radio" name="status" id="product_inactive" value="0">
-                                    <label class="form-check-label" for="product_inactive">
-                                    Not Available
-                                    </label>
-                                </div>
-                            </div>
-                            <div class="m-t-20 text-center">
-                                <button class="btn btn-primary submit-btn" name="add-schedule">Create Schedule</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
+<div class="page-wrapper">
+    <div class="content">
+        <div class="row">
+            <div class="col-sm-4 ">
+                <h4 class="page-title">Add Schedule</h4>
+                    
             </div>
-		</div>
+            <div class="col-sm-8  text-right m-b-20">
+                <a href="schedule.php" class="btn btn-primary float-right">Back</a>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-lg-8 offset-lg-2">
+                <form method="post">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Doctor Name</label>
+                                <select class="select" name="doctor" required>
+                                    <option value="">Select</option>
+                                    <?php
+                                $fetch_query = mysqli_query($connection, "select concat(first_name,' ',last_name) as name from tbl_employee where role=2 and status=1");
+                                while($row = mysqli_fetch_array($fetch_query)){
+                                ?>
+                                    <option><?php echo $row['name']; ?></option>
+                                    <?php } ?>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Available Days</label>
+                                <select class="select" multiple name="days[]" required>
+                                    <option value="">Select Days</option>
+                                    <option>Sunday</option>
+                                    <option>Monday</option>
+                                    <option>Tuesday</option>
+                                    <option>Wednesday</option>
+                                    <option>Thursday</option>
+                                    <option>Friday</option>
+                                    <option>Saturday</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Start Time</label>
+                                <div class="time-icon">
+                                    <input type="text" class="form-control" id="datetimepicker3" name="start_time" required>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>End Time</label>
+                                <div class="time-icon">
+                                    <input type="text" class="form-control" id="datetimepicker4" name="end_time" required>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Message</label>
+                        <textarea cols="30" rows="4" class="form-control" name="message"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="display-block">Schedule Status</label>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="status" id="product_active" value="1" checked>
+                            <label class="form-check-label" for="product_active">
+                            Available
+                            </label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="status" id="product_inactive" value="0">
+                            <label class="form-check-label" for="product_inactive">
+                            Not Available
+                            </label>
+                        </div>
+                    </div>
+                    <div class="m-t-20 text-center">
+                        <button class="btn btn-primary submit-btn" name="add-schedule">Create Schedule</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
     
 <?php
     include('footer.php');
 ?>
-<script type="text/javascript">
-     <?php
-        if(isset($msg)) {
-            echo 'swal("' . $msg . '");';
-        }
-    ?>
-</script>
+
 <style>
+    .btn-primary.submit-btn {
+        border-radius: 4px; 
+        padding: 10px 20px;
+        font-size: 16px;
+    }
 .btn-primary {
             background: #12369e;
             border: none;
