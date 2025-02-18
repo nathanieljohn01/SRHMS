@@ -672,12 +672,12 @@ function throttle(func, limit) {
     }
 }
 .custom-dropdown {
-background-color: #f9f9f9; /* Slightly lighter background */
-border: 1px solid #ddd; /* Softer border color */
-border-radius: 5px; /* Rounded corners */
-padding: 5px; /* Padding inside the dropdown */
-box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
-min-width: 150px; /* Set minimum width to keep the dropdown compact */
+    background-color: #f9f9f9; /* Slightly lighter background */
+    border: 1px solid #ddd; /* Softer border color */
+    border-radius: 5px; /* Rounded corners */
+    padding: 5px; /* Padding inside the dropdown */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
+    min-width: 150px; /* Set minimum width to keep the dropdown compact */
 }
 
 .custom-dropdown .dropdown-item {
