@@ -3,59 +3,62 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="description" content="Santa Rosa Community Hospital Management System">
+    <!-- Security headers -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https:; script-src 'self' 'unsafe-inline' https:; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: https:;">
+    <meta http-equiv="X-Frame-Options" content="SAMEORIGIN">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    
     <link rel="shortcut icon" type="image/x-icon" href="assets/img/srchlogo.png">
     <title>Santa Rosa Community HMS</title>
 
     <!-- Preconnect to external domains -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://cdn.datatables.net">
-    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.datatables.net" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
 
     <!-- Consolidated FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/fontawesome.min.css">
-    
-    <!-- Core styles -->
+
+    <!-- Core styles with defer -->
     <link rel="stylesheet" href="assets/css/bootstrap.min.css">
     <link rel="stylesheet" href="assets/css/style.css">
-    <link rel="stylesheet" type="text/css" href="assets/css/font-awesome.min.css">
-    <link rel="stylesheet" type="text/css" href="assets/css/fontawesome.min.css">
-    <link rel="stylesheet" type="text/css" href="assets/css/all.min.css">
-
+    
     <!-- Third-party components -->
     <link rel="stylesheet" href="assets/css/select2.min.css">
     <link rel="stylesheet" href="assets/css/bootstrap-datetimepicker.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
 
-    <!-- Material Icons -->
-    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+    <!-- Material Icons with preload -->
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/icon?family=Material+Icons" onload="this.onload=null;this.rel='stylesheet'">
 </head>
 <body>
     <div class="main-wrapper">
-            <div class="header">
-                <div class="header-left">
-                    <a href="" class="logo">
-                        <img src="assets/img/srchlogo.png" width="35" height="35" alt="">  <span>Santa Rosa Community HMS</span>
+        <div class="header">
+            <div class="header-left">
+                <a href="" class="logo">
+                    <img src="assets/img/srchlogo.png" width="35" height="35" alt="SRCH Logo">
+                    <span>Santa Rosa Community HMS</span>
+                </a>
+            </div>
+            <a id="toggle_btn" href="javascript:void(0);" aria-label="Toggle Sidebar"><i class="fa fa-bars"></i></a>
+            <a id="mobile_btn" class="mobile_btn float-left" href="#sidebar" aria-label="Mobile Menu"><i class="fa fa-bars"></i></a>
+            <ul class="nav user-menu float-right">
+                <li class="nav-item dropdown has-arrow">
+                    <a href="#" class="dropdown-toggle nav-link user-link" data-toggle="dropdown">
+                        <span><?php echo htmlspecialchars($_SESSION['name']); ?></span>
                     </a>
-                </div>
-                <a id="toggle_btn" href="javascript:void(0);"><i class="fa fa-bars"></i></a>
-                <a id="mobile_btn" class="mobile_btn float-left" href="#sidebar"><i class="fa fa-bars"></i></a>
-                <ul class="nav user-menu float-right">
-                    <li class="nav-item dropdown has-arrow">
-                        <a href="#" class="dropdown-toggle nav-link user-link" data-toggle="dropdown">
-                            <span><?php echo $_SESSION['name']; ?></span>
-                        </a>
-                        <div class="dropdown-menu custom-dropdown">
-                            <a class="dropdown-item" href="logout.php">Logout</a>
-                        </div>
-                    </li>
-                </ul>
-                <div class="dropdown mobile-user-menu float-right">
-                    <a href="#" class="dropdown-toggle" data-toggle="dropdown" aria-expanded="false" aria-haspopup="true"> <i class="fa fa-ellipsis-v"></i></a>
-                    <div class="dropdown-menu dropdown-menu-right">
+                    <div class="dropdown-menu custom-dropdown">
                         <a class="dropdown-item" href="logout.php">Logout</a>
                     </div>
+                </li>
+            </ul>
+            <div class="dropdown mobile-user-menu float-right">
+                <a href="#" class="dropdown-toggle" data-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><i class="fa fa-ellipsis-v"></i></a>
+                <div class="dropdown-menu dropdown-menu-right">
+                    <a class="dropdown-item" href="logout.php">Logout</a>
                 </div>
             </div>
         </div>
@@ -155,7 +158,7 @@
                                 </ul>
                             </li>
                             <li class="sidenav">
-                                <a href="#laboratorySubmenu" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle" aria-haspopup="true">
+                                <a href="#laboratorySubmenu" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle" aria-haspopup="true"> 
                                     <i class="fa-solid fa-syringe"></i><span>Laboratory Information</span>
                                 </a>
                                 <ul class="collapse list-unstyled" id="laboratorySubmenu">
@@ -499,7 +502,7 @@
     </div>
 </body>
 <script>
-   // Improved sidebar toggle with smooth transitions
+// Improved sidebar toggle with smooth transitions
    document.addEventListener("DOMContentLoaded", function() {
     const sidebar = document.getElementById("sidebar");
     const mainWrapper = document.getElementById("main-wrapper");
@@ -516,9 +519,9 @@
                 entry.target.classList.add('visible');
             }
         });
-    });
+    }, { threshold: 1.0 });
 
-    // Smooth toggle with CSS transform
+    // Smooth toggle with CSS transform             
     function toggleSidebar() {
         if (sidebar && mainWrapper) {
             requestAnimationFrame(() => {
@@ -629,7 +632,7 @@ function throttle(func, limit) {
 }
 
 .custom-dropdown .dropdown-item:active {
-    background-color: #cccccc; /* Darker gray when clicked */
+    background-color: #CCCCCC; /* Darker gray when clicked */
     color: #000; /* Keep the text color dark */
     box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1); /* Inner shadow for pressed effect */
 }
@@ -648,5 +651,3 @@ function throttle(func, limit) {
 }
 </style>
 </html>
-
-
