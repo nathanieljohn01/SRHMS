@@ -1,5 +1,7 @@
 <?php
 session_start();
+ob_start();
+
 if (empty($_SESSION['name'])) {
     header('location:index.php');
     exit();
@@ -13,7 +15,70 @@ function sanitize($connection, $input) {
     return mysqli_real_escape_string($connection, htmlspecialchars(strip_tags(trim($input)), ENT_QUOTES, 'UTF-8'));
 }
 
+$msg = null;
+
 $role = isset($_SESSION['role']) ? $_SESSION['role'] : null;
+
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['selectedMedicines']) && isset($_POST['hemopatientIdTreatment'])) {
+    $hemopatientId = sanitize($connection, $_POST['hemopatientIdTreatment']);
+    $selectedMedicines = json_decode($_POST['selectedMedicines'], true);
+
+    if ($selectedMedicines) {
+        foreach ($selectedMedicines as $medicine) {
+            $medicineId = sanitize($connection, $medicine['id']);
+            $medicineName = sanitize($connection, $medicine['name']);
+            $medicineBrand = sanitize($connection, $medicine['brand']);
+            $quantity = intval($medicine['quantity']);
+            $price = floatval($medicine['price']);
+            $totalPrice = $quantity * $price;
+
+            // Insert into tbl_treatment with hemopatient_id
+            $insertQuery = $connection->prepare("
+                INSERT INTO tbl_treatment (hemopatient_id, patient_id, patient_name, medicine_name, medicine_brand, total_quantity, price, total_price, treatment_date)
+                SELECT hemopatient_id, patient_id, patient_name, ?, ?, ?, ?, ?, NOW()
+                FROM tbl_hemodialysis
+                WHERE hemopatient_id = ?
+            ");
+            $insertQuery->bind_param("sssdds", $medicineName, $medicineBrand, $quantity, $price, $totalPrice, $hemopatientId);
+            
+            if (!$insertQuery->execute()) {
+                $msg = "Error inserting treatment: " . $connection->error;
+                break;
+            }
+
+            // Update medicine quantity
+            $updateMedicineQuery = $connection->prepare("UPDATE tbl_medicines SET quantity = quantity - ? WHERE id = ?");
+            $updateMedicineQuery->bind_param("is", $quantity, $medicineId);
+            
+            if (!$updateMedicineQuery->execute()) {
+                $msg = "Error updating medicine quantity: " . $connection->error;
+                break;
+            }
+
+            // Update hemodialysis record
+            $updateHemoQuery = $connection->prepare("
+                UPDATE tbl_hemodialysis
+                SET
+                    medicine_name = IF(medicine_name IS NULL OR medicine_name = '', ?, CONCAT(medicine_name, ', ', ?)),
+                    medicine_brand = IF(medicine_brand IS NULL OR medicine_brand = '', ?, CONCAT(medicine_brand, ', ', ?)),
+                    total_quantity = IF(total_quantity IS NULL, ?, total_quantity + ?)
+                WHERE hemopatient_id = ?
+            ");
+            $updateHemoQuery->bind_param("sssssis", $medicineName, $medicineName, $medicineBrand, $medicineBrand, $quantity, $quantity, $hemopatientId);
+            
+            if (!$updateHemoQuery->execute()) {
+                $msg = "Error updating hemodialysis record: " . $connection->error;
+                break;
+            }
+        }
+
+        if (!isset($msg)) {
+            $msg = "Treatment added successfully.";
+        }
+    } else {
+        $msg = "Error: Invalid medicines data.";
+    }
+}
 
 // Fetch patient details from tbl_patient based on patient_id
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['patientId'])) {
@@ -111,7 +176,7 @@ ob_end_flush(); // Flush output buffer
                                 placeholder="Enter Patient"
                                 onkeyup="searchPatients()">
                             <div class="input-group-append">
-                                <button type="submit" class="btn btn-primary" id="addPatientBtn" disabled>Add</button>
+                                <button type="submit" class="btn btn-outline-secondary" id="addPatientBtn" disabled>Add</button>
                             </div>
                         </div>
                         <input type="hidden" name="patientId" id="patientId">
@@ -119,11 +184,26 @@ ob_end_flush(); // Flush output buffer
                     <ul id="searchResults" class="list-group mt-2" style="max-height: 200px; overflow-y: auto; border: 1px solid #ccc; border-radius: 5px; display: none;"></ul>
                 </div>
                 <?php endif; ?>
+            </div>
+            <div class="table-responsive">
+            <div class="sticky-search">
+            <h5 class="font-weight-bold mb-2">Search Patient:</h5>
+                <div class="input-group mb-3">
+                    <div class="position-relative w-100">
+                        <!-- Search Icon -->
+                        <i class="fa fa-search position-absolute text-secondary" style="top: 50%; left: 12px; transform: translateY(-50%);"></i>
+                        <!-- Input Field -->
+                        <input class="form-control" type="text" id="hemopatientSearchInput" onkeyup="filterHemopatients()" style="padding-left: 35px; padding-right: 35px;">
+                        <!-- Clear Button -->
+                        <button class="position-absolute border-0 bg-transparent text-secondary" type="button" onclick="clearSearch()" style="top: 50%; right: 10px; transform: translateY(-50%);">
+                            <i class="fa fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
         <div class="table-responsive">
-        <label for="patientSearchInput" class="font-weight-bold">Search Patient:</label>
-        <input class="form-control" type="text" id="hemopatientSearchInput" onkeyup="filterHemopatients()" placeholder="Search for Patient">
-            <table class="datatable table table-hover" id="hemopatientTable">
+            <table class="datatable table table-hover table-striped" id="hemopatientTable">
                 <thead style="background-color: #CCCCCC;">
                     <tr>
                         <th>Hemo-patient ID</th>
@@ -133,6 +213,7 @@ ob_end_flush(); // Flush output buffer
                         <th>Birthdate</th>
                         <th>Gender</th>
                         <th>Date and Time</th>
+                        <th>Medications</th>
                         <th>Dialysis Report</th>
                         <th>Follow-up Date</th>
                         <th>Action</th>
@@ -149,7 +230,14 @@ ob_end_flush(); // Flush output buffer
                         $update_query->bind_param("s", $id);
                         $update_query->execute();
                     }
-                    $fetch_query = mysqli_query($connection, "select * from tbl_hemodialysis WHERE deleted = 0");
+                    $fetch_query = mysqli_query($connection, "
+                        SELECT h.*, 
+                        GROUP_CONCAT(CONCAT(t.medicine_name, ' (', t.medicine_brand, ') - ', t.total_quantity, ' pcs') SEPARATOR '<br>') AS treatments
+                        FROM tbl_hemodialysis h
+                        LEFT JOIN tbl_treatment t ON h.hemopatient_id = t.hemopatient_id 
+                        WHERE h.deleted = 0
+                        GROUP BY h.hemopatient_id
+                    ");
                     while($row = mysqli_fetch_array($fetch_query))
                     {
                         $dob = $row['dob'];
@@ -158,6 +246,7 @@ ob_end_flush(); // Flush output buffer
                         $year = (date('Y') - date('Y',strtotime($dob)));
 
                         $date_time = date('F d, Y g:i A', strtotime($row['date_time']));
+                        $treatmentDetails = $row['treatments'] ?: 'No treatments added';
                     ?>
                         <tr>
                             <td><?php echo $row['hemopatient_id']; ?></td>
@@ -167,6 +256,17 @@ ob_end_flush(); // Flush output buffer
                             <td><?php echo $row['dob']; ?></td>
                             <td><?php echo $row['gender']; ?></td>
                             <td><?php echo $date_time; ?></td>
+                            <td>
+                                <?php if (!empty($row['treatments'])): ?>
+                                    <!-- Display Treatment Details if Present -->
+                                    <div><?php echo nl2br(strip_tags($row['treatments'], '<br>')); ?></div>
+                                <?php else: ?>
+                                    <!-- Display Button to Add/Edit Treatments if No Treatments Exist -->
+                                    <button class="btn btn-primary btn-sm treatment-btn mt-2" data-toggle="modal" data-target="#treatmentModal" data-id="<?php echo htmlspecialchars($row['hemopatient_id']); ?>">
+                                        <i class="fa fa-stethoscope m-r-5"></i> Add/Edit Treatments
+                                    </button>
+                                <?php endif; ?>
+                            </td>
                             <td>
                                 <div class="dialysis-report">
                                     <?php
@@ -193,7 +293,7 @@ ob_end_flush(); // Flush output buffer
                                     <div class="dropdown-menu dropdown-menu-right">
                                     <?php 
                                     if ($_SESSION['role'] == 1 | $_SESSION['role'] == 3) {
-                                        echo '<a class="dropdown-item" href="edit-hemo.php?id='.$row['id'].'"><i class="fa fa-pencil m-r-5"></i> Edit</a>';
+                                        echo '<a class="dropdown-item" href="edit-hemo.php?id='.$row['id'].'"><i class="fa fa-pencil m-r-5"></i> Update</a>';
                                         echo '<a class="dropdown-item" href="hemodialysis.php?ids='.$row['id'].'" onclick="return confirmDelete()"><i class="fa fa-trash-o m-r-5"></i> Delete</a>';
                                     }
                                     ?>
@@ -208,6 +308,65 @@ ob_end_flush(); // Flush output buffer
     </div>
 </div>
 
+<div id="treatmentModal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="treatmentModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="treatmentModalLabel">Select Medicines</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="medicineSelectionForm" method="POST" action="hemodialysis.php">
+                    <input type="hidden" name="hemopatientIdTreatment" id="hemopatientIdTreatment">
+                    
+                    <!-- Medicine Search Section -->
+                    <div class="form-group">
+                        <label for="medicineSearchInput">Search Medicines</label>
+                        <input
+                            type="text"
+                            class="form-control"
+                            id="medicineSearchInput"
+                            placeholder="Enter medicine name or brand"
+                            onkeyup="searchMedicines()"
+                        >
+                    </div>
+                    <div class="table-responsive mb-4">
+                        <table class="table table-hover">
+                            <thead style="background-color: #CCCCCC;">
+                                <tr>
+                                    <th>Medicine Name</th>
+                                    <th>Medicine Brand</th>
+                                    <th>Drug Classification</th>
+                                    <th>Expiration Date</th>
+                                    <th>Available Quantity</th>
+                                    <th>Price</th>
+                                    <th>Quantity</th>
+                                </tr>
+                            </thead>
+                            <tbody id="medicineSearchResults">
+                                <!-- Search results will populate here -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Selected Medicines Section -->
+                    <h5>Selected Medicines</h5>
+                    <ul id="selectedMedicinesList" class="list-group">
+                        <!-- Selected medicines will populate here -->
+                    </ul>
+                    <input type="hidden" name="selectedMedicines" id="selectedMedicines">
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                <button type="submit" class="btn btn-primary" form="medicineSelectionForm">Save Treatment</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <?php
 include('footer.php');
 ?>
@@ -218,31 +377,184 @@ function confirmDelete(){
 </script>
 
 <script>
-     function filterHemopatients() {
-        var input, filter, table, tr, td, i, txtValue;
-        input = document.getElementById("hemopatientSearchInput");
-        filter = input.value.toUpperCase();
-        table = document.getElementById("hemopatientTable");
-        tr = table.getElementsByTagName("tr");
+let selectedMedicines = [];
 
-        for (i = 0; i < tr.length; i++) {
-            var matchFound = false;
-            for (var j = 0; j < tr[i].cells.length; j++) {
-                td = tr[i].cells[j];
-                if (td) {
-                    txtValue = td.textContent || td.innerText;
-                    if (txtValue.toUpperCase().indexOf(filter) > -1) {
-                        matchFound = true;
-                        break;
-                    }
-                }
+// Function to search medicines
+function searchMedicines() {
+    const query = document.getElementById('medicineSearchInput').value.trim();
+
+    if (query.length > 2) {
+        $.ajax({
+            url: 'search-medicines.php',
+            type: 'GET',
+            data: { query },
+            success: function (data) {
+                $('#medicineSearchResults').html(data); // Populate search results
+            },
+            error: function () {
+                alert('Error fetching medicines. Please try again later.');
             }
-            if (matchFound || i === 0) {
-                tr[i].style.display = "";
-            } else {
-                tr[i].style.display = "none";
+        });
+    } else {
+        $('#medicineSearchResults').html('<tr><td colspan="7">Please enter at least 3 characters to search.</td></tr>');
+    }
+}
+
+// Function to add medicine to the selected list
+function addMedicineToList(id, name, brand, category, availableQuantity, price, expiration_date, event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+
+    const quantityInput = parseInt(document.getElementById(`quantityInput-${id}`).value, 10);
+
+    if (quantityInput <= 0 || quantityInput > availableQuantity) {
+        alert('Invalid quantity. Please try again.');
+        return;
+    }
+
+    // Check if the medicine is already in the list
+    const existingMedicineIndex = selectedMedicines.findIndex(medicine => medicine.id === id);
+
+    if (existingMedicineIndex !== -1) {
+        // If the medicine exists, update the quantity
+        selectedMedicines[existingMedicineIndex].quantity = quantityInput;
+    } else {
+        // Add new medicine
+        const medicine = {
+            id,
+            name,
+            brand,
+            category,
+            quantity: quantityInput,
+            price: parseFloat(price),
+            expiration_date,
+        };
+        selectedMedicines.push(medicine);
+    }
+
+    // Update the UI
+    updateSelectedMedicinesUI();
+}
+
+// Function to update the selected medicines UI
+function updateSelectedMedicinesUI() {
+    $('#selectedMedicinesList').html('');
+
+    selectedMedicines.forEach((medicine, index) => {
+        const listItem = `
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                <div>
+                    <strong>${medicine.name} (${medicine.brand}) (${medicine.category})</strong> - 
+                    ${medicine.quantity} pcs @ ${medicine.price} PHP each 
+                    <small>(Exp: ${medicine.expiration_date})</small>
+                </div>
+                <button 
+                    type="button" 
+                    class="btn btn-danger btn-sm" 
+                    onclick="removeMedicineFromList(${index})">
+                    Remove
+                </button>
+            </li>`;
+        $('#selectedMedicinesList').append(listItem);
+    });
+
+    $('#selectedMedicines').val(JSON.stringify(selectedMedicines));
+}
+
+// Function to remove a medicine from the selected list
+function removeMedicineFromList(index) {
+    selectedMedicines.splice(index, 1); // Remove the medicine by index
+    updateSelectedMedicinesUI();
+}
+
+// Reset selected medicines when opening the modal
+$('.treatment-btn').on('click', function () {
+    const hemopatientId = $(this).data('id');
+    $('#hemopatientIdTreatment').val(hemopatientId); // Fixed variable name
+    selectedMedicines = []; 
+    $('#selectedMedicinesList').html(''); 
+    $('#selectedMedicines').val(''); 
+});
+
+</script>
+
+<script>
+    function clearSearch() {
+        document.getElementById("hemopatientSearchInput").value = '';
+        filterHemopatients();
+    }
+
+    var role = <?php echo json_encode($_SESSION['role']); ?>;
+
+    function filterHemopatients() {
+        var input = document.getElementById("hemopatientSearchInput").value;
+        
+        $.ajax({
+            url: 'fetch_hemo.php',
+            type: 'GET',
+            data: { query: input },
+            success: function(response) {
+                var data = JSON.parse(response);
+                updateHemoTable(data);
+            },
+            error: function(xhr, status, error) {
+                alert('Error fetching data. Please try again.');
             }
+        });
+    }
+
+    function updateHemoTable(data) {
+        var tbody = $('#hemopatientTable tbody');
+        tbody.empty();
+        
+        data.forEach(function(record) {
+            var treatmentContent = record.treatments !== 'No treatments added' ?
+                `<div>${record.treatments}</div>` :
+                `<button class="btn btn-primary btn-sm treatment-btn mt-2" data-toggle="modal" data-target="#treatmentModal" data-id="${record.hemopatient_id}">
+                    <i class="fa fa-stethoscope m-r-5"></i> Add/Edit Treatments
+                </button>`;
+
+            tbody.append(`
+                <tr>
+                    <td>${record.hemopatient_id}</td>
+                    <td>${record.patient_id}</td>
+                    <td>${record.patient_name}</td>
+                    <td>${record.age}</td>
+                    <td>${record.dob}</td>
+                    <td>${record.gender}</td>
+                    <td>${record.date_time}</td>
+                    <td>${treatmentContent}</td>
+                    <td><div class="dialysis-report">${record.dialysis_report}</div></td>
+                    <td>${record.follow_up_date}</td>
+                    <td class="text-right">
+                        <div class="dropdown dropdown-action">
+                            <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
+                                <i class="fa fa-ellipsis-v"></i>
+                            </a>
+                            <div class="dropdown-menu dropdown-menu-right">
+                                ${getActionButtons(record.id)}
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            `);
+        });
+    }
+
+    function getActionButtons(id) {
+        if (role == 1 || role == 3) {
+            return `
+                <a class="dropdown-item" href="edit-hemo.php?id=${id}">
+                    <i class="fa fa-pencil m-r-5"></i> Update
+                </a>
+                <a class="dropdown-item" href="hemodialysis.php?ids=${id}" onclick="return confirmDelete()">
+                    <i class="fa fa-trash-o m-r-5"></i> Delete
+                </a>
+            `;
         }
+        return '';
     }
 
     function searchPatients() {
@@ -276,45 +588,148 @@ function confirmDelete(){
     });
 </script>
 <style>
+.sticky-search {
+    position: sticky;
+    left: 0;
+    z-index: 100;
+    width: 100%;
+}   
+.btn-outline-primary {
+    background-color:rgb(252, 252, 252);
+    color: gray;
+    border: 1px solid rgb(228, 228, 228);
+}
+.btn-outline-primary:hover {
+    background-color: #12369e;
+    color: #fff;
+}
+.btn-outline-secondary {
+    color:rgb(90, 90, 90);
+    border: 1px solid rgb(228, 228, 228);
+}
+.btn-outline-secondary:hover {
+    background-color: #12369e;
+    color: #fff;
+}
+.input-group-text {
+    background-color:rgb(255, 255, 255);
+    border: 1px solid rgb(228, 228, 228);
+    color: gray;
+}   
 .btn-primary {
-            background: #12369e;
-            border: none;
-        }
-        .btn-primary:hover {
-            background: #05007E;
-        }
-        #searchResults {
-        max-height: 200px;
-        overflow-y: auto;
-        border: 1px solid #ddd;
-        border-radius: 5px;
-        display: none;
-        background: #fff;
-        position: absolute;
-        z-index: 1000;
-        width: 50%;
-    }
-    #searchResults li {
-        padding: 8px 12px;
-        cursor: pointer;
-        list-style: none;
-        border-bottom: 1px solid #ddd;
-    }
-    #searchResults li:hover {
-        background-color: #12369e;
-        color: white;
-    }
-    .form-inline .input-group {
-        width: 100%;
-    }
-    .search-icon-bg {
-    background-color: #fff; 
-    border: none; 
-    color: #6c757d; 
-    }
-    #hemopatientTable td {
-    word-wrap: break-word; /* Allow long text to break into multiple lines */
-    max-width: 300px; /* Optional: set a maximum width for the column */
+    background: #12369e;
+    border: none;
+}
+.btn-primary:hover {
+    background: #05007E;
+}
+#searchResults {
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    display: none;
+    background: #fff;
+    position: absolute;
+    z-index: 1000;
+    width: 50%;
+}
+#searchResults li {
+    padding: 8px 12px;
+    cursor: pointer;
+    list-style: none;
+    border-bottom: 1px solid #ddd;
+}
+#searchResults li:hover {
+    background-color: #12369e;
+    color: white;
+}
+.form-inline .input-group {
+    width: 100%;
+}
+.search-icon-bg {
+background-color: #fff; 
+border: none; 
+color: #6c757d; 
+}
+#hemopatientTable td {
+word-wrap: break-word; /* Allow long text to break into multiple lines */
+max-width: 300px; /* Optional: set a maximum width for the column */
 }
 
+#treatmentModal .modal-content {
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+    border: none;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+#treatmentModal .modal-header {
+    background: #ffffff;
+    color: black;
+    padding: 1.2rem;
+    border-bottom: 1px solid #eee;
+}
+
+#treatmentModal .modal-title {
+    font-weight: 600;
+}
+
+#treatmentModal .close {
+    color: white;
+    opacity: 1;
+}
+
+#treatmentModal .modal-body {
+    padding: 1.5rem;
+}
+
+#treatmentModal .table thead {
+    background: rgba(18, 54, 158, 0.05);
+}
+
+#treatmentModal .table-hover tbody tr:hover {
+    background-color: rgba(18, 54, 158, 0.03);
+    transition: all 0.2s ease;
+}
+
+#treatmentModal .form-control:focus {
+    border-color: #12369e;
+    box-shadow: 0 0 0 0.2rem rgba(18, 54, 158, 0.25);
+}
+
+#treatmentModal .modal-footer {
+    border-top: 1px solid #eee;
+    padding: 1rem;
+}
+
+#treatmentModal .btn-primary {
+    background: #12369e;
+    border: none;
+    padding: 0.5rem 1.5rem;
+    transition: all 0.3s ease;
+}
+
+#treatmentModal .btn-primary:hover {
+    background: #05007E;
+    transform: translateY(-1px);
+}
+
+#selectedMedicinesList {
+    max-height: 300px;
+    overflow-y: auto;
+    margin-top: 1rem;
+    border: 1px solid #eee;
+    border-radius: 6px;
+}
+
+#selectedMedicinesList .list-group-item {
+    border-left: none;
+    border-right: none;
+    transition: all 0.2s ease;
+}
+
+#selectedMedicinesList .list-group-item:hover {
+    background-color: rgba(18, 54, 158, 0.03);
+}
 </style>

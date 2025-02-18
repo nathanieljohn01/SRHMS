@@ -42,22 +42,64 @@ if (isset($_REQUEST['save-newborn'])) {
 
     if (mysqli_num_rows($check_result) > 0) {
         $msg = "Newborn with the same name already exists.";
+        // SweetAlert error message for duplicate
+        echo "
+        <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: '$msg'
+                });
+            });
+        </script>";
     } else {
         // Insert newborn details into the database using prepared statements
         $insert_query = mysqli_prepare($connection, "INSERT INTO tbl_newborn (newborn_id, first_name, last_name, dob, tob, gender, birth_weight, birth_height, gestational_age, physician) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
         mysqli_stmt_bind_param($insert_query, 'ssssssssss', $newborn_id, $first_name, $last_name, $dob, $tob, $gender, $birth_weight, $birth_height, $gestational_age, $physician);
-
+    
         // Execute the insert query
         if (mysqli_stmt_execute($insert_query)) {
             $msg = "Newborn added successfully.";
+            // SweetAlert success message
+            echo "
+            <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    var style = document.createElement('style');
+                    style.innerHTML = '.swal2-confirm { background-color: #12369e !important; color: white !important; border: none !important; } .swal2-confirm:hover { background-color: #05007E !important; } .swal2-confirm:focus { box-shadow: 0 0 0 0.2rem rgba(18, 54, 158, 0.5) !important; }';
+                    document.head.appendChild(style);
+    
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Success!',
+                        text: '$msg',
+                        confirmButtonColor: '#12369e'
+                    }).then(() => {
+                        window.location.href = 'newborn.php'; // Adjust the redirection URL as needed
+                    });
+                });
+            </script>";
         } else {
             $msg = "Error: " . mysqli_error($connection);
+            // SweetAlert error message for failure
+            echo "
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: '$msg'
+                    });
+                });
+            </script>";
         }
-    }
-
-    // Close the prepared statements
-    mysqli_stmt_close($check_query);
-    mysqli_stmt_close($insert_query);
+    
+        // Close the prepared statements
+        mysqli_stmt_close($check_query);
+        mysqli_stmt_close($insert_query);
+    }    
 }
 ?>
 
@@ -68,7 +110,7 @@ if (isset($_REQUEST['save-newborn'])) {
                 <h4 class="page-title">Add Newborn</h4>
             </div>
             <div class="col-sm-8 text-right mb-3">
-                <a href="newborn.php" class="btn btn-primary btn-rounded float-right">Back</a>
+                <a href="newborn.php" class="btn btn-primary float-right">Back</a>
             </div>
         </div>
         <div class="row">
@@ -178,14 +220,6 @@ include('footer.php');
 ?>
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script type="text/javascript">
-    <?php
-    if(isset($msg)) {
-        echo 'swal("' . $msg . '");';
-    }
-    ?>
-</script>
-
 <style>
 /* Optional: Style the input field */
 .form-control {
@@ -194,6 +228,11 @@ include('footer.php');
     background-color: #f8f9fa; /* Background color */
 }
 
+.btn-primary.submit-btn {
+        border-radius: 4px; 
+        padding: 10px 20px;
+        font-size: 16px;
+    }
 .btn-primary {
     background: #12369e;
     border: none;

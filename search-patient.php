@@ -14,7 +14,7 @@ if (isset($_GET['query'])) {
             echo '<div class="patient-result" data-id="' . $row['patient_id'] . '">' . $row['name'] . '</div>';
         }
     } else {
-        echo '<div>No patients found</div>';
+        echo '<li class="search-result-none" style="pointer-events: none; color: gray; padding: 8px 12px;">No patients found</li>';
     }
 }
 ?>

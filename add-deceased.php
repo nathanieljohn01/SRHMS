@@ -48,22 +48,64 @@ if (isset($_REQUEST['save-deceased'])) {
 
     if ($check_result->num_rows > 0) {
         $msg = "Deceased with the same name already exists.";
+        // SweetAlert error message for duplicate record
+        echo "
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: '$msg'
+                });
+            });
+        </script>";
     } else {
         // Insert new deceased record
         $insert_stmt = $connection->prepare("INSERT INTO tbl_deceased (deceased_id, patient_id, patient_name, dod, tod, cod, physician, next_of_kin_contact, discharge_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
         $insert_stmt->bind_param("sssssssss", $deceased_id, $patient_id, $patient_name, $dod, $tod, $cod, $physician, $next_of_kin_contact, $discharge_status);
-
+    
         if ($insert_stmt->execute()) {
             $msg = "Deceased added successfully";
+            // SweetAlert success message for successful insertion
+            echo "
+            <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    var style = document.createElement('style');
+                    style.innerHTML = '.swal2-confirm { background-color: #12369e !important; color: white !important; border: none !important; } .swal2-confirm:hover { background-color: #05007E !important; } .swal2-confirm:focus { box-shadow: 0 0 0 0.2rem rgba(18, 54, 158, 0.5) !important; }';
+                    document.head.appendChild(style);
+    
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Success!',
+                        text: '$msg',
+                        confirmButtonColor: '#12369e'
+                    }).then(() => {
+                        window.location.href = 'deceased.php'; // Redirect to the deceased records page or any page you want
+                    });
+                });
+            </script>";
         } else {
             $msg = "Error!";
+            // SweetAlert error message for insertion failure
+            echo "
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: '$msg'
+                    });
+                });
+            </script>";
         }
-
+    
         $insert_stmt->close();
     }
-
+    
     $check_stmt->close();
     $fetch_stmt->close();
+    
 }
 ?>
 
@@ -74,7 +116,7 @@ if (isset($_REQUEST['save-deceased'])) {
                 <h4 class="page-title">Add Deceased</h4>
             </div>
             <div class="col-sm-8 text-right mb-3">
-                <a href="deceased.php" class="btn btn-primary btn-rounded float-right">Back</a>
+                <a href="deceased.php" class="btn btn-primary float-right">Back</a>
             </div>
         </div>
         <div class="row">
@@ -159,12 +201,6 @@ include('footer.php');
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script type="text/javascript">
-    <?php
-    if(isset($msg)) {
-        echo 'swal("' . $msg . '");';
-    }
-    ?>
-
 $(document).ready(function() {
     $('#patient_name_search').keyup(function() {
         var query = $(this).val();
@@ -200,6 +236,11 @@ $(document).ready(function() {
 </script>
 
 <style>
+.btn-primary.submit-btn {
+        border-radius: 4px; 
+        padding: 10px 20px;
+        font-size: 16px;
+    }    
 /* Optional: Style the input field */
 .form-control {
     border-radius: .375rem; /* Rounded corners */

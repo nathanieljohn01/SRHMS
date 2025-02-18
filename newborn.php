@@ -20,13 +20,29 @@ function sanitize($data) {
             <div class="col-sm-8 col-9 text-right m-b-20">
                 <?php 
                 if ($_SESSION['role'] == 1 || $_SESSION['role'] == 3) {  
-                    echo '<a href="add-newborn.php" class="btn btn-primary btn-rounded float-right"><i class="fa fa-plus"></i> Add Newborn </a>';
+                    echo '<a href="add-newborn.php" class="btn btn-primary float-right"><i class="fa fa-plus"></i> Add Newborn </a>';
                 }
                 ?>
             </div>
         </div>
         <div class="table-responsive">
-            <input class="form-control" type="text" id="newbornSearchInput" onkeyup="filterNewborns()" placeholder="Search for Newborn">
+            <div class="sticky-search">
+            <h5 class="font-weight-bold mb-2">Search Patient:</h5>
+                <div class="input-group mb-3">
+                    <div class="position-relative w-100">
+                        <!-- Search Icon -->
+                        <i class="fa fa-search position-absolute text-secondary" style="top: 50%; left: 12px; transform: translateY(-50%);"></i>
+                        <!-- Input Field -->
+                        <input class="form-control" type="text" id="newbornSearchInput" onkeyup="filterNewborns()" style="padding-left: 35px; padding-right: 35px;">
+                        <!-- Clear Button -->
+                        <button class="position-absolute border-0 bg-transparent text-secondary" type="button" onclick="clearSearch()" style="top: 50%; right: 10px; transform: translateY(-50%);">
+                            <i class="fa fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="table-responsive">
             <table class="datatable table table-hover" id="newbornTable">
                 <thead style="background-color: #CCCCCC;">
                     <tr>
@@ -62,37 +78,71 @@ function sanitize($data) {
                             echo "Invalid ID.";
                         }
                     }
-
-                    // Fetch newborn records
-                    $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_newborn WHERE deleted = 0");
-                    while ($row = mysqli_fetch_array($fetch_query)) {
+                    if ($_SESSION['role'] == 2) {
+                        $doctor_name = $_SESSION['name'];
+                        $fetch_query = mysqli_prepare($connection, "SELECT * FROM tbl_newborn WHERE deleted = 0 AND physician = ?");
+                        mysqli_stmt_bind_param($fetch_query, 's', $doctor_name);
+                        mysqli_stmt_execute($fetch_query);
+                        $result = mysqli_stmt_get_result($fetch_query);
+                        while ($row = mysqli_fetch_array($result)) {
                     ?>
-                        <tr>
-                            <td><?php echo htmlspecialchars($row['newborn_id']); ?></td>
-                            <td><?php echo htmlspecialchars($row['first_name']); ?></td>
-                            <td><?php echo htmlspecialchars($row['last_name']); ?></td>
-                            <td><?php echo htmlspecialchars($row['gender']); ?></td>
-                            <td><?php echo htmlspecialchars($row['dob']); ?></td>
-                            <td><?php echo htmlspecialchars($row['tob']); ?></td>
-                            <td><?php echo htmlspecialchars($row['birth_weight']); ?></td>
-                            <td><?php echo htmlspecialchars($row['birth_height']); ?></td>
-                            <td><?php echo htmlspecialchars($row['gestational_age']); ?></td>
-                            <td><?php echo htmlspecialchars($row['physician']); ?></td>
-                            <td class="text-right">
-                                <div class="dropdown dropdown-action">
-                                    <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><i class="fa fa-ellipsis-v"></i></a>
-                                    <div class="dropdown-menu dropdown-menu-right">
-                                    <?php 
-                                    if ($_SESSION['role'] == 1 || $_SESSION['role'] == 3) {
-                                        echo '<a class="dropdown-item" href="edit-newborn.php?id='. htmlspecialchars($row['id']) .'"><i class="fa fa-pencil m-r-5"></i> Edit</a>';
-                                        echo '<a class="dropdown-item" href="newborn.php?ids='. htmlspecialchars($row['id']) .'" onclick="return confirmDelete()"><i class="fa fa-trash-o m-r-5"></i> Delete</a>';
-                                    }
-                                    ?>
+                            <tr>
+                                <td><?php echo htmlspecialchars($row['newborn_id']); ?></td>
+                                <td><?php echo htmlspecialchars($row['first_name']); ?></td>
+                                <td><?php echo htmlspecialchars($row['last_name']); ?></td>
+                                <td><?php echo htmlspecialchars($row['gender']); ?></td>
+                                <td><?php echo htmlspecialchars($row['dob']); ?></td>
+                                <td><?php echo htmlspecialchars($row['tob']); ?></td>
+                                <td><?php echo htmlspecialchars($row['birth_weight']); ?></td>
+                                <td><?php echo htmlspecialchars($row['birth_height']); ?></td>
+                                <td><?php echo htmlspecialchars($row['gestational_age']); ?></td>
+                                <td><?php echo htmlspecialchars($row['physician']); ?></td>
+                                <td class="text-right">
+                                    <div class="dropdown dropdown-action">
+                                        <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><i class="fa fa-ellipsis-v"></i></a>
+                                        <div class="dropdown-menu dropdown-menu-right">
+                                            <a class="dropdown-item" href="edit-newborn.php?id=<?php echo htmlspecialchars($row['id']); ?>"><i class="fa fa-pencil m-r-5"></i> Edit</a>
+                                            <a class="dropdown-item" href="newborn.php?ids=<?php echo htmlspecialchars($row['id']); ?>" onclick="return confirmDelete()"><i class="fa fa-trash-o m-r-5"></i> Delete</a>
+                                        </div>
                                     </div>
-                                </div>
-                            </td>
-                        </tr>
-                    <?php } ?>
+                                </td>
+                            </tr>
+                    <?php
+                        }
+                        mysqli_stmt_close($fetch_query);
+                    } else {
+                        $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_newborn WHERE deleted = 0");
+                        while ($row = mysqli_fetch_array($fetch_query)) {
+                    ?>
+                            <tr>
+                                <td><?php echo htmlspecialchars($row['newborn_id']); ?></td>
+                                <td><?php echo htmlspecialchars($row['first_name']); ?></td>
+                                <td><?php echo htmlspecialchars($row['last_name']); ?></td>
+                                <td><?php echo htmlspecialchars($row['gender']); ?></td>
+                                <td><?php echo htmlspecialchars($row['dob']); ?></td>
+                                <td><?php echo htmlspecialchars($row['tob']); ?></td>
+                                <td><?php echo htmlspecialchars($row['birth_weight']); ?></td>
+                                <td><?php echo htmlspecialchars($row['birth_height']); ?></td>
+                                <td><?php echo htmlspecialchars($row['gestational_age']); ?></td>
+                                <td><?php echo htmlspecialchars($row['physician']); ?></td>
+                                <td class="text-right">
+                                    <div class="dropdown dropdown-action">
+                                        <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><i class="fa fa-ellipsis-v"></i></a>
+                                        <div class="dropdown-menu dropdown-menu-right">
+                                        <?php 
+                                        if ($_SESSION['role'] == 1 || $_SESSION['role'] == 3) {
+                                            echo '<a class="dropdown-item" href="edit-newborn.php?id='. htmlspecialchars($row['id']) .'"><i class="fa fa-pencil m-r-5"></i> Edit</a>';
+                                            echo '<a class="dropdown-item" href="newborn.php?ids='. htmlspecialchars($row['id']) .'" onclick="return confirmDelete()"><i class="fa fa-trash-o m-r-5"></i> Delete</a>';
+                                        }
+                                        ?>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                    <?php
+                        }
+                    }
+                    ?>
                 </tbody>
             </table>
         </div>
@@ -111,35 +161,96 @@ function confirmDelete(){
 </script>
 
 <script>
-    function filterNewborns() {
-        var input, filter, table, tr, td, i, txtValue;
-        input = document.getElementById("newbornSearchInput");
-        filter = input.value.toUpperCase();
-        table = document.getElementById("newbornTable");
-        tr = table.getElementsByTagName("tr");
-
-        for (i = 0; i < tr.length; i++) {
-            var matchFound = false;
-            for (var j = 0; j < tr[i].cells.length; j++) {
-                td = tr[i].cells[j];
-                if (td) {
-                    txtValue = td.textContent || td.innerText;
-                    if (txtValue.toUpperCase().indexOf(filter) > -1) {
-                        matchFound = true;
-                        break;
-                    }
-                }
-            }
-            if (matchFound || i === 0) {
-                tr[i].style.display = "";
-            } else {
-                tr[i].style.display = "none";
-            }
-        }
+    function clearSearch() {
+        document.getElementById("newbornSearchInput").value = '';
+        filterNewborns();
     }
+
+    var role = <?php echo json_encode($_SESSION['role']); ?>;
+
+    function filterNewborns() {
+        var input = document.getElementById("newbornSearchInput").value;
+        
+        $.ajax({
+            url: 'fetch_newborn.php',
+            method: 'GET',
+            data: { query: input },
+            success: function(response) {
+                var data = JSON.parse(response);
+                updateNewbornsTable(data);
+            }
+        });
+    }
+    
+    function updateNewbornsTable(data) {
+        var tbody = $('#newbornTable tbody');
+        tbody.empty();
+    
+        data.forEach(function(row) {
+            let actionButtons = '';
+            if (<?php echo $_SESSION['role']; ?> == 1 || <?php echo $_SESSION['role']; ?> == 3) {
+                actionButtons = `
+                    <a class="dropdown-item" href="edit-newborn.php?id=${row.id}">
+                        <i class="fa fa-pencil m-r-5"></i> Edit
+                    </a>
+                    <a class="dropdown-item" href="newborn.php?ids=${row.id}" onclick="return confirmDelete()">
+                        <i class="fa fa-trash-o m-r-5"></i> Delete
+                    </a>
+                `;
+            }
+
+            tbody.append(`
+                <tr>
+                    <td>${row.newborn_id}</td>
+                    <td>${row.first_name}</td>
+                    <td>${row.last_name}</td>
+                    <td>${row.gender}</td>
+                    <td>${row.dob}</td>
+                    <td>${row.tob}</td>
+                    <td>${row.birth_weight}</td>
+                    <td>${row.birth_height}</td>
+                    <td>${row.gestational_age}</td>
+                    <td>${row.physician}</td>
+                    <td class="text-right">
+                        <div class="dropdown dropdown-action">
+                            <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
+                                <i class="fa fa-ellipsis-v"></i>
+                            </a>
+                            <div class="dropdown-menu dropdown-menu-right">
+                                ${actionButtons}
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            `);
+        });
+    }
+
 </script>
 
 <style>
+.btn-outline-primary {
+    background-color:rgb(252, 252, 252);
+    color: gray;
+    border: 1px solid rgb(228, 228, 228);
+}
+.btn-outline-primary:hover {
+    background-color: #12369e;
+    color: #fff;
+}
+.btn-outline-secondary {
+    color:rgb(90, 90, 90);
+    border: 1px solid rgb(228, 228, 228);
+}
+.btn-outline-secondary:hover {
+    background-color: #12369e;
+    color: #fff;
+}
+.input-group-text {
+    background-color:rgb(255, 255, 255);
+    border: 1px solid rgb(228, 228, 228);
+    color: gray;
+}
     .btn-primary {
         background: #12369e;
         border: none;

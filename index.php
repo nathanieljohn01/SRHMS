@@ -60,28 +60,32 @@
         }
 
         .form-control {
-            padding: 10px 15px;
+            padding: 10px 20px;
             border: 2px solid #ccc;
             transition: border-color 0.3s;
-            border-radius: 5px;
+            border-radius: 4px;
         }
 
         .form-control:focus {
             border-color: #12369e;
             box-shadow: none;
         }
-
+        .btn-primary.submit-btn {
+        border-radius: 4px; 
+        padding: 10px 20px;
+        font-size: 16px;
+    }
         .account-btn {
             background: #12369e;
             border: none;
             color: #fff;
-            padding: 12px 20px;
+            padding: 10px 20px;
             transition: background 0.3s;
             width: 100%;
             font-size: 16px;
             font-weight: bold;
             margin-top: 10px;
-            border-radius: 8px;
+            border-radius: 4px;
         }
 
         .account-btn:hover {
@@ -146,7 +150,7 @@ if (isset($_REQUEST['login'])) {
         $current_time = time();
         $time_diff = isset($attempt_data['last_attempt_time']) ? $current_time - strtotime($attempt_data['last_attempt_time']) : 0;
 
-        if ($attempt_data['attempts'] >= 5 && $time_diff < 60) {
+        if (isset($attempt_data['attempts']) && $attempt_data['attempts'] >= 5 && $time_diff < 60) {
             // Too many failed attempts
             echo "<script>
                 Swal.fire({
@@ -250,35 +254,35 @@ if (isset($_REQUEST['login'])) {
 }
 ?>
 
-    <div class="main-wrapper">
-        <div class="account-page">
-            <div class="account-box">
-                <form method="post" class="form-signin">
-                    <div class="account-logo">
-                        <a href="index-2.html"><img src="assets/img/srchlogo.png" alt="Logo"></a>
-                    </div>
-                    <div class="form-group">
-                        <label>Username</label>
-                        <input type="text" autofocus="" class="form-control" name="username" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Password</label>
-                        <input type="password" class="form-control" name="pwd" required>
-                    </div>
-                    <br>
-                    <div class="form-group text-center">
-                        <button type="submit" name="login" class="btn btn-primary account-btn">Login</button>
-                    </div>
-                </form>
-            </div>
+<div class="main-wrapper">
+    <div class="account-page">
+        <div class="account-box">
+            <form method="post" class="form-signin">
+                <div class="account-logo">
+                    <a href="index-2.html"><img src="assets/img/srchlogo.png" alt="Logo"></a>
+                </div>
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" autofocus="" class="form-control" name="username" required>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" class="form-control" name="pwd" required>
+                </div>
+                <br>
+                <div class="form-group text-center">
+                    <button type="submit" name="login" class="btn btn-primary account-btn">Login</button>
+                </div>
+            </form>
         </div>
     </div>
+</div>
 
-    <script src="assets/js/jquery-3.2.1.min.js"></script>
-    <script src="assets/js/popper.min.js"></script>
-    <script src="assets/js/bootstrap.min.js"></script>
-    <script src="assets/js/app.js"></script>
-    
+<script src="assets/js/jquery-3.2.1.min.js"></script>
+<script src="assets/js/popper.min.js"></script>
+<script src="assets/js/bootstrap.min.js"></script>
+<script src="assets/js/app.js"></script>
+
 </body>
 
 </html>

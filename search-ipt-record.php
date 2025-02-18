@@ -5,7 +5,7 @@ if (isset($_GET['query'])) {
     $query = sanitize($connection, $_GET['query']); // Sanitize input
 
     // Prepare and bind the query to fetch data from tbl_inpatient
-    $query_sql = "SELECT * FROM tbl_inpatient WHERE patient_name LIKE ?";  // Using parameterized query for security
+    $query_sql = "SELECT * FROM tbl_inpatient WHERE patient_name LIKE ? AND discharge_date IS NULL";  // Using parameterized query for security
     $stmt = $connection->prepare($query_sql);
     $search_term = "%" . $query . "%";  // Adding wildcards to match any patient_name containing the query term
     $stmt->bind_param("s", $search_term);  // Binding the search term
@@ -20,7 +20,7 @@ if (isset($_GET['query'])) {
             echo '<li class="search-result" data-id="' . $row['id'] . '">' . $row['patient_name'] . '</li>';
         }
     } else {
-        echo '<li class="search-result text-muted">No matching patients found</li>';
+        echo '<li class="search-result-none" style="pointer-events: none; color: gray; padding: 8px 12px;">No matching patients found</li>';
     }
 
     // Close the statement

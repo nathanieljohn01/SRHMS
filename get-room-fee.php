@@ -7,7 +7,7 @@ $patient_name = isset($_GET['patient_name']) ? $_GET['patient_name'] : '';
 // Ensure we have a valid patient name
 if (!empty($patient_name)) {
     // Query to get the patient details
-    $sql_patient = "SELECT patient_id, room_type, admission_date, discharge_date FROM tbl_inpatient_record WHERE patient_name = ? AND deleted = 0";
+    $sql_patient = "SELECT patient_id, room_type, admission_date, discharge_date FROM tbl_inpatient_record WHERE patient_name = ? AND deleted = 0 AND is_billed = 0";
     if ($stmt_patient = mysqli_prepare($connection, $sql_patient)) {
         mysqli_stmt_bind_param($stmt_patient, 's', $patient_name);
         mysqli_stmt_execute($stmt_patient);

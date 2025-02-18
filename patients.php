@@ -14,16 +14,34 @@ include('includes/connection.php');
                 <h4 class="page-title">Patient Registration</h4>
             </div>
             <div class="col-sm-8 col-9 text-right m-b-20">
-                <a href="add-patient.php" class="btn btn-primary btn-rounded float-right"><i class="fa fa-plus"></i> Add Patient</a>
+                <a href="add-patient.php" class="btn btn-primary float-right"><i class="fa fa-plus"></i> Add Patient</a>
             </div>
         </div>
 
         <!-- Search Bar -->
-        <input class="form-control mb-4" type="text" id="patientSearchInput" onkeyup="filterPatients()" placeholder="Search for Patient">
+         
+        <div class="table-responsive">
+            <div class="sticky-search">
+            <h5 class="font-weight-bold mb-2">Search Patient:</h5>
+                <div class="input-group mb-3">
+                    <div class="position-relative w-100">
+                        <!-- Search Icon -->
+                        <i class="fa fa-search position-absolute text-secondary" style="top: 50%; left: 12px; transform: translateY(-50%);"></i>
+                        <!-- Input Field -->
+                        <input class="form-control" type="text" id="patientSearchInput" onkeyup="filterPatients()" style="padding-left: 35px; padding-right: 35px;">
+                        <!-- Clear Button -->
+                        <button class="position-absolute border-0 bg-transparent text-secondary" type="button" onclick="clearSearch()" style="top: 50%; right: 10px; transform: translateY(-50%);">
+                            <i class="fa fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
 
         <!-- Patient Table 1 -->
         <div class="table-responsive">
-            <table class="datatable table table-hover" id="patientTable">
+            <table class="datatable table table-hover table-striped" id="patientTable">
                 <thead style="background-color: #CCCCCC;">
                     <tr>
                         <th>Patient ID</th>
@@ -92,9 +110,9 @@ include('includes/connection.php');
                     <tr>
                         <th>Email</th>
                         <th>Contact Number</th>
-                        <th>Weight (kg)</th>
-                        <th>Height (ft)</th>
-                        <th>Temperature (°C)</th>
+                        <th>Weight</th>
+                        <th>Height</th>
+                        <th>Temperature</th>
                         <th>Blood Pressure</th>
                         <th>Menstruation</th>
                         <th>Last Menstrual Period</th>
@@ -109,9 +127,9 @@ include('includes/connection.php');
                         <tr data-patient-id="<?php echo $row['id']; ?>">
                             <td><?php echo $row['email']; ?></td>
                             <td><?php echo $row['contact_number']; ?></td>
-                            <td><?php echo $row['weight']; ?></td>
-                            <td><?php echo $row['height']; ?></td>
-                            <td><?php echo $row['temperature']; ?></td>
+                            <td><?php echo $row['weight']; ?> kg</td>
+                            <td><?php echo $row['height']; ?> ft</td>
+                            <td><?php echo $row['temperature']; ?> °C</td>
                             <td><?php echo $row['blood_pressure']; ?></td>
                             <td><?php echo $row['menstruation']; ?></td>
                             <td><?php echo $row['last_menstrual_period']; ?></td>
@@ -132,49 +150,92 @@ include('includes/connection.php');
 function confirmDelete(){
     return confirm('Are you sure want to delete this Patient?');
 }
+function clearSearch() {
+    document.getElementById("patientSearchInput").value = '';
+    filterPatients();
+}
+var role = <?php echo json_encode($_SESSION['role']); ?>;
 
 function filterPatients() {
-    var input = document.getElementById("patientSearchInput");
-    var filter = input.value.toUpperCase();
-
-    // Get both patient tables
-    var patientTable = document.getElementById("patientTable");
-    var patientTable2 = document.getElementById("patientTable2");
-
-    // Get all rows from both tables
-    var patientRows = patientTable.getElementsByTagName("tr");
-    var patientRows2 = patientTable2.getElementsByTagName("tr");
-
-    // Create an array to keep track of matched patient IDs
-    var matchedPatientIds = [];
-
-    // Filter rows in the first table (Patient Information)
-    for (let i = 1; i < patientRows.length; i++) {
-        let matchFound = false;
-        for (let j = 0; j < patientRows[i].cells.length; j++) {
-            let cell = patientRows[i].cells[j];
-            if (cell) {
-                let txtValue = cell.textContent || cell.innerText;
-                if (txtValue.toUpperCase().indexOf(filter) > -1) {
-                    matchFound = true;
-                    break;
-                }
-            }
+    var input = document.getElementById("patientSearchInput").value;
+    
+    $.ajax({
+        url: 'fetch_patients.php',
+        type: 'GET',
+        data: { query: input },
+        success: function(response) {
+            var data = JSON.parse(response);
+            updatePatientTables(data);
+        },
+        error: function(xhr, status, error) {
+            alert('Error fetching data. Please try again.');
         }
-        patientRows[i].style.display = matchFound ? "" : "none";
-
-        // Store matched patient ID
-        if (matchFound) {
-            matchedPatientIds.push(patientRows[i].getAttribute("data-patient-id"));
-        }
-    }
-
-    // Filter rows in the second table (Additional Patient Details)
-    for (let i = 1; i < patientRows2.length; i++) {
-        let patientId2 = patientRows2[i].getAttribute("data-patient-id");
-        patientRows2[i].style.display = matchedPatientIds.includes(patientId2) ? "" : "none";
-    }
+    });
 }
+
+function updatePatientTables(data) {
+    var tbody1 = $('#patientTable tbody');
+    var tbody2 = $('#patientTable2 tbody');
+    tbody1.empty();
+    tbody2.empty();
+    
+    data.forEach(function(record) {
+        // First table row
+        tbody1.append(`
+            <tr data-patient-id="${record.id}">
+                <td>${record.patient_id}</td>
+                <td>${record.patient_type}</td>
+                <td>${record.name}</td>
+                <td>${record.age}</td>
+                <td>${record.dob}</td>
+                <td>${record.gender}</td>
+                <td>${record.civil_status}</td>
+                <td>${record.address}</td>
+                <td>${record.date_time}</td>
+                <td class="text-right">
+                    <div class="dropdown dropdown-action">
+                        <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
+                            <i class="fa fa-ellipsis-v"></i>
+                        </a>
+                        <div class="dropdown-menu dropdown-menu-right">
+                            ${getActionButtons(record.id)}
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        `);
+
+        // Second table row
+        tbody2.append(`
+            <tr data-patient-id="${record.id}">
+                <td>${record.email}</td>
+                <td>${record.contact_number}</td>
+                <td>${record.weight}</td>
+                <td>${record.height}</td>
+                <td>${record.temperature}</td>
+                <td>${record.blood_pressure}</td>
+                <td>${record.menstruation}</td>
+                <td>${record.last_menstrual_period}</td>
+                <td>${record.message}</td>
+            </tr>
+        `);
+    });
+}
+
+function getActionButtons(id) {
+    if (role == 1) {
+        return `
+            <a class="dropdown-item" href="edit-patient.php?id=${id}">
+                <i class="fa fa-pencil m-r-5"></i> Edit
+            </a>
+            <a class="dropdown-item" href="patients.php?ids=${id}" onclick="return confirmDelete()">
+                <i class="fa fa-trash-o m-r-5"></i> Delete
+            </a>
+        `;
+    }
+    return '';
+}
+
 $('.dropdown-toggle').on('click', function (e) {
     var $el = $(this).next('.dropdown-menu');
     var isVisible = $el.is(':visible');
@@ -194,9 +255,32 @@ $('.dropdown-toggle').on('click', function (e) {
         }
     });
 });
+
 </script>
 
 <style>
+.btn-outline-primary {
+    background-color:rgb(252, 252, 252);
+    color: gray;
+    border: 1px solid rgb(228, 228, 228);
+}
+.btn-outline-primary:hover {
+    background-color: #12369e;
+    color: #fff;
+}
+.btn-outline-secondary {
+    color:rgb(90, 90, 90);
+    border: 1px solid rgb(228, 228, 228);
+}
+.btn-outline-secondary:hover {
+    background-color: #12369e;
+    color: #fff;
+}
+.input-group-text {
+    background-color:rgb(255, 255, 255);
+    border: 1px solid rgb(228, 228, 228);
+    color: gray;
+}
 #patientTable2_length, #patientTable_paginate .paginate_button {
     display: none;
 }

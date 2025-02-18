@@ -16,7 +16,15 @@ include('includes/connection.php');
             </div>
         </div>
         <div class="table-responsive">
-            <table class="datatable table table-hover" id="labTable">
+            <div class="input-group">
+            <input class="form-control mb-3" type="text" id="labTestSearchInput" onkeyup="filterTests()" placeholder="Search for Lab Test">
+                <div class="input-group-append">
+                    <button class="btn btn-outline-primary mb-3" type="button" onclick="clearSearch()">
+                        <i class="fa fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            <table class="datatable table table-hover" id="labTestTable">
                 <thead style="background-color: #CCCCCC;">
                     <tr>
                         <th>Lab Department</th> 
@@ -55,6 +63,59 @@ include('includes/connection.php');
 include('footer.php');
 ?>
 <script>
+     function clearSearch() {
+        document.getElementById("labTestSearchInput").value = '';
+        filterTests();
+     }
+     function filterTests() {
+        var input, filter, table, tr, td, i, j, txtValue;
+        input = document.getElementById("labTestSearchInput");
+        filter = input.value.toUpperCase();
+        table = document.getElementById("labTestTable");
+        tr = table.getElementsByTagName("tr");
+
+        // If DataTable is initialized, clear its search and use manual filtering
+        if ($.fn.DataTable.isDataTable("#labTestTable")) {
+            var labTestTableInstance = $('#labTestTable').DataTable();
+            labTestTableInstance.search('').draw();  // Clear DataTable search
+            labTestTableInstance.page.len(-1).draw();  // Show all rows temporarily
+        }
+
+        // Manual filtering logic
+        for (i = 0; i < tr.length; i++) {
+            var matchFound = false;
+            for (j = 0; j < tr[i].cells.length; j++) {
+                td = tr[i].cells[j];
+                if (td) {
+                    txtValue = td.textContent || td.innerText;
+                    if (txtValue.toUpperCase().indexOf(filter) > -1) {
+                        matchFound = true;
+                        break;
+                    }
+                }
+            }
+            // Show row if a match is found, or if it's the header row
+            if (matchFound || i === 0) {
+                tr[i].style.display = "";
+            } else {
+                tr[i].style.display = "none";
+            }
+        }
+
+        // Restore DataTable pagination if input is empty
+        if (filter.trim() === "") {
+            if ($.fn.DataTable.isDataTable("#labTestTable")) {
+                var labTestTableInstance = $('#labTestTable').DataTable();
+                labTestTableInstance.page.len(10).draw(); // Reset pagination to default
+            }
+        }
+    }
+
+    // Initialize DataTable
+    $(document).ready(function() {
+        $('#labTestTable').DataTable();
+    });
+    
     function toggleStatus(checkbox, labTest) {
         var statusCell = checkbox.parentNode.parentNode.previousElementSibling; // Get the cell containing the status
         var newStatus = checkbox.checked ? 'Available' : 'Not Available'; // Set the new status based on checkbox state
@@ -73,6 +134,28 @@ include('footer.php');
     }
 </script>
 <style>
+    .btn-outline-primary {
+        background-color:rgb(252, 252, 252);
+        color: gray;
+        border: 1px solid rgb(228, 228, 228);
+    }
+    .btn-outline-primary:hover {
+        background-color: #12369e;
+        color: #fff;
+    }
+    .btn-outline-secondary {
+        color:rgb(90, 90, 90);
+        border: 1px solid rgb(228, 228, 228);
+    }
+    .btn-outline-secondary:hover {
+        background-color: #12369e;
+        color: #fff;
+    }
+    .input-group-text {
+        background-color:rgb(255, 255, 255);
+        border: 1px solid rgb(228, 228, 228);
+        color: gray;
+    } 
     .switch {
         position: relative;
         display: inline-block;

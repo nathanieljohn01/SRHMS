@@ -23,11 +23,19 @@ if (isset($_GET['msg'])) {
                 <h4 class="page-title">Housekeeping Schedule</h4>
             </div>
             <div class="col-sm-8 col-9 text-right m-b-20">
-                <a href="add-housekeeping-schedule.php" class="btn btn-primary btn-rounded float-right"><i class="fa fa-plus"></i> Add Schedule</a>
+                <a href="add-housekeeping-schedule.php" class="btn btn-primary float-right"><i class="fa fa-plus"></i> Add Schedule</a>
             </div>
         </div>
         <div class="table-responsive">
-            <table class="datatable table table-stripped">
+            <div class="input-group">
+            <input class="form-control mb-3" type="text" id="patientSearchInput" onkeyup="filterpatients()" placeholder="Search for Patient">
+                <div class="input-group-append">
+                    <button class="btn btn-outline-primary mb-3" type="button" onclick="clearSearch()">
+                        <i class="fa fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            <table class="datatable table table-hover" id="patientTable">
                 <thead style="background-color: #CCCCCC;">
                     <tr>
                         <th>Room Type</th>
@@ -88,7 +96,83 @@ include('footer.php');
 .btn-primary:hover {
     background: #1342C6;
 }
+.btn-outline-primary {
+    background-color:rgb(252, 252, 252);
+    color: gray;
+    border: 1px solid rgb(228, 228, 228);
+}
+.btn-outline-primary:hover {
+    background-color: #12369e;
+    color: #fff;
+}
+.btn-outline-secondary {
+    color:rgb(90, 90, 90);
+    border: 1px solid rgb(228, 228, 228);
+}
+.btn-outline-secondary:hover {
+    background-color: #12369e;
+    color: #fff;
+}
+.input-group-text {
+    background-color:rgb(255, 255, 255);
+    border: 1px solid rgb(228, 228, 228);
+}
 </style>
+
+<script>
+    function clearSearch() {
+        document.getElementById("patientSearchInput").value = '';
+        filterpatients();
+    }  
+    function filterpatients() {
+        var input, filter, table, tr, td, i, j, txtValue;
+        input = document.getElementById("patientSearchInput");
+        filter = input.value.toUpperCase();
+        table = document.getElementById("patientTable");
+        tr = table.getElementsByTagName("tr");
+
+        // Disable DataTable's default search functionality
+        if ($.fn.DataTable.isDataTable("#patientTable")) {
+            var hemoTableInstance = $('#patientTable').DataTable();
+            hemoTableInstance.search('').draw();  // Clear existing search
+            hemoTableInstance.page.len(-1).draw();  // Show all rows temporarily
+        }
+
+        // Manual filtering
+        for (i = 0; i < tr.length; i++) {
+            var matchFound = false;
+            for (j = 0; j < tr[i].cells.length; j++) {
+                td = tr[i].cells[j];
+                if (td) {
+                    txtValue = td.textContent || td.innerText;
+                    if (txtValue.toUpperCase().indexOf(filter) > -1) {
+                        matchFound = true;
+                        break;
+                    }
+                }
+            }
+            if (matchFound || i === 0) {
+                tr[i].style.display = ""; // Show matching rows
+            } else {
+                tr[i].style.display = "none"; // Hide non-matching rows
+            }
+        }
+
+        // Re-enable pagination when input is cleared
+        if (filter.trim() === "") {
+            if ($.fn.DataTable.isDataTable("#patientTable")) {
+                var hemoTableInstance = $('#patientTable').DataTable();
+                hemoTableInstance.page.len(10).draw(); // Reset pagination length
+            }
+        }
+    }
+
+    // Initialize DataTable
+    $(document).ready(function() {
+        $('#patientTable').DataTable();
+    });
+
+</script>
 
 <script>
 function confirmCompletion(id) {

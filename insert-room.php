@@ -42,12 +42,12 @@ while ($room_row = mysqli_fetch_array($available_bed_numbers_query)) {
 }
 
 if (isset($_POST['save-inpatient'])) {
-    // Get the current values of the inpatient record
+    // Get the current values
     $current_room_type = sanitize($connection, $row['room_type']);
     $current_room_number = sanitize($connection, $row['room_number']);
     $current_bed_number = sanitize($connection, $row['bed_number']);
 
-    // Get new selected values from the form
+    // Get new selected values
     $room_type = sanitize($connection, $_POST['room_type']);
     $room_number = sanitize($connection, $_POST['room_number']);
     $bed_number = sanitize($connection, $_POST['bed_number']);
@@ -55,30 +55,48 @@ if (isset($_POST['save-inpatient'])) {
     // Update the inpatient record
     $update_query = mysqli_prepare($connection, "UPDATE tbl_inpatient SET room_type = ?, room_number = ?, bed_number = ? WHERE id = ?");
     mysqli_stmt_bind_param($update_query, 'siii', $room_type, $room_number, $bed_number, $id);
-    $update_result = mysqli_stmt_execute($update_query);
-
-    if ($update_result) {
-        // Update the bed status to 'Available' for the previous bed
+    
+    if (mysqli_stmt_execute($update_query)) {
+        // Update previous bed status
         $update_bed_status_query = mysqli_prepare($connection, "UPDATE tbl_bedallocation SET status = 'Available' WHERE room_type = ? AND room_number = ? AND bed_number = ?");
         mysqli_stmt_bind_param($update_bed_status_query, 'sii', $current_room_type, $current_room_number, $current_bed_number);
         mysqli_stmt_execute($update_bed_status_query);
 
-        // Update the bed status to 'Occupied' for the new bed
+        // Update new bed status
         $update_new_bed_status_query = mysqli_prepare($connection, "UPDATE tbl_bedallocation SET status = 'Occupied' WHERE room_type = ? AND room_number = ? AND bed_number = ?");
         mysqli_stmt_bind_param($update_new_bed_status_query, 'sii', $room_type, $room_number, $bed_number);
         mysqli_stmt_execute($update_new_bed_status_query);
 
-        $msg = "Inpatient updated successfully";
-        // Re-fetch the updated inpatient record
-        $fetch_query = mysqli_prepare($connection, "SELECT * FROM tbl_inpatient WHERE id = ?");
-        mysqli_stmt_bind_param($fetch_query, 'i', $id);
-        mysqli_stmt_execute($fetch_query);
-        $result = mysqli_stmt_get_result($fetch_query);
-        $row = mysqli_fetch_array($result);
+        echo "
+        <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Success',
+                    text: 'Room assignment completed successfully!',
+                    confirmButtonColor: '#12369e'
+                }).then(() => {
+                    window.location.href = 'inpatients.php';
+                });
+            });
+        </script>";
     } else {
-        $msg = "Error updating inpatient record";
+        echo "
+        <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Room assignment failed!',
+                    confirmButtonColor: '#12369e'
+                });
+            });
+        </script>";
     }
 }
+
 ?>
 
 <div class="page-wrapper">
@@ -88,7 +106,7 @@ if (isset($_POST['save-inpatient'])) {
                 <h4 class="page-title">Insert Room</h4>
             </div>
             <div class="col-sm-8 text-right m-b-20">
-                <a href="inpatients.php" class="btn btn-primary btn-rounded float-right">Back</a>
+                <a href="inpatients.php" class="btn btn-primary float-right">Back</a>
             </div>
         </div>
         <div class="row">
@@ -190,15 +208,13 @@ include('footer.php');
         return data.available;
     }
 </script>
-<script type="text/javascript">
-    <?php
-    if (isset($msg)) {
-        echo 'swal("' . $msg . '");';
-    }
-    ?>
-</script>
 
 <style>
+     .btn-primary.submit-btn {
+        border-radius: 4px; 
+        padding: 10px 20px;
+        font-size: 16px;
+    }
 .btn-primary {
     background: #12369e;
     border: none;

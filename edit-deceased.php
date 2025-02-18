@@ -54,13 +54,43 @@ if (isset($_POST['save-deceased'])) {
     // Execute the update statement
     if ($update_stmt->execute()) {
         $msg = "Deceased record updated successfully";
+
+        // SweetAlert success message
+        echo "
+        <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Success',
+                    text: 'Deceased record updated successfully',
+                    confirmButtonColor: '#12369e'
+                }).then(() => {
+                    window.location.href = 'deceased-records.php'; // Adjust to the page you want to redirect to after success
+                });
+            });
+        </script>";
     } else {
         $msg = "Error updating record!";
+
+        // SweetAlert error message
+        echo "
+        <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Error updating record: " . mysqli_error($connection) . "',
+                });
+            });
+        </script>";
     }
 
     $update_stmt->close();
     $fetch_patient_stmt->close();
     $connection->close();
+
 }
 ?>
 
@@ -71,7 +101,7 @@ if (isset($_POST['save-deceased'])) {
                 <h4 class="page-title">Edit Deceased</h4>
             </div>
             <div class="col-sm-8 text-right mb-3">
-                <a href="deceased.php" class="btn btn-primary btn-rounded float-right">Back</a>
+                <a href="deceased.php" class="btn btn-primary float-right">Back</a>
             </div>
         </div>
         <div class="row">
@@ -162,15 +192,12 @@ include('footer.php');
 ?>
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script type="text/javascript">
-    <?php
-    if (isset($msg)) {
-        echo 'swal("' . $msg . '");';
-    }
-    ?>
-</script>
-
 <style>
+    .btn-primary.submit-btn {
+        border-radius: 4px; 
+        padding: 10px 20px;
+        font-size: 16px;
+    }
 /* Optional: Style the input field */
 .form-control {
     border-radius: .375rem; /* Rounded corners */

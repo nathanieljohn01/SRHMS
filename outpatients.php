@@ -14,6 +14,7 @@ function sanitize($connection, $input) {
 }
 
 $role = isset($_SESSION['role']) ? $_SESSION['role'] : null;
+$doctor_name = isset($_SESSION['name']) ? $_SESSION['name'] : null;
 
 // Update diagnosis in the database
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['diagnosis']) && isset($_POST['patientId'])) {
@@ -144,7 +145,7 @@ ob_end_flush(); // Flush output buffer
                                 placeholder="Enter Patient"
                                 onkeyup="searchPatients()">
                             <div class="input-group-append">
-                                <button type="submit" class="btn btn-primary" id="addPatientBtn" disabled>Add</button>
+                                <button type="submit" class="btn btn-outline-secondary" id="addPatientBtn" disabled>Add</button>
                             </div>
                         </div>
                         <input type="hidden" name="patientId" id="patientId">
@@ -152,10 +153,25 @@ ob_end_flush(); // Flush output buffer
                     <ul id="searchResults" class="list-group mt-2" style="max-height: 200px; overflow-y: auto; border: 1px solid #ccc; border-radius: 5px; display: none;"></ul>
                 </div>
                 <?php endif; ?>
-        </div>
-        <div class="table-responsive">
-        <label for="patientSearchInput" class="font-weight-bold">Search Patient:</label>
-        <input class="form-control" type="text" id="outpatientSearchInput" onkeyup="filterOutpatients()" placeholder="Search Patient ID or Patient Name">
+             </div>
+            <div class="table-responsive">
+                <div class="sticky-search">
+                <h5 class="font-weight-bold mb-2">Search Patient:</h5>
+                    <div class="input-group mb-3">
+                        <div class="position-relative w-100">
+                            <!-- Search Icon -->
+                            <i class="fa fa-search position-absolute text-secondary" style="top: 50%; left: 12px; transform: translateY(-50%);"></i>
+                            <!-- Input Field -->
+                            <input class="form-control" type="text" id="outpatientSearchInput" onkeyup="filterOutpatients()" style="padding-left: 35px; padding-right: 35px;">
+                            <!-- Clear Button -->
+                            <button class="position-absolute border-0 bg-transparent text-secondary" type="button" onclick="clearSearch()" style="top: 50%; right: 10px; transform: translateY(-50%);">
+                                <i class="fa fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="table-responsive">
             <table class="datatable table table-hover" id="outpatientTable">
                 <thead style="background-color: #CCCCCC;">
                     <tr>
@@ -174,53 +190,51 @@ ob_end_flush(); // Flush output buffer
                 </thead>
                 <tbody>
                     <?php
-                    if(isset($_GET['ids'])){
-                        $id = sanitize($connection, $_GET['ids']);
-                        $update_query = mysqli_query($connection, "UPDATE tbl_outpatient SET deleted = 1 WHERE id='$id'");
-                    }
-                    $fetch_query = mysqli_query($connection, "select * from tbl_outpatient where deleted = 0");
-                    while($row = mysqli_fetch_array($fetch_query))
-                    {
-                        $dob = $row['dob'];
-                        $date = str_replace('/', '-', $dob); 
-                        $dob = date('Y-m-d', strtotime($date));
-                        $year = (date('Y') - date('Y',strtotime($dob)));
+                        // Filter outpatients by doctor_incharge if role is 2 (doctor)
+                        if ($role == 2) {
+                            $fetch_query = $connection->prepare("SELECT * FROM tbl_outpatient WHERE deleted = 0 AND doctor_incharge = ?");
+                            $fetch_query->bind_param("s", $doctor_name);
+                        } else {
+                            $fetch_query = $connection->prepare("SELECT * FROM tbl_outpatient WHERE deleted = 0");
+                        }
 
-                        $date_time = date('F d, Y g:i A', strtotime($row['date_time']));
-                    ?>
-                    <tr>
-                        <td><?php echo $row['patient_id']; ?></td>
-                        <td><?php echo $row['outpatient_id']; ?></td>
-                        <td><?php echo $row['patient_name']; ?></td>
-                        <td><?php echo $year; ?></td>
-                        <td><?php echo $row['dob']; ?></td>
-                        <td><?php echo $row['gender']; ?></td>
-                        <td>
-                            <?php if (empty($row['doctor_incharge'])) { ?>
-                                <button class="btn btn-primary btn-sm select-doctor-btn" data-toggle="modal" data-target="#doctorModal" data-id="<?php echo $row['outpatient_id']; ?>">Select Doctor</button>
-                            <?php } else { ?>
-                                <?php echo $row['doctor_incharge']; ?>
-                            <?php } ?>
-                        </td>
-                        <td>
-                        <form action="generate-result.php" method="get">
-                            <input type="hidden" name="patient_id" value="<?php echo $row['patient_id']; ?>">
-                            <button class="btn btn-primary btn-sm custom-btn" type="submit">
-                                <i class="fa fa-file-pdf-o m-r-5"></i> View Result
-                            </button>
-                        </form>
-                        </td>
-                        <td><?php echo $row['diagnosis']; ?></td>
-                        <td><?php echo $date_time; ?></td>
-                        <td class="text-right">
+                        $fetch_query->execute();
+                        $result = $fetch_query->get_result();
+
+                        while ($row = $result->fetch_assoc()) {
+                            $dob = $row['dob'];
+                            $date = str_replace('/', '-', $dob); 
+                            $dob = date('Y-m-d', strtotime($date));
+                            $year = (date('Y') - date('Y', strtotime($dob)));
+                            $date_time = date('F d, Y g:i A', strtotime($row['date_time']));
+                        ?>
+                        <tr>
+                            <td><?php echo $row['patient_id']; ?></td>
+                            <td><?php echo $row['outpatient_id']; ?></td>
+                            <td><?php echo $row['patient_name']; ?></td>
+                            <td><?php echo $year; ?></td>
+                            <td><?php echo $row['dob']; ?></td>
+                            <td><?php echo $row['gender']; ?></td>
+                            <td><?php echo $row['doctor_incharge']; ?></td>
+                            <td>
+                                <form action="generate-result.php" method="get">
+                                    <input type="hidden" name="patient_id" value="<?php echo $row['patient_id']; ?>">
+                                    <button class="btn btn-primary btn-sm custom-btn" type="submit">
+                                        <i class="fa fa-file-pdf-o m-r-5"></i> View Result
+                                    </button>
+                                </form>
+                            </td>
+                            <td><?php echo $row['diagnosis']; ?></td>
+                            <td><?php echo $date_time; ?></td>
+                            <td class="text-right">
                             <div class="dropdown dropdown-action">
                                 <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><i class="fa fa-ellipsis-v"></i></a>
                                 <div class="dropdown-menu dropdown-menu-right">
-                                    <?php if ($_SESSION['role'] == 2 && $_SESSION['name'] == $row['doctor_incharge']) { ?>
-                                        <button class="dropdown-item diagnosis-btn" data-toggle="modal" data-target="#diagnosisModal" data-id="<?php echo $row['outpatient_id'];?>" <?php echo !empty($row['diagnosis']) ? 'disabled' : ''; ?>><i class="fa fa-stethoscope m-r-5"></i> Diagnosis</button>
+                                    <?php if ($role == 2 && $doctor_name == $row['doctor_incharge']) { ?>
+                                        <button class="dropdown-item diagnosis-btn" data-toggle="modal" data-target="#diagnosisModal" data-id="<?php echo $row['outpatient_id']; ?>" <?php echo !empty($row['diagnosis']) ? 'disabled' : ''; ?>><i class="fa fa-stethoscope m-r-5"></i> Diagnosis</button>
                                     <?php } ?>
                                     <?php 
-                                    if ($_SESSION['role'] == 1 ) {
+                                    if ($role == 1) {
                                         echo '<a class="dropdown-item" href="edit-outpatient.php?id='.$row['id'].'"><i class="fa fa-pencil m-r-5"></i> Edit</a>';
                                         echo '<a class="dropdown-item" href="outpatients.php?ids='.$row['id'].'" onclick="return confirmDelete()"><i class="fa fa-trash-o m-r-5"></i> Delete</a>';
                                     }
@@ -329,32 +343,82 @@ include('footer.php');
         $('#outpatientId').val(outpatientId);
     });
 </script>
-<script>
-    function filterOutpatients() {
-        var input, filter, table, tr, td, i, txtValue;
-        input = document.getElementById("outpatientSearchInput");
-        filter = input.value.toUpperCase();
-        table = document.getElementById("outpatientTable");
-        tr = table.getElementsByTagName("tr");
 
-        for (i = 0; i < tr.length; i++) {
-            var matchFound = false;
-            for (var j = 0; j < tr[i].cells.length; j++) {
-                td = tr[i].cells[j];
-                if (td) {
-                    txtValue = td.textContent || td.innerText;
-                    if (txtValue.toUpperCase().indexOf(filter) > -1) {
-                        matchFound = true;
-                        break;
-                    }
-                }
+<script>
+var role = <?php echo json_encode($_SESSION['role']); ?>;
+var doctor_name = <?php echo json_encode($_SESSION['name']); ?>;
+</script>
+
+<script>
+    function clearSearch() {
+        document.getElementById("outpatientSearchInput").value = '';
+        filterOutpatients();
+    }
+    function filterOutpatients() {
+        var input = document.getElementById("outpatientSearchInput").value;
+        
+        $.ajax({
+            url: 'fetch_outpatients.php',
+            method: 'GET',
+            data: { query: input },
+            success: function(response) {
+                var data = JSON.parse(response);
+                updateTable(data);
             }
-            if (matchFound || i === 0) {
-                tr[i].style.display = "";
-            } else {
-                tr[i].style.display = "none";
-            }
-        }
+        });
+    }
+
+    function updateTable(data) {
+        var tbody = $('#outpatientTable tbody');
+        tbody.empty();
+        
+        data.forEach(function(row) {
+            tbody.append(`<tr>
+                <td>${row.patient_id}</td>
+                <td>${row.outpatient_id}</td>
+                <td>${row.patient_name}</td>
+                <td>${row.age}</td>
+                <td>${row.dob}</td>
+                <td>${row.gender}</td>
+                <td>${row.doctor_incharge}</td>
+                <td>
+                    <form action="generate-result.php" method="get">
+                        <input type="hidden" name="patient_id" value="${row.patient_id}">
+                        <button class="btn btn-primary btn-sm custom-btn" type="submit">
+                            <i class="fa fa-file-pdf-o m-r-5"></i> View Result
+                        </button>
+                    </form>
+                </td>
+                <td>${row.diagnosis}</td>
+                <td>${row.date_time}</td>
+                <td class="text-right">
+                    <div class="dropdown dropdown-action">
+                        <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
+                            <i class="fa fa-ellipsis-v"></i>
+                        </a>
+                        <div class="dropdown-menu dropdown-menu-right">
+                            ${role == 2 && doctor_name == row.doctor_incharge ? 
+                                `<button class="dropdown-item diagnosis-btn" 
+                                    data-toggle="modal" 
+                                    data-target="#diagnosisModal" 
+                                    data-id="${row.outpatient_id}" 
+                                    ${row.diagnosis ? 'disabled' : ''}>
+                                    <i class="fa fa-stethoscope m-r-5"></i> Diagnosis
+                                </button>` : ''
+                            }
+                            ${role == 1 ? 
+                                `<a class="dropdown-item" href="edit-outpatient.php?id=${row.id}">
+                                    <i class="fa fa-pencil m-r-5"></i> Edit
+                                </a>
+                                <a class="dropdown-item" href="outpatients.php?ids=${row.id}" onclick="return confirmDelete()">
+                                    <i class="fa fa-trash-o m-r-5"></i> Delete
+                                </a>` : ''
+                            }
+                        </div>
+                    </div>
+                </td>
+            </tr>`);
+        });
     }
 
     function searchPatients() {
@@ -456,6 +520,28 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <style>
+.btn-outline-primary {
+background-color:rgb(252, 252, 252);
+color: gray;
+border: 1px solid rgb(228, 228, 228);
+}
+.btn-outline-primary:hover {
+    background-color: #12369e;
+    color: #fff;
+}
+.btn-outline-secondary {
+    color:rgb(90, 90, 90);
+    border: 1px solid rgb(228, 228, 228);
+}
+.btn-outline-secondary:hover {
+    background-color: #12369e;
+    color: #fff;
+}
+.input-group-text {
+    background-color:rgb(255, 255, 255);
+    border: 1px solid rgb(228, 228, 228);
+    color: gray;
+}   
     .btn-primary {
             background: #12369e;
             border: none;

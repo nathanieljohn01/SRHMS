@@ -126,7 +126,7 @@ ob_end_flush(); // Flush output buffer
                                 placeholder="Enter Patient"
                                 onkeyup="searchPatients()">
                             <div class="input-group-append">
-                                <button type="submit" class="btn btn-primary" id="addPatientBtn" disabled>Add</button>
+                                <button type="submit" class="btn btn-outline-secondary" id="addPatientBtn" disabled>Add</button>
                             </div>
                         </div>
                         <input type="hidden" name="patientId" id="patientId">
@@ -136,10 +136,25 @@ ob_end_flush(); // Flush output buffer
             <?php endif; ?>
         </div>
         <div class="table-responsive">
-        <label for="patientSearchInput" class="font-weight-bold">Search Patient:</label>
-        <input class="form-control" type="text" id="combinedSearchInput" onkeyup="filterCombinedResults()" placeholder="Search for Patient">
+            <div class="sticky-search">
+            <h5 class="font-weight-bold mb-2">Search Patient:</h5>
+                <div class="input-group mb-3">
+                    <div class="position-relative w-100">
+                        <!-- Search Icon -->
+                        <i class="fa fa-search position-absolute text-secondary" style="top: 50%; left: 12px; transform: translateY(-50%);"></i>
+                        <!-- Input Field -->
+                        <input class="form-control" type="text" id="combinedSearchInput" onkeyup="filterUrinalysis()" style="padding-left: 35px; padding-right: 35px;">
+                        <!-- Clear Button -->
+                        <button class="position-absolute border-0 bg-transparent text-secondary" type="button" onclick="clearSearch()" style="top: 50%; right: 10px; transform: translateY(-50%);">
+                            <i class="fa fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="table-responsive">
             <h4 class="mt-3">Macroscopic</h4>
-            <table class="datatable table table-bordered" id="patientTableMacroscopic">
+            <table class="datatable table table-bordered table-hover" id="patientTableMacroscopic">
                 <thead style="background-color: #CCCCCC;">
                     <tr>
                         <th>Urinalysis ID</th>
@@ -175,7 +190,7 @@ ob_end_flush(); // Flush output buffer
                         $dob = date('Y-m-d', strtotime($date));
                         $year = (date('Y') - date('Y', strtotime($dob)));
                     ?>
-                    <tr>
+                    <tr data-urinalysis-id="${record.urinalysis_id}">
                         <td><?php echo $row['urinalysis_id']; ?></td>
                         <td><?php echo $row['patient_id']; ?></td>
                         <td><?php echo $row['patient_name']; ?></td>
@@ -221,7 +236,7 @@ ob_end_flush(); // Flush output buffer
         </div>
         <div class="table-responsive">
             <h4 class="mt-4">Microscopic</h4>
-            <table class="datatable table table-bordered" id="patientTableMicroscopic">
+            <table class="datatable table table-bordered table-hover" id="patientTableMicroscopic">
                 <thead style="background-color: #CCCCCC;">
                     <tr>
                         <th>Urinalysis ID</th>
@@ -251,7 +266,7 @@ ob_end_flush(); // Flush output buffer
                         $dob = date('Y-m-d', strtotime($date));
                         $year = (date('Y') - date('Y', strtotime($dob)));
                     ?>
-                    <tr>
+                    <tr data-urinalysis-id="${record.urinalysis_id}">
                         <td><?php echo $row['urinalysis_id']; ?></td>
                         <td><?php echo $row['patient_id']; ?></td>
                         <td><?php echo $row['patient_name']; ?></td>
@@ -288,160 +303,215 @@ include('footer.php');
 </script>
 
 <script>
-   $(document).ready(function() {
-    // Initialize DataTables only if not already initialized
-    if (!$.fn.DataTable.isDataTable('#patientTableMacroscopic')) {
-        $('#patientTableMacroscopic').DataTable({
-            "paging": true,
-            "searching": false,
-            "info": false,
-            "lengthChange": true, // Enable show entries
-            "pagingType": "simple" // Simplified pagination
-        });
+    function clearSearch() {
+        document.getElementById("combinedSearchInput").value = '';
+        filterUrinalysis();
     }
 
-    if (!$.fn.DataTable.isDataTable('#patientTableMicroscopic')) {
-        $('#patientTableMicroscopic').DataTable({
-            "paging": true,
-            "searching": false,
-            "info": false,
-            "lengthChange": true, // Enable show entries, but we'll hide it with CSS
-            "pagingType": "simple" // Simplified pagination
-        });
-    }
+    let canPrint, userRole, editable;
 
-        synchronizePagination();
+    $(document).ready(function() {
+        canPrint = <?php echo $can_print ? 'true' : 'false' ?>;
+        userRole = <?php echo $_SESSION['role']; ?>;
+        editable = <?php echo $editable ? 'true' : 'false' ?>;
     });
 
-    function synchronizePagination() {
-        var table1 = $('#patientTableMacroscopic').DataTable();
-        var table2 = $('#patientTableMicroscopic').DataTable();
 
-        $('#patientTableMacroscopic').on('page.dt', function () {
-            var info = table1.page.info();
-            table2.page(info.page).draw(false);
-        });
-
-        $('#patientTableMicroscopic').on('page.dt', function () {
-            var info = table2.page.info();
-            table1.page(info.page).draw(false);
-        });
-    }
-
-    function filterCombinedResults() {
-        var input, filter, table1, table2, tr1, tr2, td, i, txtValue;
-        input = document.getElementById("combinedSearchInput");
-        filter = input.value.toUpperCase();
-        table1 = document.getElementById("patientTableMacroscopic");
-        table2 = document.getElementById("patientTableMicroscopic");
-        tr1 = table1.getElementsByTagName("tr");
-        tr2 = table2.getElementsByTagName("tr");
-
-        // Filter Macroscopic Table
-        for (i = 0; i < tr1.length; i++) {
-            var matchFound = false;
-            for (var j = 0; j < tr1[i].cells.length; j++) {
-                td = tr1[i].cells[j];
-                if (td) {
-                    txtValue = td.textContent || td.innerText;
-                    if (txtValue.toUpperCase().indexOf(filter) > -1) {
-                        matchFound = true;
-                        break;
-                    }
-                }
-            }
-            if (matchFound || i === 0) {
-                tr1[i].style.display = "";
-            } else {
-                tr1[i].style.display = "none";
-            }
-        }
-
-        // Filter Microscopic Table
-        for (i = 0; i < tr2.length; i++) {
-            var matchFound = false;
-            for (var j = 0; j < tr2[i].cells.length; j++) {
-                td = tr2[i].cells[j];
-                if (td) {
-                    txtValue = td.textContent || td.innerText;
-                    if (txtValue.toUpperCase().indexOf(filter) > -1) {
-                        matchFound = true;
-                        break;
-                    }
-                }
-            }
-            if (matchFound || i === 0) {
-                tr2[i].style.display = "";
-            } else {
-                tr2[i].style.display = "none";
-            }
-        }
-    }
-
-    
-    $('.dropdown-toggle').on('click', function (e) {
-    var $el = $(this).next('.dropdown-menu');
-    var isVisible = $el.is(':visible');
-    
-    // Hide all dropdowns
-    $('.dropdown-menu').slideUp('400');
-    
-    // If this wasn't already visible, slide it down
-    if (!isVisible) {
-        $el.stop(true, true).slideDown('400');
-    }
-    
-    // Close the dropdown if clicked outside of it
-    $(document).on('click', function (e) {
-        if (!$(e.target).closest('.dropdown').length) {
-            $('.dropdown-menu').slideUp('400');
-        }
-    });
-});
-
-function searchPatients() {
-        var input = document.getElementById("patientSearchInput").value;
-        if (input.length < 2) {
-            document.getElementById("searchResults").style.display = "none";
-            document.getElementById("searchResults").innerHTML = "";
-            return;
-        }
+    function filterUrinalysis() {
+        var input = document.getElementById("combinedSearchInput").value;
+        console.log('Search input:', input);
+        
         $.ajax({
-            url: "search-ua.php", // Backend script to fetch patients
-            method: "GET",
+            url: 'fetch_urinalysis.php',
+            type: 'GET',
             data: { query: input },
-            success: function (data) {
-                var results = document.getElementById("searchResults");
-                results.innerHTML = data;
-                results.style.display = "block";
+            success: function(response) {
+                console.log('Response received:', response);
+                try {
+                    var data = JSON.parse(response);
+                    console.log('Parsed data:', data);
+                    updateUrinalysisTables(data);
+                } catch (e) {
+                    console.error('JSON parse error:', e);
+                }
             },
+            error: function(xhr, status, error) {
+                console.error('Ajax error:', error);
+            }
         });
     }
 
-    // Select Patient from Search Results
-    $(document).on("click", ".search-result", function () {
-        var patientId = $(this).data("id");
-        var patientName = $(this).text();
 
-        $("#patientId").val(patientId); // Set the hidden input value
-        $("#patientSearchInput").val(patientName); // Set input to selected patient name
-        $("#addPatientBtn").prop("disabled", false); // Enable the Add button
-        $("#searchResults").html("").hide(); // Clear and hide the dropdown
-    });
-</script>
+    function updateUrinalysisTables(data) {
+        var macroscopicTbody = $('#patientTableMacroscopic tbody');
+        var microscopicTbody = $('#patientTableMicroscopic tbody');
+        
+        macroscopicTbody.empty();
+        microscopicTbody.empty();
+        
+        data.forEach(function(record) {
+            // Macroscopic table row
+            macroscopicTbody.append(`
+                <tr data-urinalysis-id="${record.urinalysis_id}">
+                    <td>${record.urinalysis_id}</td>
+                    <td>${record.patient_id}</td>
+                    <td>${record.patient_name}</td>
+                    <td>${record.age}</td>
+                    <td>${record.gender}</td>
+                    <td>${record.date_time}</td>
+                    <td>${record.color}</td>
+                    <td>${record.transparency}</td>
+                    <td>${record.reaction}</td>
+                    <td>${record.protein}</td>
+                    <td>${record.glucose}</td>
+                    <td>${record.specific_gravity}</td>
+                    <td>${record.ketone}</td>
+                    <td>${record.urobilinogen}</td>
+                    <td>${record.pregnancy_test}</td>
+                    <td class="text-right">
+                        <div class="dropdown dropdown-action">
+                            <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
+                                <i class="fa fa-ellipsis-v"></i>
+                            </a>
+                            <div class="dropdown-menu dropdown-menu-right">
+                                ${getActionButtons(record.urinalysis_id)}
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            `);
 
-<style>
-  #patientTableMicroscopic_length {
-    display: none;
-}
+            // Microscopic table row
+            microscopicTbody.append(`
+                <tr data-urinalysis-id="${record.urinalysis_id}">
+                    <td>${record.urinalysis_id}</td>
+                    <td>${record.patient_id}</td>
+                    <td>${record.patient_name}</td>
+                    <td>${record.age}</td>
+                    <td>${record.gender}</td>
+                    <td>${record.date_time}</td>
+                    <td>${record.pus_cells}</td>
+                    <td>${record.red_blood_cells}</td>
+                    <td>${record.epithelial_cells}</td>
+                    <td>${record.a_urates_a_phosphates}</td>
+                    <td>${record.mucus_threads}</td>
+                    <td>${record.bacteria}</td>
+                    <td>${record.calcium_oxalates}</td>
+                    <td>${record.uric_acid_crystals}</td>
+                    <td>${record.pus_cells_clumps}</td>
+                    <td>${record.coarse_granular_cast}</td>
+                    <td>${record.hyaline_cast}</td>
+                </tr>
+            `);
+        });
+    }
 
-  #patientTableMacroscopic_paginate .paginate_button {
-    display: none;
-}
+
+    function getActionButtons(urinalysisId) {
+        let buttons = '';
+        
+        if (canPrint) {  // Changed from can_print to canPrint
+            buttons += `
+                <form action="generate-urinalysis.php" method="get">
+                    <input type="hidden" name="id" value="${urinalysisId}">
+                    <div class="form-group">
+                        <input type="text" class="form-control" id="filename" name="filename" placeholder="Enter File Name">
+                    </div>
+                    <button class="btn btn-primary btn-sm custom-btn" type="submit">
+                        <i class="fa fa-file-pdf-o m-r-5"></i> Generate Result
+                    </button>
+                </form>
+            `;
+        }
+        
+        if (editable) {
+            buttons += `
+                <a class="dropdown-item" href="edit-urinalysis.php?id=${urinalysisId}">
+                    <i class="fa fa-pencil m-r-5"></i> Insert and Edit
+                </a>
+                <a class="dropdown-item" href="urinalysis.php?ids=${urinalysisId}" onclick="return confirmDelete()">
+                    <i class="fa fa-trash-o m-r-5"></i> Delete
+                </a>
+            `;
+        } else {
+            buttons += `
+                <a class="dropdown-item disabled" href="#">
+                    <i class="fa fa-pencil m-r-5"></i> Edit
+                </a>
+                <a class="dropdown-item disabled" href="#">
+                    <i class="fa fa-trash-o m-r-5"></i> Delete
+                </a>
+            `;
+        }
+        
+        return buttons;
+    }
+
+    function searchPatients() {
+            var input = document.getElementById("patientSearchInput").value;
+            if (input.length < 2) {
+                document.getElementById("searchResults").style.display = "none";
+                document.getElementById("searchResults").innerHTML = "";
+                return;
+            }
+            $.ajax({
+                url: "search-ua.php", // Backend script to fetch patients
+                method: "GET",
+                data: { query: input },
+                success: function (data) {
+                    var results = document.getElementById("searchResults");
+                    results.innerHTML = data;
+                    results.style.display = "block";
+                },
+            });
+        }
+
+        // Select Patient from Search Results
+        $(document).on("click", ".search-result", function () {
+            var patientId = $(this).data("id");
+            var patientName = $(this).text();
+
+            $("#patientId").val(patientId); // Set the hidden input value
+            $("#patientSearchInput").val(patientName); // Set input to selected patient name
+            $("#addPatientBtn").prop("disabled", false); // Enable the Add button
+            $("#searchResults").html("").hide(); // Clear and hide the dropdown
+        });
+    </script>
+
+    <style>
+    #patientTableMicroscopic_length {
+        display: none;
+    }
+
+    #patientTableMacroscopic_paginate .paginate_button {
+        display: none;
+    }
 
 </style>
 
 <style>
+    .btn-outline-primary {
+        background-color:rgb(252, 252, 252);
+        color: gray;
+        border: 1px solid rgb(228, 228, 228);
+    }
+    .btn-outline-primary:hover {
+        background-color: #12369e;
+        color: #fff;
+    }
+    .btn-outline-secondary {
+        color:rgb(90, 90, 90);
+        border: 1px solid rgb(228, 228, 228);
+    }
+    .btn-outline-secondary:hover {
+        background-color: #12369e;
+        color: #fff;
+    }
+    .input-group-text {
+        background-color:rgb(255, 255, 255);
+        border: 1px solid rgb(228, 228, 228);
+        color: gray;
+    }   
     .btn-primary {
         background: #12369e;
         border: none;

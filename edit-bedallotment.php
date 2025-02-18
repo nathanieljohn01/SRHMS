@@ -30,15 +30,47 @@ if (isset($_POST['save-bed-allotment'])) {
         // Update the bed allotment with sanitized values
         $update_query = $connection->prepare("UPDATE tbl_bedallocation SET room_type = ?, room_number = ?, bed_number = ? WHERE id = ?");
         $update_query->bind_param("sssi", $room_type, $room_number, $bed_number, $id);  // "s" for string, "i" for integer
-
+    
         if ($update_query->execute()) {
-            $msg = "Bed allotment updated successfully";
+            // SweetAlert success message
+            echo "
+            <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
+            <script>
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Success!',
+                    text: 'Bed allotment updated successfully',
+                    confirmButtonColor: '#12369e'
+                }).then(() => {
+                    window.location.href = 'bedallotment.php'; // Adjust the redirection URL if needed
+                });
+            </script>";
         } else {
-            $msg = "Error!";
+            // SweetAlert error message
+            echo "
+            <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
+            <script>
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Error updating bed allotment',
+                    confirmButtonColor: '#12369e'
+                });
+            </script>";
         }
     } else {
-        $msg = "No available beds in the selected category.";
-    }
+        // SweetAlert info message
+        echo "
+        <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
+        <script>
+            Swal.fire({
+                icon: 'info',
+                title: 'No Available Beds',
+                text: 'No available beds in the selected category.',
+                confirmButtonColor: '#12369e'
+            });
+        </script>";
+    }    
 }
 
 // Sanitize function definition
@@ -55,7 +87,7 @@ function sanitize($connection, $input) {
                 <h4 class="page-title">Edit Bed Allotment</h4>
             </div>
             <div class="col-sm-8 text-right m-b-20">
-                <a href="bedallotment.php" class="btn btn-primary btn-rounded float-right">Back</a>
+                <a href="bedallotment.php" class="btn btn-primary float-right">Back</a>
             </div>
         </div>
         <div class="row">
@@ -89,14 +121,12 @@ function sanitize($connection, $input) {
 include('footer.php');
 ?>
 
-<script type="text/javascript">
-    <?php
-    if (isset($msg)) {
-        echo 'swal("' . $msg . '");';
-    }
-    ?>
-</script>
 <style>
+    .btn-primary.submit-btn {
+        border-radius: 4px; 
+        padding: 10px 20px;
+        font-size: 16px;
+    }
 .btn-primary {
             background: #12369e;
             border: none;

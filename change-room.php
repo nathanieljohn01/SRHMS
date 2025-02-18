@@ -72,33 +72,59 @@ if (isset($_POST['save-inpatient'])) {
         $update_bed_status_query = mysqli_prepare($connection, "UPDATE tbl_bedallocation SET status = 'Available' WHERE room_type = ? AND room_number = ? AND bed_number = ?");
         mysqli_stmt_bind_param($update_bed_status_query, 'sii', $current_room_type, $current_room_number, $current_bed_number);
         mysqli_stmt_execute($update_bed_status_query);
-
+    
         // Update the bed status to 'Occupied' for the new bed
         $update_new_bed_status_query = mysqli_prepare($connection, "UPDATE tbl_bedallocation SET status = 'Occupied' WHERE room_type = ? AND room_number = ? AND bed_number = ?");
         mysqli_stmt_bind_param($update_new_bed_status_query, 'sii', $room_type, $room_number, $bed_number);
         mysqli_stmt_execute($update_new_bed_status_query);
-
+    
         // Update room details in tbl_inpatient
         $update_inpatient_query = mysqli_prepare($connection, "UPDATE tbl_inpatient SET room_type = ?, room_number = ?, bed_number = ? WHERE id = ?");
         mysqli_stmt_bind_param($update_inpatient_query, 'siii', $room_type, $room_number, $bed_number, $id);
         mysqli_stmt_execute($update_inpatient_query);
-
+    
         // Update room details in tbl_inpatient_record (optional)
         $update_inpatient_record_query = mysqli_prepare($connection, "UPDATE tbl_inpatient_record SET room_type = ?, room_number = ?, bed_number = ? WHERE id = ?");
         mysqli_stmt_bind_param($update_inpatient_record_query, 'siii', $room_type, $room_number, $bed_number, $id);
         mysqli_stmt_execute($update_inpatient_record_query);
-
+    
         $msg = "Inpatients record and bed statuses updated successfully.";
+    
+        // SweetAlert success message
+        echo "
+        <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                var style = document.createElement('style');
+                style.innerHTML = '.swal2-confirm { background-color: #12369e !important; color: white !important; border: none !important; } .swal2-confirm:hover { background-color: #05007E !important; } .swal2-confirm:focus { box-shadow: 0 0 0 0.2rem rgba(18, 54, 158, 0.5) !important; }';
+                document.head.appendChild(style);
+    
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Success!',
+                    text: 'Inpatients record and bed statuses updated successfully.',
+                    confirmButtonColor: '#12369e'
+                }).then(() => {
+                    window.location.href = 'your-redirect-page.php'; // Adjust the redirect page if needed
+                });
+            });
+        </script>";
     } else {
         $msg = "Error updating inpatient record.";
+    
+        // SweetAlert error message
+        echo "
+        <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'An error occurred while updating the inpatient record.'
+                });
+            });
+        </script>";
     }
-}
-
-// Display messages if available
-if (isset($msg)) {
-    echo "<script>";
-    echo "swal({ text: '" . addslashes($msg) . "', icon: '" . (strpos($msg, 'successfully') !== false ? 'success' : 'error') . "' });";
-    echo "</script>";
 }
 ?>
 

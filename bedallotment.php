@@ -15,11 +15,25 @@ include('includes/connection.php');
                 <h4 class="page-title">Bed Allotment</h4>
             </div>
             <div class="col-sm-8 col-9 text-right m-b-20">
-                <a href="add-bedallotment.php" class="btn btn-primary btn-rounded float-right"><i class="fa fa-plus"></i> Add Bed</a>
+                <a href="add-bedallotment.php" class="btn btn-primary"><i class="fa fa-plus"></i> Add Bed</a>
             </div>
         </div>
         <div class="table-responsive">
-            <input class="form-control" type="text" id="bedSearchInput" onkeyup="filterBeds()" placeholder="Search for Bed">
+        <h5 class="font-weight-bold mb-2">Search Patient:</h5>
+            <div class="input-group mb-3">
+                <div class="position-relative w-100">
+                    <!-- Search Icon -->
+                    <i class="fa fa-search position-absolute text-secondary" style="top: 50%; left: 12px; transform: translateY(-50%);"></i>
+                    <!-- Input Field -->
+                    <input class="form-control" type="text" id="bedSearchInput" onkeyup="filterBeds()" style="padding-left: 35px; padding-right: 35px;">
+                    <!-- Clear Button -->
+                    <button class="position-absolute border-0 bg-transparent text-secondary" type="button" onclick="clearSearch()" style="top: 50%; right: 10px; transform: translateY(-50%);">
+                        <i class="fa fa-times"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="table-responsive">
             <table class="datatable table table-hover" id="bedTable">
                 <thead style="background-color: #CCCCCC;">
                     <tr>
@@ -77,6 +91,9 @@ include('footer.php');
         table = document.getElementById("bedTable");
         tr = table.getElementsByTagName("tr");
 
+        var matchFoundIds = [];
+
+        // Filter Bed Table
         for (i = 0; i < tr.length; i++) {
             var matchFound = false;
             for (var j = 0; j < tr[i].cells.length; j++) {
@@ -89,13 +106,34 @@ include('footer.php');
                     }
                 }
             }
+
+            // Store matched row IDs for pagination purposes
             if (matchFound || i === 0) {
                 tr[i].style.display = "";
+                if (i > 0) {
+                    matchFoundIds.push(tr[i].getAttribute("data-id"));
+                }
             } else {
                 tr[i].style.display = "none";
             }
         }
+
+        // Handle DataTable pagination
+        if ($.fn.DataTable.isDataTable("#bedTable")) {
+            var bedTableInstance = $('#bedTable').DataTable();
+            bedTableInstance.search('').draw();  // Clear search
+            bedTableInstance.page.len(-1).draw();  // Temporarily disable pagination
+        }
+
+        // Reinitialize DataTable when search is cleared
+        if (filter.trim() === "") {
+            if ($.fn.DataTable.isDataTable("#bedTable")) {
+                var bedTableInstance = $('#bedTable').DataTable();
+                bedTableInstance.page.len(10).draw();  // Reset pagination length
+            }
+        }
     }
+
 </script>
 <style>
 .btn-primary {

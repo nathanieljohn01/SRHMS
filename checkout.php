@@ -17,14 +17,37 @@ if ($id) {
     
     // Execute the query
     if ($update_query->execute()) {
-        $msg = "Visitor checked out successfully";
+        echo '<script>
+            swal({
+                title: "Success!",
+                text: "Visitor checked out successfully",
+                icon: "success",
+                button: "OK",
+            }).then(function() {
+                window.location.href = "visitor-pass.php"; // Redirect after success
+            });
+        </script>';
     } else {
-        $msg = "Error!";
+        echo '<script>
+            swal({
+                title: "Error!",
+                text: "Error!",
+                icon: "error",
+                button: "Try Again",
+            });
+        </script>';
     }
-} else {
-    $msg = "Invalid visitor ID.";
-}
-
+    } else {
+        echo '<script>
+            swal({
+                title: "Invalid Visitor ID",
+                text: "Please check the visitor ID and try again.",
+                icon: "warning",
+                button: "OK",
+            });
+        </script>';
+    }
+    
 header('location: visitor-pass.php?msg=' . urlencode($msg));  // Pass the message to the next page
 exit;
 ?>

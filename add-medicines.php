@@ -29,9 +29,37 @@ if (isset($_REQUEST['add-medicine'])) {
 
         // Execute the query and check if the insertion was successful
         if (mysqli_query($connection, $insert_query)) {
-            $msg = "Medicine added successfully";
+            // SweetAlert success message
+            echo "
+            <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    var style = document.createElement('style');
+                    style.innerHTML = '.swal2-confirm { background-color: #12369e !important; color: white !important; border: none !important; } .swal2-confirm:hover { background-color: #05007E !important; } .swal2-confirm:focus { box-shadow: 0 0 0 0.2rem rgba(18, 54, 158, 0.5) !important; }';
+                    document.head.appendChild(style);
+
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Success!',
+                        text: 'Medicine added successfully',
+                        confirmButtonColor: '#12369e'
+                    }).then(() => {
+                        window.location.href = 'medicines.php';
+                    });
+                });
+            </script>";
         } else {
-            $msg = "Error: " . mysqli_error($connection);
+            // SweetAlert error message
+            echo "
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Error adding medicine record: " . mysqli_error($connection) . "'
+                    });
+                });
+            </script>";
         }
     }
 }
@@ -44,7 +72,7 @@ if (isset($_REQUEST['add-medicine'])) {
                 <h4 class="page-title">Add Medicine</h4>
             </div>
             <div class="col-sm-8 text-right m-b-20">
-                <a href="medicines.php" class="btn btn-primary btn-rounded float-right">Back</a>
+                <a href="medicines.php" class="btn btn-primary float-right">Back</a>
             </div>
         </div>
         <div class="row">
@@ -117,14 +145,6 @@ include('footer.php');
 <script src="https://cdnjs.cloudflare.com/ajax/libs/tempusdominus-bootstrap-4/5.39.0/js/tempusdominus-bootstrap-4.min.js"></script>
 
 <script type="text/javascript">
-    <?php
-    if (isset($msg)) {
-        echo 'swal("' . $msg . '");';
-    }
-    ?>
-</script>
-
-<script type="text/javascript">
     $(function () {
       // Initialize DateTimePicker with date format
       $('#expiry_date').datetimepicker({
@@ -134,6 +154,11 @@ include('footer.php');
 </script>
 
 <style>
+    .btn-primary.submit-btn {
+        border-radius: 4px; 
+        padding: 10px 20px;
+        font-size: 16px;
+    }
 .btn-primary {
             background: #12369e;
             border: none;

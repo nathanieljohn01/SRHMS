@@ -44,15 +44,31 @@ if (isset($_POST['save-schedule'])) {
     mysqli_stmt_bind_param($update_query, 'sssssssi', $doctor_name, $specialization, $days, $start_time, $end_time, $message, $status, $id);
 
     // Update tbl_employee with available days, start_time, and end_time for role 2 (doctor)
-    $update_employee_query = mysqli_prepare($connection, "UPDATE tbl_employee SET available_days = ?, start_time = ?, end_time = ? WHERE role = 2");
-    mysqli_stmt_bind_param($update_employee_query, 'sss', $days, $start_time, $end_time);
+    $update_employee_query = mysqli_prepare($connection, "UPDATE tbl_employee SET available_days = ?, start_time = ?, end_time = ? WHERE role = 2 AND CONCAT(first_name, ' ', last_name) = ?");
+    mysqli_stmt_bind_param($update_employee_query, 'ssss', $days, $start_time, $end_time, $doctor_name);
 
     // Execute the queries
     $update_result = mysqli_stmt_execute($update_query);
     $update_employee_result = mysqli_stmt_execute($update_employee_query);
 
     if ($update_result && $update_employee_result) {
-        $msg = "Schedule updated successfully";
+        // SweetAlert success message
+        echo "
+        <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Success',
+                    text: 'Schedule updated successfully!',
+                    confirmButtonColor: '#12369e'
+                }).then(() => {
+                    // Redirect to the relevant page or refresh
+                    window.location.href = 'schedule.php'; // Adjust the URL as needed
+                });
+            });
+        </script>";
+    
         // Refetch the updated schedule data
         $fetch_query = mysqli_prepare($connection, "SELECT * FROM tbl_schedule WHERE id = ?");
         mysqli_stmt_bind_param($fetch_query, 'i', $id);
@@ -61,12 +77,25 @@ if (isset($_POST['save-schedule'])) {
         $row = mysqli_fetch_array($result);
         mysqli_stmt_close($fetch_query);   
     } else {
-        $msg = "Error!";
+        // SweetAlert error message
+        echo "
+        <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Failed to update the schedule!',
+                    confirmButtonColor: '#12369e'
+                });
+            });
+        </script>";
     }
-
+    
     // Close the statements
     mysqli_stmt_close($update_query);
     mysqli_stmt_close($update_employee_query);
+    
 }
 ?>
 
@@ -77,7 +106,7 @@ if (isset($_POST['save-schedule'])) {
                 <h4 class="page-title">Edit Schedule</h4>
             </div>
             <div class="col-sm-8  text-right m-b-20">
-                <a href="schedule.php" class="btn btn-primary btn-rounded float-right">Back</a>
+                <a href="schedule.php" class="btn btn-primary float-right">Back</a>
             </div>
         </div>
         <div class="row">
@@ -87,7 +116,7 @@ if (isset($_POST['save-schedule'])) {
                     <div class="col-md-6">
                             <div class="form-group">
                                 <label>Doctor Name</label>
-                                <select class="select" name="doctor_name" disabled>
+                                <select class="select" name="doctor_name">
                                     <?php
                                 $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_schedule WHERE id='$id'");
                                 $schedule= mysqli_fetch_array($fetch_query);
@@ -182,6 +211,11 @@ include('footer.php');
  ?>
 </script>
 <style>
+    .btn-primary.submit-btn {
+        border-radius: 4px; 
+        padding: 10px 20px;
+        font-size: 16px;
+    }
 .btn-primary {
             background: #12369e;
             border: none;

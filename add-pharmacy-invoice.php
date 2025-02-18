@@ -84,23 +84,52 @@ if (isset($_POST['add-invoice'])) {
         $total_cost += $price * $quantities[$key]; // Add this item's total price to the total cost
     }
 
-    // Insert all medicines in one transaction under the same invoice ID
     if (empty($msg)) {
         // Insert invoice details into tbl_pharmacy_invoice
         foreach ($medicines_details as $medicine) {
             $insert_invoice_query = "INSERT INTO tbl_pharmacy_invoice (invoice_id, patient_id, patient_name, medicine_name, medicine_brand, quantity, price, total_price, total_cost, invoice_datetime) 
             VALUES ('$invoice_id', '$patient_id', '$patient_name', '{$medicine['medicine_name']}', '{$medicine['medicine_brand']}', {$medicine['quantity']}, '{$medicine['price']}', '{$medicine['item_total_price']}', '$total_cost', NOW())";
-
+    
             if (!mysqli_query($connection, $insert_invoice_query)) {
                 $msg = "Error inserting invoice!";
                 break; // Exit loop if insertion fails
             }
         }
     }
-
+    
+    // SweetAlert success message after invoice insert
     if (empty($msg)) {
-        $msg = "Invoice(s) added successfully";
-    }
+        echo "
+        <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                var style = document.createElement('style');
+                style.innerHTML = '.swal2-confirm { background-color: #12369e !important; color: white !important; border: none !important; } .swal2-confirm:hover { background-color: #05007E !important; } .swal2-confirm:focus { box-shadow: 0 0 0 0.2rem rgba(18, 54, 158, 0.5) !important; }';
+                document.head.appendChild(style);
+    
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Invoice Added Successfully!',
+                    text: 'The invoice for patient $patient_name has been added successfully.',
+                    confirmButtonColor: '#12369e'
+                }).then(() => {
+                    window.location.href = 'pharmacy-invoice.php'; // Redirect to your invoice page
+                });
+            });
+        </script>";
+    } else {
+        // SweetAlert error message if there was an error
+        echo "
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: '$msg'
+                });
+            });
+        </script>";
+    }    
 }
 ?>
 
@@ -111,7 +140,7 @@ if (isset($_POST['add-invoice'])) {
                 <h4 class="page-title">Add Pharmacy Invoice</h4>
             </div>
             <div class="col-sm-8 text-right m-b-20">
-                <a href="pharmacy-invoice.php" class="btn btn-primary btn-rounded float-right">Back</a>
+                <a href="pharmacy-invoice.php" class="btn btn-primary float-right">Back</a>
             </div>
         </div>
         <div class="container">
@@ -147,6 +176,8 @@ if (isset($_POST['add-invoice'])) {
                                     <tr>
                                         <th>Medicine Name</th>
                                         <th>Medicine Brand</th>
+                                        <th>Category</th>
+                                        <th>Weight & Measure</th>
                                         <th>Available Stock</th>
                                         <th>Price</th>
                                         <th>Expiration Date</th>
@@ -156,7 +187,8 @@ if (isset($_POST['add-invoice'])) {
                                 </thead>
                                 <tbody>
                                     <?php
-                                    $fetch_medicines_query = mysqli_query($connection, "SELECT id, medicine_name, medicine_brand, quantity, price, expiration_date FROM tbl_medicines WHERE deleted = 0");
+                                    $fetch_medicines_query = mysqli_query($connection, "SELECT id, medicine_name, medicine_brand, category, quantity, price, expiration_date, weight_measure, unit_measure FROM tbl_medicines WHERE deleted = 0");
+
                                     while ($medicine_row = mysqli_fetch_array($fetch_medicines_query)) {
                                         $expiration_date = strtotime($medicine_row['expiration_date']);
                                         $current_date = strtotime(date('Y-m-d'));
@@ -167,22 +199,26 @@ if (isset($_POST['add-invoice'])) {
 
                                         if ($days_to_expire > 1) { // Medicine is still valid
                                     ?>
-                                            <tr class="<?php echo $is_low_stock ? 'low-stock' : ''; ?>">
-                                                <td><?php echo $medicine_row['medicine_name']; ?></td>
-                                                <td><?php echo $medicine_row['medicine_brand']; ?></td>
-                                                <td><?php echo $medicine_row['quantity']; ?></td>
-                                                <td><?php echo $medicine_row['price']; ?></td>
-                                                <td><?php echo date('F d, Y', strtotime($medicine_row['expiration_date'])); ?></td>
-                                                <td><?php echo $days_to_expire > 0 ? $days_to_expire . ' days' : 'Expired!'; ?></td>
-                                                <td class="checkbox-container">
-                                                    <input type="number" name="quantity[]" class="medicine-quantity" value="1" min="1" max="<?php echo $medicine_row['quantity']; ?>" onchange="calculateTotal()">
-                                                    <input type="checkbox" name="medicine_id[]" value="<?php echo $medicine_row['id']; ?>">
-                                                    <?php if ($is_low_stock) { ?>
-                                                        <span class="low-stock-warning">Low Stock!</span>
-                                                    <?php } ?>
-                                                </td>
-                                            </tr>
-                                        <?php
+                                        <tr class="<?php echo $is_low_stock ? 'low-stock' : ''; ?>">
+                                            <td><?php echo $medicine_row['medicine_name']; ?></td>
+                                            <td><?php echo $medicine_row['medicine_brand']; ?></td>
+                                            <td><?php echo $medicine_row['category']; ?></td>
+                                            <td>
+                                                <?php echo $medicine_row['weight_measure'] . ' ' . $medicine_row['unit_measure']; ?>
+                                            </td>
+                                            <td><?php echo $medicine_row['quantity']; ?></td>
+                                            <td><?php echo $medicine_row['price']; ?></td>
+                                            <td><?php echo date('F d, Y', strtotime($medicine_row['expiration_date'])); ?></td>
+                                            <td><?php echo $days_to_expire > 0 ? $days_to_expire . ' days' : 'Expired!'; ?></td>
+                                            <td class="checkbox-container">
+                                                <input type="number" name="quantity[]" class="medicine-quantity" value="1" min="1" max="<?php echo $medicine_row['quantity']; ?>" onchange="calculateTotal()">
+                                                <input type="checkbox" name="medicine_id[]" value="<?php echo $medicine_row['id']; ?>">
+                                                <?php if ($is_low_stock) { ?>
+                                                    <span class="low-stock-warning">Low Stock!</span>
+                                                <?php } ?>
+                                            </td>
+                                        </tr>
+                                    <?php
                                         }
                                     }
                                     ?>
@@ -191,6 +227,7 @@ if (isset($_POST['add-invoice'])) {
                         </div>
                     </div>
                 </div>
+
                 <br>
                 <p>Total Cost: <span id="totalCost">0</span></p>
 
@@ -215,28 +252,27 @@ if (isset($_POST['add-invoice'])) {
 
 <?php include('footer.php'); ?>
 
-<script type="text/javascript">
-    <?php
-    if (isset($msg)) {
-        echo 'swal("' . $msg . '");';
-    }
-    ?>
-</script>
-
 <script>
     function filterMedicines() {
-        var input, filter, table, tr, td, i, txtValue;
-        input = document.getElementById("medicineSearchInput");
-        filter = input.value.toUpperCase();
-        table = document.getElementById("medicineTable");
-        tr = table.getElementsByTagName("tr");
+        let input = document.getElementById("medicineSearchInput");
+        let filter = input.value.toUpperCase();
+        let table = document.getElementById("medicineTable");
+        let rows = table.getElementsByTagName("tr");
 
-        for (i = 0; i < tr.length; i++) {
-            var matchFound = false;
-            for (var j = 0; j < tr[i].cells.length; j++) {
-                td = tr[i].cells[j];
-                if (td) {
-                    txtValue = td.textContent || td.innerText;
+        // Disable DataTable pagination and search functionality during custom search
+        if ($.fn.DataTable.isDataTable("#medicineTable")) {
+            let tableInstance = $('#medicineTable').DataTable();
+            tableInstance.search('').draw(); // Clear DataTable search
+            tableInstance.page.len(-1).draw(); // Temporarily disable pagination
+        }
+
+        // Perform the custom search
+        for (let i = 0; i < rows.length; i++) {
+            let matchFound = false;
+            for (let j = 0; j < rows[i].cells.length; j++) {
+                let cell = rows[i].cells[j];
+                if (cell) {
+                    let txtValue = cell.textContent || cell.innerText;
                     if (txtValue.toUpperCase().indexOf(filter) > -1) {
                         matchFound = true;
                         break;
@@ -244,9 +280,17 @@ if (isset($_POST['add-invoice'])) {
                 }
             }
             if (matchFound || i === 0) {
-                tr[i].style.display = "";
+                rows[i].style.display = "";
             } else {
-                tr[i].style.display = "none";
+                rows[i].style.display = "none";
+            }
+        }
+
+        // Reinitialize DataTable when search is cleared
+        if (filter.trim() === "") {
+            if ($.fn.DataTable.isDataTable("#medicineTable")) {
+                let tableInstance = $('#medicineTable').DataTable();
+                tableInstance.page.len(10).draw(); // Reset pagination length
             }
         }
     }
@@ -320,6 +364,11 @@ if (isset($_POST['add-invoice'])) {
 
 </script>
 <style>
+    .btn-primary.submit-btn {
+        border-radius: 4px; 
+        padding: 10px 20px;
+        font-size: 16px;
+    }
 .btn-primary {
             background: #12369e;
             border: none;

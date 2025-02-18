@@ -5,6 +5,7 @@ if (empty($_SESSION['name'])) {
     exit;
 }
 
+// filepath: /c:/xampp/htdocs/hms/generate-result.php
 include('includes/connection.php');
 
 // Include TCPDF library
@@ -19,28 +20,40 @@ if (!isset($_GET['patient_id']) || empty($_GET['patient_id'])) {
 // Sanitize patient_id
 $patient_id = mysqli_real_escape_string($connection, $_GET['patient_id']);
 
+// Extend TCPDF class with improved header and styling
+class MYPDF extends TCPDF {
+    public function Header() {
+        // Logo
+        $image_file = __DIR__ . '/assets/img/srchlogo.png';
+        $this->Image($image_file, 15, 5, 30, '', 'PNG', '', 'T', false, 300, '', false, false, 0, false, false, false);
+        
+        // Hospital Name with larger, bold font
+        $this->SetFont('helvetica', 'B', 16);
+        $this->SetY(10);
+        $this->Cell(0, 8, 'SANTA ROSA COMMUNITY HOSPITAL', 0, 1, 'C');
+        
+        // Address and Contact Details
+        $this->SetFont('helvetica', '', 10);
+        $this->Cell(0, 5, 'LM Subdivision, Market Area, Santa Rosa City, Laguna', 0, 1, 'C');
+        $this->Cell(0, 5, 'Email: srcityhospital1995@gmail.com', 0, 1, 'C');
+        
+       
+        // Decorative lines
+        $this->Line(15, 40, 195, 40);
+
+        $this->Ln(5);
+    }
+}
+
 // Initialize TCPDF
-$pdf = new TCPDF('L', 'mm', 'A4', true, 'UTF-8', false);
-
-// Set document information
-$pdf->SetCreator('Santa Rosa Hospital');
-$pdf->SetAuthor('Santa Rosa Community Hospital');
-$pdf->SetTitle('Lab Results');
-$pdf->SetSubject('Patient Lab Results');
-$pdf->SetKeywords('Lab Results, Report');
-
-// Set default header data
-$pdf->SetHeaderData('assets/img/srchlogo.png', 1, 'Santa Rosa Community Hospital', 'City of Santa Rosa, Laguna');
-
-$pdf->setHeaderFont(['helvetica', '', 14]);
-$pdf->setFooterFont(['helvetica', '', 10]);
+$pdf = new MYPDF('P', 'mm', 'A4', true, 'UTF-8', false);
 
 // Set default monospaced font
 $pdf->SetDefaultMonospacedFont(PDF_FONT_MONOSPACED);
 
 // Set margins
-$pdf->SetMargins(20, 20, 20);
-$pdf->SetHeaderMargin(5);
+$pdf->SetMargins(15, 30, 15);
+$pdf->SetHeaderMargin(10);
 $pdf->SetFooterMargin(10);
 
 // Set auto page breaks
@@ -52,16 +65,24 @@ $pdf->setImageScale(PDF_IMAGE_SCALE_RATIO);
 // Add a page
 $pdf->AddPage();
 
+// Get patient name from database
+$patient_query = $connection->prepare("SELECT CONCAT(first_name, ' ', last_name) AS patient_name FROM tbl_patient WHERE patient_id = ?");
+$patient_query->bind_param('s', $patient_id);
+$patient_query->execute();
+$patient_result = $patient_query->get_result();
+$patient_data = $patient_result->fetch_assoc();
+$patient_name = $patient_data['patient_name'];
+
 // Section title: Lab Results
-$pdf->SetFont('helvetica', 'B', 14);
-$pdf->Cell(0, 10, 'Lab Results for Patient ID: ' . htmlspecialchars($patient_id), 0, 1, 'L');
+$pdf->SetFont('helvetica', 'B', 11);
+$pdf->Cell(0, 10, 'Patient Name: ' . htmlspecialchars($patient_name), 0, 1, 'C');
 $pdf->Ln(5);
 
 // Function to render lab results table with XSS protection
 function renderLabResultsTable($pdf, $testType, $data, $columns, $widths)
 {
     $pdf->SetFont('helvetica', 'B', 10);
-    $pdf->SetFillColor(230, 230, 230);
+    $pdf->SetFillColor(220, 220, 220);
 
     // Table header
     foreach ($columns as $index => $header) {
@@ -69,18 +90,21 @@ function renderLabResultsTable($pdf, $testType, $data, $columns, $widths)
     }
     $pdf->Ln();
 
-    $pdf->SetFont('helvetica', '', 9);
+    $pdf->SetFont('helvetica', '', 10);
     $pdf->SetFillColor(255, 255, 255);
 
     // Table rows
     foreach ($data as $row) {
-        $pdf->Cell($widths[0], 6, htmlspecialchars($testType), 1, 0, 'L'); // Escape test type
-        $pdf->Cell($widths[1], 6, htmlspecialchars(date('F d, Y g:i A', strtotime($row['date_time']))), 1, 0, 'C'); // Escape date/time
+        $pdf->Cell($widths[0], 7, htmlspecialchars($testType), 1, 0, 'C'); // Escape test type
+        $pdf->Cell($widths[1], 7, htmlspecialchars(date('F d, Y g:i A', strtotime($row['date_time']))), 1, 0, 'C'); // Escape date/time
         
         // Bold font for the "Results" column, escape results data
-        $pdf->SetFont('helvetica', 'B', 9);
-        $pdf->MultiCell($widths[2], 6, htmlspecialchars($row['results']), 1, 'L', false); // Escape results
-        $pdf->SetFont('helvetica', '', 9); // Reset to normal font for other rows
+        $pdf->SetFont('helvetica', 'B', 10);
+        $results = explode('\n', htmlspecialchars($row['results']));
+        foreach ($results as $result) {
+            $pdf->MultiCell($widths[1], 7, $result, 1, 'L', false); // Escape results
+        }
+        $pdf->SetFont('helvetica', '', 10); // Reset to normal font for other rows
     }
     $pdf->Ln(5);
 }
@@ -111,7 +135,7 @@ while ($row = $cbcResult->fetch_assoc()) {
     $cbcResults[] = $row;
 }
 if (!empty($cbcResults)) {
-    renderLabResultsTable($pdf, 'Complete Blood Count', $cbcResults, ['Test Type', 'Date & Time', 'Results'], [40, 50, 110]);
+    renderLabResultsTable($pdf, 'Complete Blood Count', $cbcResults, ['Test Type', 'Date and Time', 'Results'], [60, 60, 60]);
 }
 
 // Fetch Macroscopic Urinalysis records
@@ -139,7 +163,7 @@ while ($row = $macroResult->fetch_assoc()) {
     $macroResults[] = $row;
 }
 if (!empty($macroResults)) {
-    renderLabResultsTable($pdf, 'Macroscopic Urinalysis', $macroResults, ['Test Type', 'Date & Time', 'Results'], [40, 50, 110]);
+    renderLabResultsTable($pdf, 'Macroscopic Urinalysis', $macroResults, ['Test Type', 'Date and Time', 'Results'], [60, 60, 60]);
 }
 
 // Fetch Microscopic Urinalysis records
@@ -169,7 +193,7 @@ while ($row = $microResult->fetch_assoc()) {
     $microResults[] = $row;
 }
 if (!empty($microResults)) {
-    renderLabResultsTable($pdf, 'Microscopic Urinalysis', $microResults, ['Test Type', 'Date & Time', 'Results'], [40, 50, 110]);
+    renderLabResultsTable($pdf, 'Microscopic Urinalysis', $microResults, ['Test Type', 'Date and Time', 'Results'], [60, 60, 60]);
 }
 
 // Output the PDF

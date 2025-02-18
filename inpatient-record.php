@@ -90,36 +90,54 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['selectedMedicines']) &
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['patientId'])) {
     $patientId = sanitize($connection, $_POST['patientId']);
 
-    $patient_query = $connection->prepare("SELECT * FROM tbl_inpatient WHERE id = ?");
-    $patient_query->bind_param("s", $patientId);
-    $patient_query->execute();
-    $patient_result = $patient_query->get_result();
-    $patient = $patient_result->fetch_assoc();
+    // First check if patient exists with null discharge_date
+    $check_query = $connection->prepare("
+        SELECT r.* 
+        FROM tbl_inpatient_record r
+        JOIN tbl_inpatient i ON r.inpatient_id = i.inpatient_id
+        WHERE r.patient_name = (SELECT patient_name FROM tbl_inpatient WHERE id = ?)
+        AND i.discharge_date IS NULL
+    ");
+    $check_query->bind_param("s", $patientId);
+    $check_query->execute();
+    $check_result = $check_query->get_result();
 
-    if ($patient) {
-        $inpatient_id = $patient['inpatient_id'];
-        $patient_id = $patient['patient_id'];
-        $name = sanitize($connection, $patient['patient_name']);
-        $gender = sanitize($connection, $patient['gender']);
-        $dob = sanitize($connection, $patient['dob']);
-        $room_type = sanitize($connection, $patient['room_type']);
-        $room_number = sanitize($connection, $patient['room_number']);
-        $bed_number = sanitize($connection, $patient['bed_number']);
-        $admission_date = sanitize($connection, $patient['admission_date']);
-        $doctor_incharge = "";
-
-        $insert_query = $connection->prepare("
-            INSERT INTO tbl_inpatient_record (
-                inpatient_id, patient_id, patient_name, gender, dob, doctor_incharge, admission_date, room_type, room_number, bed_number
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ");
-        $insert_query->bind_param("ssssssssss", $inpatient_id, $patient_id, $name, $gender, $dob, $doctor_incharge, $admission_date, $room_type, $room_number, $bed_number);
-        $insert_query->execute();
-
-        header('Location: inpatient-record.php');
-        exit;
+    if ($check_result->num_rows > 0) {
+        $msg = "This patient already has an active record without discharge date.";
     } else {
-        $msg = "Patient not found. Please check the Patient ID.";
+        // Proceed with existing patient insertion logic
+        $patient_query = $connection->prepare("SELECT * FROM tbl_inpatient WHERE id = ? AND discharge_date IS NULL");
+        $patient_query->bind_param("s", $patientId);
+        $patient_query->execute();
+        $patient_result = $patient_query->get_result();
+        $patient = $patient_result->fetch_assoc();
+
+
+        if ($patient) {
+            $inpatient_id = $patient['inpatient_id'];
+            $patient_id = $patient['patient_id'];
+            $name = sanitize($connection, $patient['patient_name']);
+            $gender = sanitize($connection, $patient['gender']);
+            $dob = sanitize($connection, $patient['dob']);
+            $room_type = sanitize($connection, $patient['room_type']);
+            $room_number = sanitize($connection, $patient['room_number']);
+            $bed_number = sanitize($connection, $patient['bed_number']);
+            $admission_date = sanitize($connection, $patient['admission_date']);
+            $doctor_incharge = "";
+
+            $insert_query = $connection->prepare("
+                INSERT INTO tbl_inpatient_record (
+                    inpatient_id, patient_id, patient_name, gender, dob, doctor_incharge, admission_date, room_type, room_number, bed_number
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ");
+            $insert_query->bind_param("ssssssssss", $inpatient_id, $patient_id, $name, $gender, $dob, $doctor_incharge, $admission_date, $room_type, $room_number, $bed_number);
+            $insert_query->execute();
+
+            header('Location: inpatient-record.php');
+            exit;
+        } else {
+            $msg = "Patient not found. Please check the Patient ID.";
+        }
     }
 }
 
@@ -177,7 +195,7 @@ ob_end_flush();
                                 placeholder="Enter Patient"
                                 onkeyup="searchPatients()">
                             <div class="input-group-append">
-                                <button type="submit" class="btn btn-primary" id="addPatientBtn" disabled>Add</button>
+                                <button type="submit" class="btn btn-outline-secondary" id="addPatientBtn" disabled>Add</button>
                             </div>
                         </div>
                         <input type="hidden" name="patientId" id="patientId">
@@ -187,8 +205,23 @@ ob_end_flush();
             <?php endif; ?>
         </div>
         <div class="table-responsive">
-            <label for="patientSearchInput" class="font-weight-bold">Search Patient:</label>
-            <input class="form-control" type="text" id="inpatientSearchInput" onkeyup="filterInpatients()" placeholder="Search Patient ID or Patient Name">
+            <div class="sticky-search">
+            <h5 class="font-weight-bold mb-2">Search Patient:</h5>
+                <div class="input-group mb-3">
+                    <div class="position-relative w-100">
+                        <!-- Search Icon -->
+                        <i class="fa fa-search position-absolute text-secondary" style="top: 50%; left: 12px; transform: translateY(-50%);"></i>
+                        <!-- Input Field -->
+                        <input class="form-control" type="text" id="inpatientSearchInput" onkeyup="filterInpatients()" style="padding-left: 35px; padding-right: 35px;">
+                        <!-- Clear Button -->
+                        <button class="position-absolute border-0 bg-transparent text-secondary" type="button" onclick="clearSearch()" style="top: 50%; right: 10px; transform: translateY(-50%);">
+                            <i class="fa fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="table-responsive">
             <table class="datatable table table-hover" id="inpatientTable">
                 <thead style="background-color: #CCCCCC;">
                     <tr>
@@ -210,7 +243,7 @@ ob_end_flush();
                     </tr>
                 </thead>
                 <tbody>
-                    <?php
+                <?php
                     // Securely handle GET data for the deletion process
                     if (isset($_GET['ids'])) {
                         // Sanitize the incoming GET parameter to ensure it's safe to use in the query
@@ -223,15 +256,31 @@ ob_end_flush();
                     }
 
                     // Fetch inpatient data using a safe query
-                    $fetch_query = mysqli_query($connection, "
-                        SELECT r.*, i.discharge_date, 
-                            GROUP_CONCAT(CONCAT(t.medicine_name, ' (', t.medicine_brand, ') - ', t.total_quantity, ' pcs') SEPARATOR '<br>') AS treatments
-                        FROM tbl_inpatient_record r
-                        LEFT JOIN tbl_inpatient i ON r.inpatient_id = i.inpatient_id
-                        LEFT JOIN tbl_treatment t ON r.inpatient_id = t.inpatient_id
-                        GROUP BY r.inpatient_id
-                    ");
-                    while ($row = mysqli_fetch_array($fetch_query)) {
+                    if ($_SESSION['role'] == 2) {
+                        $fetch_query = $connection->prepare("
+                            SELECT r.*, i.discharge_date, 
+                                GROUP_CONCAT(CONCAT(t.medicine_name, ' (', t.medicine_brand, ') - ', t.total_quantity, ' pcs') SEPARATOR '<br>') AS treatments
+                            FROM tbl_inpatient_record r
+                            LEFT JOIN tbl_inpatient i ON r.inpatient_id = i.inpatient_id
+                            LEFT JOIN tbl_treatment t ON r.inpatient_id = t.inpatient_id
+                            WHERE r.deleted = 0 AND r.doctor_incharge = ?
+                            GROUP BY r.inpatient_id
+                        ");
+                        $fetch_query->bind_param("s", $_SESSION['name']);
+                    } else {
+                        $fetch_query = $connection->prepare("
+                            SELECT r.*, i.discharge_date, 
+                                GROUP_CONCAT(CONCAT(t.medicine_name, ' (', t.medicine_brand, ') - ', t.total_quantity, ' pcs') SEPARATOR '<br>') AS treatments
+                            FROM tbl_inpatient_record r
+                            LEFT JOIN tbl_inpatient i ON r.inpatient_id = i.inpatient_id
+                            LEFT JOIN tbl_treatment t ON r.inpatient_id = t.inpatient_id
+                            WHERE r.deleted = 0
+                            GROUP BY r.inpatient_id
+                        ");
+                    }
+                    $fetch_query->execute();
+                    $result = $fetch_query->get_result();
+                    while ($row = $result->fetch_assoc()) {
                         $dob = $row['dob'];
                         $date = str_replace('/', '-', $dob);
                         $dob = date('Y-m-d', strtotime($date));
@@ -329,11 +378,12 @@ ob_end_flush();
                         >
                     </div>
                     <div class="table-responsive mb-4">
-                        <table class="table table-hover">
-                            <thead>
+                        <table class="table table-hover table-striped">
+                            <thead style="background-color: #CCCCCC;">
                                 <tr>
                                     <th>Medicine Name</th>
                                     <th>Medicine Brand</th>
+                                    <th>Drug Classification</th>
                                     <th>Expiration Date</th>
                                     <th>Available Quantity</th>
                                     <th>Price</th>
@@ -428,12 +478,7 @@ ob_end_flush();
 <?php
 include('footer.php');
 ?>
-<script language="JavaScript" type="text/javascript">
-<?php
-if (isset($msg)) {
-    echo 'swal("' . $msg . '");';
-}
-?>
+<script>
 function confirmDelete(){
     return confirm('Are you sure want to delete this Patient?');
 }
@@ -476,7 +521,7 @@ function searchMedicines() {
 }
 
 // Function to add medicine to the selected list
-function addMedicineToList(id, name, brand, availableQuantity, price, expiration_date, event) {
+function addMedicineToList(id, name, brand, category, availableQuantity, price, expiration_date, event) {
     if (event) {
         event.preventDefault();
         event.stopPropagation();
@@ -501,6 +546,7 @@ function addMedicineToList(id, name, brand, availableQuantity, price, expiration
             id,
             name,
             brand,
+            category,
             quantity: quantityInput,
             price: parseFloat(price),
             expiration_date,
@@ -520,7 +566,7 @@ function updateSelectedMedicinesUI() {
         const listItem = `
             <li class="list-group-item d-flex justify-content-between align-items-center">
                 <div>
-                    <strong>${medicine.name} (${medicine.brand})</strong> - 
+                    <strong>${medicine.name} (${medicine.brand}) (${medicine.category})</strong> - 
                     ${medicine.quantity} pcs @ ${medicine.price} PHP each 
                     <small>(Exp: ${medicine.expiration_date})</small>
                 </div>
@@ -555,62 +601,91 @@ $('.treatment-btn').on('click', function () {
 </script>
 
 <script>
-     function filterInpatients() {
-        var input, filter, table, tr, td, i, txtValue;
-        input = document.getElementById("inpatientSearchInput");
-        filter = input.value.toUpperCase();
-        table = document.getElementById("inpatientTable");
-        tr = table.getElementsByTagName("tr");
-
-        for (i = 0; i < tr.length; i++) {
-            var matchFound = false;
-            for (var j = 0; j < tr[i].cells.length; j++) {
-                td = tr[i].cells[j];
-                if (td) {
-                    txtValue = td.textContent || td.innerText;
-                    if (txtValue.toUpperCase().indexOf(filter) > -1) {
-                        matchFound = true;
-                        break;
-                    }
-                }
-            }
-            if (matchFound || i === 0) {
-                tr[i].style.display = "";
-            } else {
-                tr[i].style.display = "none";
-            }
-        }
+    function clearSearch() {
+        document.getElementById("inpatientSearchInput").value = '';
+        filterInpatients();
     }
-</script>
-
-
-<script>
-     function filterInpatients() {
-        var input, filter, table, tr, td, i, txtValue;
-        input = document.getElementById("inpatientSearchInput");
-        filter = input.value.toUpperCase();
-        table = document.getElementById("inpatientTable");
-        tr = table.getElementsByTagName("tr");
-
-        for (i = 0; i < tr.length; i++) {
-            var matchFound = false;
-            for (var j = 0; j < tr[i].cells.length; j++) {
-                td = tr[i].cells[j];
-                if (td) {
-                    txtValue = td.textContent || td.innerText;
-                    if (txtValue.toUpperCase().indexOf(filter) > -1) {
-                        matchFound = true;
-                        break;
-                    }
-                }
+    function filterInpatients() {
+        var input = document.getElementById("inpatientSearchInput").value;
+        
+        $.ajax({
+            url: 'fetch_inpatient_record.php',
+            method: 'GET',
+            data: { query: input },
+            success: function(response) {
+                var data = JSON.parse(response);
+                updateTable(data);
             }
-            if (matchFound || i === 0) {
-                tr[i].style.display = "";
-            } else {
-                tr[i].style.display = "none";
-            }
-        }
+        });
     }
+
+    function updateTable(data) {
+        var tbody = $('#inpatientTable tbody');
+        tbody.empty();
+        
+        data.forEach(function(row) {
+            var doctorButton = row.doctor_incharge ? row.doctor_incharge : 
+                `<button class="btn btn-primary btn-sm select-doctor-btn" data-toggle="modal" data-target="#doctorModal" data-id="${row.inpatient_id}">Select Doctor</button>`;
+                
+            var treatmentContent = row.treatments !== 'No treatments added' ? 
+                `<div>${row.treatments}</div>` :
+                `<button class="btn btn-primary btn-sm treatment-btn mt-2" data-toggle="modal" data-target="#treatmentModal" data-id="${row.inpatient_id}">
+                    <i class="fa fa-stethoscope m-r-5"></i> Add/Edit Treatments
+                </button>`;
+
+            var actionButtons = '';
+            if (role == 2 && doctor_name == row.doctor_incharge) {
+                actionButtons += `<button class="dropdown-item diagnosis-btn" data-toggle="modal" data-target="#diagnosisModal" data-id="${row.inpatient_id}" ${row.diagnosis ? 'disabled' : ''}>
+                    <i class="fa fa-stethoscope m-r-5"></i> Diagnosis</button>`;
+            }
+            if (role == 1) {
+                actionButtons += `<a class="dropdown-item" href="edit-inpatient-record.php?id=${row.id}">
+                    <i class="fa fa-pencil m-r-5"></i> Edit</a>
+                    <a class="dropdown-item" href="inpatient-record.php?ids=${row.id}" onclick="return confirmDelete()">
+                    <i class="fa fa-trash-o m-r-5"></i> Delete</a>`;
+            }
+
+            tbody.append(`<tr>
+                <td>${row.patient_id}</td>
+                <td>${row.inpatient_id}</td>
+                <td>${row.patient_name}</td>
+                <td>${row.age}</td>
+                <td>${row.gender}</td>
+                <td>${doctorButton}</td>
+                <td>
+                    <form action="generate-result.php" method="get">
+                        <input type="hidden" name="patient_id" value="${row.patient_id}">
+                        <button class="btn btn-primary btn-sm custom-btn" type="submit">
+                            <i class="fa fa-file-pdf-o m-r-5"></i> View Result
+                        </button>
+                    </form>
+                </td>
+                <td>${row.diagnosis}</td>
+                <td>${treatmentContent}</td>
+                <td>${row.room_type}</td>
+                <td>${row.room_number}</td>
+                <td>${row.bed_number}</td>
+                <td>${row.admission_date}</td>
+                <td>${row.discharge_date}</td>
+                <td class="text-right">
+                    <div class="dropdown dropdown-action">
+                        <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
+                            <i class="fa fa-ellipsis-v"></i>
+                        </a>
+                        <div class="dropdown-menu dropdown-menu-right">
+                            ${actionButtons}
+                        </div>
+                    </div>
+                </td>
+            </tr>`);
+        });
+    }
+
+    // Add these variables at the top of your script
+    var role = <?php echo json_encode($_SESSION['role']); ?>;
+    var doctor_name = <?php echo json_encode($_SESSION['name']); ?>;
+
+
 
     function searchPatients() {
         var input = document.getElementById("patientSearchInput").value;
@@ -678,40 +753,135 @@ $('#doctorForm').submit(function(e) {
 </script>
 
 <style>
-    .btn-primary {
-            background: #12369e;
-            border: none;
-        }
-        .btn-primary:hover {
-            background: #05007E;
-        }
-        #searchResults {
-        max-height: 200px;
-        overflow-y: auto;
-        border: 1px solid #ddd;
-        border-radius: 5px;
-        display: none;
-        background: #fff;
-        position: absolute;
-        z-index: 1000;
-        width: 50%;
+.sticky-search {
+    position: sticky;
+    left: 0;
+    z-index: 100;
+    width: 100%;
+}
+
+.btn-outline-primary {
+    background-color:rgb(252, 252, 252);
+    color: gray;
+    border: 1px solid rgb(228, 228, 228);
+}
+.btn-outline-primary:hover {
+    background-color: #12369e;
+    color: #fff;
+}
+.btn-outline-secondary {
+    color:rgb(90, 90, 90);
+    border: 1px solid rgb(228, 228, 228);
+}
+.btn-outline-secondary:hover {
+    background-color: #12369e;
+    color: #fff;
+}
+.input-group-text {
+    background-color:rgb(255, 255, 255);
+    border: 1px solid rgb(228, 228, 228);
+    color: gray;
+}
+.btn-primary {
+        background: #12369e;
+        border: none;
     }
-    #searchResults li {
-        padding: 8px 12px;
-        cursor: pointer;
-        list-style: none;
-        border-bottom: 1px solid #ddd;
+    .btn-primary:hover {
+        background: #05007E;
     }
-    #searchResults li:hover {
-        background-color: #12369e;
-        color: white;
-    }
-    .form-inline .input-group {
-        width: 100%;
-    }
-    .search-icon-bg {
-    background-color: #fff; 
-    border: none; 
-    color: #6c757d; 
-    }
+    #searchResults {
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    display: none;
+    background: #fff;
+    position: absolute;
+    z-index: 1000;
+    width: 50%;
+}
+#searchResults li {
+    padding: 8px 12px;
+    cursor: pointer;
+    list-style: none;
+    border-bottom: 1px solid #ddd;
+}
+#searchResults li:hover {
+    background-color: #12369e;
+    color: white;
+}
+.form-inline .input-group {
+    width: 100%;
+}
+.search-icon-bg {
+background-color: #fff; 
+border: none; 
+color: #6c757d; 
+}
+
+#treatmentModal .modal-content {
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+    border: none;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+#treatmentModal .modal-header {
+    background: #ffffff;
+    color: black;
+    padding: 1.2rem;
+    border-bottom: 1px solid #eee;
+}
+
+#treatmentModal .modal-title {
+    font-weight: 600;
+}
+
+#treatmentModal .close {
+    color: white;
+    opacity: 1;
+}
+
+#treatmentModal .modal-body {
+    padding: 1.5rem;
+}
+
+#treatmentModal .table thead {
+    background: rgba(18, 54, 158, 0.05);
+}
+
+#treatmentModal .table-hover tbody tr:hover {
+    background-color: rgba(18, 54, 158, 0.03);
+    transition: all 0.2s ease;
+}
+
+#treatmentModal .form-control:focus {
+    border-color: #12369e;
+    box-shadow: 0 0 0 0.2rem rgba(18, 54, 158, 0.25);
+}
+
+#treatmentModal .modal-footer {
+    border-top: 1px solid #eee;
+    padding: 1rem;
+}
+
+#treatmentModal .btn-primary {
+    background: #12369e;
+    border: none;
+    padding: 0.5rem 1.5rem;
+    transition: all 0.3s ease;
+}
+
+#treatmentModal .btn-primary:hover {
+    background: #05007E;
+    transform: translateY(-1px);
+}
+
+#selectedMedicinesList {
+    max-height: 300px;
+    overflow-y: auto;
+    margin-top: 1rem;
+    border: 1px solid #eee;
+    border-radius: 6px;
+}
 </style>

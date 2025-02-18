@@ -48,6 +48,24 @@ if (isset($_REQUEST['save-outpatient'])) {
     // Execute the update query
     if (mysqli_stmt_execute($update_query)) {
         $msg = "Outpatient updated successfully";
+
+        // SweetAlert success message
+        echo "
+        <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Success',
+                    text: 'Outpatient updated successfully!',
+                    confirmButtonColor: '#12369e'
+                }).then(() => {
+                    // Optional: Redirect after success
+                    window.location.href = 'outpatients.php'; // Adjust the URL as needed
+                });
+            });
+        </script>";
+
         // Re-fetch the updated outpatient record
         $fetch_query = mysqli_prepare($connection, "SELECT * FROM tbl_outpatient WHERE id = ?");
         mysqli_stmt_bind_param($fetch_query, "s", $id);
@@ -57,10 +75,25 @@ if (isset($_REQUEST['save-outpatient'])) {
         mysqli_stmt_close($fetch_query);
     } else {
         $msg = "Error updating outpatient record";
+
+        // SweetAlert error message
+        echo "
+        <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Error updating outpatient record',
+                    confirmButtonColor: '#12369e'
+                });
+            });
+        </script>";
     }
 
     // Close the update query
     mysqli_stmt_close($update_query);
+
 }
 ?>
 
@@ -71,7 +104,7 @@ if (isset($_REQUEST['save-outpatient'])) {
                 <h4 class="page-title">Edit Outpatient</h4>
             </div>
             <div class="col-sm-8 text-right m-b-20">
-                <a href="outpatients.php" class="btn btn-primary btn-rounded float-right">Back</a>
+                <a href="outpatients.php" class="btn btn-primary float-right">Back</a>
             </div>
         </div>
         <div class="row">
@@ -134,6 +167,11 @@ include('footer.php');
     });
 </script>
 <style>
+    .btn-primary.submit-btn {
+        border-radius: 4px; 
+        padding: 10px 20px;
+        font-size: 16px;
+    }
 .btn-primary {
             background: #12369e;
             border: none;

@@ -78,7 +78,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['patientId'])) {
         echo "<script>";
         echo "swal({ text: '" . addslashes($msg) . "', icon: '" . (strpos($msg, "successfully") !== false ? 'success' : 'error') . "' });";
         if (strpos($msg, "successfully") !== false) {
-            echo "setTimeout(function() { window.location.href = 'transfer-record.php'; }, 2000);"; // Redirect if successful
+            echo "setTimeout(function() { window.location.href = 'bed-transfer.php'; }, 2000);"; // Redirect if successful
         }
         echo "</script>";
     }
@@ -110,7 +110,7 @@ ob_end_flush(); // Flush output buffer
                                 placeholder="Enter Patient"
                                 onkeyup="searchPatients()">
                             <div class="input-group-append">
-                                <button type="submit" class="btn btn-primary" id="addPatientBtn" disabled>Add</button>
+                                <button type="submit" class="btn btn-outline-secondary" id="addPatientBtn" disabled>Add</button>
                             </div>
                         </div>
                         <input type="hidden" name="patientId" id="patientId">
@@ -120,8 +120,24 @@ ob_end_flush(); // Flush output buffer
             <?php endif; ?>
         </div>
         <div class="table-responsive">
-        <input class="form-control" type="text" id="transferSearchInput" onkeyup="filterTransfer()" placeholder="Search Patient ID or Patient Name">
-            <table class="datatable table table-hover" id="transferTable">
+            <div class="sticky-search">
+            <h5 class="font-weight-bold mb-2">Search Patient:</h5>
+                <div class="input-group mb-3">
+                    <div class="position-relative w-100">
+                        <!-- Search Icon -->
+                        <i class="fa fa-search position-absolute text-secondary" style="top: 50%; left: 12px; transform: translateY(-50%);"></i>
+                        <!-- Input Field -->
+                        <input class="form-control" type="text" id="transferSearchInput" onkeyup="filterTransfer()" style="padding-left: 35px; padding-right: 35px;">
+                        <!-- Clear Button -->
+                        <button class="position-absolute border-0 bg-transparent text-secondary" type="button" onclick="clearSearch()" style="top: 50%; right: 10px; transform: translateY(-50%);">
+                            <i class="fa fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="datatable table table-hover table-striped" id="transferTable">
                 <thead style="background-color: #CCCCCC;">
                     <tr>
                         <th>Patient ID</th>
@@ -205,32 +221,69 @@ function confirmDischarge() {
 </script>
 
 <script>
-     function filterTransfer() {
-        var input, filter, table, tr, td, i, txtValue;
-        input = document.getElementById("transferSearchInput");
-        filter = input.value.toUpperCase();
-        table = document.getElementById("transferTable");
-        tr = table.getElementsByTagName("tr");
+    function clearSearch() {
+        document.getElementById("transferSearchInput").value = '';
+        filterTransfer();
+    }
+    function filterTransfer() {
+        var input = document.getElementById("transferSearchInput").value;
+        
+        $.ajax({
+            url: 'fetch_transfer.php',
+            method: 'GET',
+            data: { query: input },
+            success: function(response) {
+                var data = JSON.parse(response);
+                updateTransferTable(data);
+            }
+        });
+    }
 
-        for (i = 0; i < tr.length; i++) {
-            var matchFound = false;
-            for (var j = 0; j < tr[i].cells.length; j++) {
-                td = tr[i].cells[j];
-                if (td) {
-                    txtValue = td.textContent || td.innerText;
-                    if (txtValue.toUpperCase().indexOf(filter) > -1) {
-                        matchFound = true;
-                        break;
-                    }
+    function updateTransferTable(data) {
+        var tbody = $('#transferTable tbody');
+        tbody.empty();
+        
+        data.forEach(function(row) {
+            var actionButtons = '';
+            if (role == 3) {
+                if (!row.has_room) {
+                    actionButtons += `<a class="dropdown-item" href="change-room.php?id=${row.id}">
+                        <i class="fa fa-pencil m-r-5"></i> Insert New Room</a>`;
                 }
             }
-            if (matchFound || i === 0) {
-                tr[i].style.display = "";
-            } else {
-                tr[i].style.display = "none";
+            
+            if (role == 1) {
+                actionButtons += `<a class="dropdown-item" href="bed-transfer.php?ids=${row.id}" onclick="return confirmDelete()">
+                    <i class="fa fa-trash-o m-r-5"></i> Delete</a>`;
             }
-        }
+
+            tbody.append(`<tr>
+                <td>${row.patient_id}</td>
+                <td>${row.inpatient_id}</td>
+                <td>${row.patient_name}</td>
+                <td>${row.age}</td>
+                <td>${row.gender}</td>
+                <td>${row.room_type || ''}</td>
+                <td>${row.room_number || ''}</td>
+                <td>${row.bed_number || ''}</td>
+                <td>${row.transfer_date}</td>
+                <td class="text-right">
+                    <div class="dropdown dropdown-action">
+                        <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
+                            <i class="fa fa-ellipsis-v"></i>
+                        </a>
+                        <div class="dropdown-menu dropdown-menu-right">
+                            ${actionButtons}
+                        </div>
+                    </div>
+                </td>
+            </tr>`);
+        });
     }
+
+    // Add this at the top of your script
+    var role = <?php echo json_encode($_SESSION['role']); ?>;
+
 
     function searchPatients() {
         var input = document.getElementById("patientSearchInput").value;
@@ -263,6 +316,36 @@ function confirmDischarge() {
     });
 </script>
 <style>
+.sticky-search {
+    position: sticky;
+    left: 0;
+    z-index: 100;
+    width: 100%;
+}
+
+  
+.btn-outline-primary {
+    background-color:rgb(252, 252, 252);
+    color: gray;
+    border: 1px solid rgb(228, 228, 228);
+}
+.btn-outline-primary:hover {
+    background-color: #12369e;
+    color: #fff;
+}
+.btn-outline-secondary {
+    color: gray;
+    border: 1px solid rgb(228, 228, 228);
+}
+.btn-outline-secondary:hover {
+    background-color: #12369e;
+    color: #fff;
+}
+.input-group-text {
+    background-color:rgb(255, 255, 255);
+    border: 1px solid rgb(228, 228, 228);
+    color: gray;
+}  
 .btn-primary {
             background: #12369e;
             border: none;

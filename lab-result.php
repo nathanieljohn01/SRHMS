@@ -13,7 +13,7 @@ $dashboardLink = ($role == 1) ? 'dashboard.php' : (($role == 5) ? 'dashboard-lab
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <link rel="shortcut icon" href="assets/img/srchlogo.png">
-    <title>Lab Result</title>
+    <title>Santa Rosa Community HMS</title>
     <link rel="stylesheet" href="assets/css/bootstrap.min.css">
     <link rel="stylesheet" href="assets/css/font-awesome.min.css">
     <link rel="stylesheet" href="assets/css/fontawesome.min.css">
@@ -35,7 +35,7 @@ $dashboardLink = ($role == 1) ? 'dashboard.php' : (($role == 5) ? 'dashboard-lab
         .container {
             background: #fff;
             padding: 30px;
-            border-radius: 10px;
+            border-radius: 8px;
             box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
             width: 100%;
             max-width: 450px;
@@ -57,10 +57,10 @@ $dashboardLink = ($role == 1) ? 'dashboard.php' : (($role == 5) ? 'dashboard-lab
 
         select, input {
             width: 100%;
-            padding: 12px 20px;
+            padding: 10px 20px;
             border: 2px solid #ccc;
             font-size: 16px;
-            border-radius: 5px;
+            border-radius: 4px;
             transition: border-color 0.3s;
         }
 
@@ -90,7 +90,7 @@ $dashboardLink = ($role == 1) ? 'dashboard.php' : (($role == 5) ? 'dashboard-lab
         .select2-container--default .select2-selection--single {
             height: 50px; /* Match the height of the default select */
             border: 2px solid #ccc;
-            border-radius: 5px;
+            border-radius: 4px;
             padding: 10px;
             background-color: #f9f9f9; /* Light background for dropdown */
             transition: border-color 0.3s;
@@ -134,7 +134,7 @@ $dashboardLink = ($role == 1) ? 'dashboard.php' : (($role == 5) ? 'dashboard-lab
             font-size: 16px;
             font-weight: 500;
             text-align: center;
-            border-radius: 5px;
+            border-radius: 4px;
             display: inline-block;
         }
 
@@ -143,7 +143,7 @@ $dashboardLink = ($role == 1) ? 'dashboard.php' : (($role == 5) ? 'dashboard-lab
         }
 
         .view-button:hover {
-            background-color: #12369e;
+            background-color: #05007E;
             transform: scale(1.05); /* Slightly enlarge on hover */
         }
 

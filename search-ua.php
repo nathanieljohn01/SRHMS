@@ -23,7 +23,7 @@ if (isset($_GET['query'])) {
             echo '<li class="search-result" data-id="' . $row['id'] . '">' . $row['patient_name'] . '</li>';
         }
     } else {
-        echo '<li class="search-result text-muted">No matching patients found</li>';
+        echo '<li class="search-result-none" style="pointer-events: none; color: gray; padding: 8px 12px;">No matching patients found</li>';
     }
 
     // Close the statement

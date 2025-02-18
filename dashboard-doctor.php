@@ -86,8 +86,11 @@ include('includes/connection.php');
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
+</div>
 
-            <?php
+<?php
 // Create an array of months from current month to December
 $current_month = date('n');
 $months = array();
@@ -96,9 +99,6 @@ for ($i = $current_month; $i <= 12; $i++) {
 }
 ?>
 
-        </div>
-    </div>
-</div>
 <?php 
  include('footer.php');
 ?>
@@ -168,6 +168,8 @@ for ($i = $current_month; $i <= 12; $i++) {
             ]
         },
         options: {
+            responsive: true,
+            maintainAspectRatio: false,
             scales: {
                 yAxes: [{
                     ticks: {
@@ -207,6 +209,8 @@ for ($i = $current_month; $i <= 12; $i++) {
             }]
         },
         options: {
+            responsive: true,
+            maintainAspectRatio: false,
             scales: {
                 yAxes: [{
                     ticks: {
@@ -231,10 +235,14 @@ for ($i = $current_month; $i <= 12; $i++) {
 </script>
 <style>
 .btn-primary {
-            background: #12369e;
-            border: none;
-        }
-        .btn-primary:hover {
-            background: #05007E;
-        }
+    background: #12369e;
+    border: none;
+}
+.btn-primary:hover {
+    background: #05007E;
+}
+canvas {
+    width: 100% !important;
+    height: 300px !important; /* Palitan depende sa gusto mong height */
+}
 </style>

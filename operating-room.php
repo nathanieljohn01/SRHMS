@@ -16,13 +16,29 @@ include('includes/connection.php');
             <div class="col-sm-8 col-9 text-right m-b-20">
                 <?php 
                 if ($_SESSION['role'] == 1 || $_SESSION['role'] == 3) {  
-                    echo '<a href="add-operating-room.php" class="btn btn-primary btn-rounded float-right"><i class="fa fa-plus"></i> Add Operating Room </a>';
+                    echo '<a href="add-operating-room.php" class="btn btn-primary float-right"><i class="fa fa-plus"></i> Add Operating Room </a>';
                 }
                 ?>
             </div>
         </div>
         <div class="table-responsive">
-            <input class="form-control" type="text" id="operatingRoomSearchInput" onkeyup="filterOperatingRooms()" placeholder="Search for Operating Room">
+            <div class="sticky-search">
+            <h5 class="font-weight-bold mb-2">Search Patient:</h5>
+                <div class="input-group mb-3">
+                    <div class="position-relative w-100">
+                        <!-- Search Icon -->
+                        <i class="fa fa-search position-absolute text-secondary" style="top: 50%; left: 12px; transform: translateY(-50%);"></i>
+                        <!-- Input Field -->
+                        <input class="form-control" type="text" id="operatingRoomSearchInput" onkeyup="filterOperatingRooms()" style="padding-left: 35px; padding-right: 35px;">
+                        <!-- Clear Button -->
+                        <button class="position-absolute border-0 bg-transparent text-secondary" type="button" onclick="clearSearch()" style="top: 50%; right: 10px; transform: translateY(-50%);">
+                            <i class="fa fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="table-responsive">
             <table class="datatable table table-hover" id="operatingRoomTable">
                 <thead style="background-color: #CCCCCC;">
                     <tr>
@@ -88,35 +104,92 @@ function confirmDelete(){
 </script>
 
 <script>
-    function filterOperatingRooms() {
-        var input, filter, table, tr, td, i, txtValue;
-        input = document.getElementById("operatingRoomSearchInput");
-        filter = input.value.toUpperCase();
-        table = document.getElementById("operatingRoomTable");
-        tr = table.getElementsByTagName("tr");
-
-        for (i = 0; i < tr.length; i++) {
-            var matchFound = false;
-            for (var j = 0; j < tr[i].cells.length; j++) {
-                td = tr[i].cells[j];
-                if (td) {
-                    txtValue = td.textContent || td.innerText;
-                    if (txtValue.toUpperCase().indexOf(filter) > -1) {
-                        matchFound = true;
-                        break;
-                    }
-                }
-            }
-            if (matchFound || i === 0) {
-                tr[i].style.display = "";
-            } else {
-                tr[i].style.display = "none";
-            }
-        }
+    function clearSearch() {
+        document.getElementById("operatingRoomSearchInput").value = '';
+        filterOperatingRooms();
     }
+    function filterOperatingRooms() {
+        var input = document.getElementById("operatingRoomSearchInput").value;
+        
+        $.ajax({
+            url: 'fetch_operating_room.php',
+            method: 'GET',
+            data: { query: input },
+            success: function(response) {
+                var data = JSON.parse(response);
+                updateOperatingRoomsTable(data);
+            }
+        });
+    }
+
+    function updateOperatingRoomsTable(data) {
+        var tbody = $('#operatingRoomTable tbody');
+        tbody.empty();
+        
+        data.forEach(function(row) {
+            let actionButtons = '';
+            if (<?php echo $_SESSION['role']; ?> == 1 || <?php echo $_SESSION['role']; ?> == 3) {
+                actionButtons = `
+                    <a class="dropdown-item" href="edit-operating-room.php?id=${row.id}">
+                        <i class="fa fa-pencil m-r-5"></i> Edit
+                    </a>
+                    <a class="dropdown-item" href="operating-room.php?id=${row.id}" onclick="return confirmDelete()">
+                        <i class="fa fa-trash-o m-r-5"></i> Delete
+                    </a>
+                `;
+            }
+
+            tbody.append(`
+                <tr>
+                    <td>${row.patient_id}</td>
+                    <td>${row.patient_name}</td>
+                    <td>${row.operation_status}</td>
+                    <td>${row.current_surgery}</td>
+                    <td>${row.surgeon}</td>
+                    <td>${row.start_time}</td>
+                    <td>${row.end_time}</td>
+                    <td>${row.notes}</td>
+                    <td class="text-right">
+                        <div class="dropdown dropdown-action">
+                            <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
+                                <i class="fa fa-ellipsis-v"></i>
+                            </a>
+                            <div class="dropdown-menu dropdown-menu-right">
+                                ${actionButtons}
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            `);
+        });
+    }
+
+
 </script>
 
 <style>
+.btn-outline-primary {
+    background-color:rgb(252, 252, 252);
+    color: gray;
+    border: 1px solid rgb(228, 228, 228);
+}
+.btn-outline-primary:hover {
+    background-color: #12369e;
+    color: #fff;
+}
+.btn-outline-secondary {
+    color:rgb(90, 90, 90);
+    border: 1px solid rgb(228, 228, 228);
+}
+.btn-outline-secondary:hover {
+    background-color: #12369e;
+    color: #fff;
+}
+.input-group-text {
+    background-color:rgb(255, 255, 255);
+    border: 1px solid rgb(228, 228, 228);
+    color: gray;
+} 
     .btn-primary {
         background: #12369e;
         border: none;

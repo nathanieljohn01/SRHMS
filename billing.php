@@ -13,36 +13,36 @@ $patientType = isset($_GET['patient_type']) ? $_GET['patient_type'] : 'inpatient
 // Select the correct table based on patient type and prepare query
 if ($patientType === 'hemodialysis') {
     $query = "
-        SELECT b.billing_id, b.patient_id, b.patient_name, b.dob, b.address, b.diagnosis, b.admission_date, b.discharge_date, b.room_fee, b.lab_fee, b.medication_fee, b.operating_room_fee, 
-               b.supplies_fee, b.professional_fee, b.pf_discount_amount, b.readers_fee, b.discount_amount, b.vat_exempt_discount_amount, b.total_due, b.non_discounted_total, 
-               GROUP_CONCAT(o.item_name ORDER BY o.date_time DESC SEPARATOR ', ') AS other_items, 
+        SELECT DISTINCT b.*, 
+               GROUP_CONCAT(o.item_name ORDER BY o.date_time DESC SEPARATOR ', ') AS other_items,
                GROUP_CONCAT(o.item_cost ORDER BY o.date_time DESC SEPARATOR ', ') AS other_costs
         FROM tbl_billing_hemodialysis b
         LEFT JOIN tbl_billing_others o ON b.billing_id = o.billing_id
         WHERE b.deleted = 0
-        GROUP BY b.billing_id
+        GROUP BY b.billing_id, b.patient_id, b.transaction_datetime
+        ORDER BY b.transaction_datetime DESC
     ";
 } elseif ($patientType === 'newborn') {
     $query = "
-        SELECT b.billing_id, b.patient_id, b.patient_name, b.dob, b.address, b.diagnosis, b.admission_date, b.discharge_date, b.room_fee, b.lab_fee, b.medication_fee, b.operating_room_fee, 
-               b.supplies_fee, b.professional_fee, b.pf_discount_amount, b.readers_fee, b.discount_amount, b.vat_exempt_discount_amount, b.total_due, b.non_discounted_total, 
-               GROUP_CONCAT(o.item_name ORDER BY o.date_time DESC SEPARATOR ', ') AS other_items, 
+        SELECT DISTINCT b.*, 
+               GROUP_CONCAT(o.item_name ORDER BY o.date_time DESC SEPARATOR ', ') AS other_items,
                GROUP_CONCAT(o.item_cost ORDER BY o.date_time DESC SEPARATOR ', ') AS other_costs
         FROM tbl_billing_newborn b
         LEFT JOIN tbl_billing_others o ON b.billing_id = o.billing_id
         WHERE b.deleted = 0
-        GROUP BY b.billing_id
+        GROUP BY b.billing_id, b.patient_id, b.transaction_datetime
+        ORDER BY b.transaction_datetime DESC
     ";
 } else {
     $query = "
-        SELECT b.billing_id, b.patient_id, b.patient_name, b.dob, b.address, b.diagnosis, b.admission_date, b.discharge_date, b.room_fee, b.lab_fee, b.medication_fee, b.operating_room_fee, 
-               b.supplies_fee, b.professional_fee, b.pf_discount_amount, b.readers_fee, b.discount_amount, b.vat_exempt_discount_amount, b.total_due, b.non_discounted_total, 
-               GROUP_CONCAT(o.item_name ORDER BY o.date_time DESC SEPARATOR ', ') AS other_items, 
+        SELECT DISTINCT b.*, 
+               GROUP_CONCAT(o.item_name ORDER BY o.date_time DESC SEPARATOR ', ') AS other_items,
                GROUP_CONCAT(o.item_cost ORDER BY o.date_time DESC SEPARATOR ', ') AS other_costs
         FROM tbl_billing_inpatient b
         LEFT JOIN tbl_billing_others o ON b.billing_id = o.billing_id
         WHERE b.deleted = 0
-        GROUP BY b.billing_id
+        GROUP BY b.billing_id, b.patient_id, b.transaction_datetime
+        ORDER BY b.transaction_datetime DESC
     ";
 }
 
@@ -50,31 +50,43 @@ if ($patientType === 'hemodialysis') {
 
 <div class="page-wrapper">
     <div class="content">
-        <div class="row">
-            <div class="col-sm-4 col-3">
-            <h4 class="page-title">Statement Of Account</h4>
+        <div class="row align-items-center mb-3">
+            <div class="col-md-3">
+                <h4 class="page-title">Statement Of Account</h4>
             </div>
-            <div class="col-sm-8 col-9 text-right m-b-20">
-                <a href="add-billing.php" class="btn btn-primary btn-rounded float-right"><i class="fa fa-plus"></i> Add Account</a>
+            
+            <div class="col-md-9">
+                <div class="d-flex justify-content-end">
+                    <div class="btn-group mr-5" role="group">
+                        <button id="inpatient-btn" class="btn btn-primary btn-info <?php echo ($patientType === 'inpatient') ? 'btn btn-black' : ''; ?>" onclick="showTable('inpatient')">Inpatient</button>
+                        <button id="hemodialysis-btn" class="btn btn-primary btn-info <?php echo ($patientType === 'hemodialysis') ? 'btn btn-black' : ''; ?>" onclick="showTable('hemodialysis')">Hemodialysis</button>
+                        <button id="newborn-btn" class="btn btn-primary btn-info <?php echo ($patientType === 'newborn') ? 'btn btn-black' : ''; ?>" onclick="showTable('newborn')">Newborn</button>
+                    </div>
+                    <a href="add-billing.php" class="btn btn-primary"><i class="fa fa-plus"></i> Add Account</a>
+                </div>
             </div>
         </div>
 
-        <!-- Buttons to filter by Patient Type -->
-        <div class="row mb-3">
-            <div class="col-sm-4 col-3">
-            <button id="inpatient-btn" class="btn btn-rounded btn-info mr-3 <?php echo ($patientType === 'inpatient') ? 'btn-black' : ''; ?>" onclick="showTable('inpatient')">Inpatient</button>
-            <button id="hemodialysis-btn" class="btn btn-rounded btn-info mr-3 <?php echo ($patientType === 'hemodialysis') ? 'btn-black' : ''; ?>" onclick="showTable('hemodialysis')">Hemodialysis</button>
-            <button id="newborn-btn" class="btn btn-rounded btn-info <?php echo ($patientType === 'newborn') ? 'btn-black' : ''; ?>" onclick="showTable('newborn')">Newborn</button>
-            </div>
-        </div>
-
-        <!-- Search for Patient -->
         <div class="table-responsive">
-            <input class="form-control" type="text" id="patientSearchInput" onkeyup="filterPatients()" placeholder="Search for Patient">
+        <h5 class="font-weight-bold mb-2">Search Patient:</h5>
+            <div class="input-group mb-3">
+                <div class="position-relative w-100">
+                    <!-- Search Icon -->
+                    <i class="fa fa-search position-absolute text-secondary" style="top: 50%; left: 12px; transform: translateY(-50%);"></i>
+                    <!-- Input Field -->
+                    <input class="form-control" type="text" id="patientSearchInput" onkeyup="filterPatients()" style="padding-left: 35px; padding-right: 35px;">
+                    <!-- Clear Button -->
+                    <button class="position-absolute border-0 bg-transparent text-secondary" type="button" onclick="clearSearch()" style="top: 50%; right: 10px; transform: translateY(-50%);">
+                        <i class="fa fa-times"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
 
+        <div class="table-responsive">
             <h4 class="mt-4">Patient Information</h4>
             <!-- Patient Information Table -->
-            <table class="datatable table table-hover" id="patientInfoTable">
+            <table class="datatable table table-hover table-striped" id="patientInfoTable">
                 <thead style="background-color: #CCCCCC;">
                     <tr>
                         <th>Billing ID</th>
@@ -85,15 +97,16 @@ if ($patientType === 'hemodialysis') {
                         <th>Diagnosis</th>
                         <th>Admission Date</th>
                         <th>Discharge Date</th>
+                        <th>Date & Time</th>
                         <th>Action</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php
-                    $patient_query = mysqli_query($connection, $query); 
-                    while ($row = mysqli_fetch_array($patient_query)) {
+                     $patient_query = mysqli_query($connection, $query);
+                     while ($row = mysqli_fetch_array($patient_query)) {
                         $dob = $row['dob'];
-                        $date = str_replace('/', '-', $dob); 
+                        $date = str_replace('/', '-', $dob);
                         $dob = date('Y-m-d', strtotime($date));
                         $year = (date('Y') - date('Y', strtotime($dob)));
                     ?>
@@ -106,37 +119,38 @@ if ($patientType === 'hemodialysis') {
                         <td><?php echo $row['diagnosis']; ?></td>
                         <td><?php echo date('F d, Y g:i A', strtotime($row['admission_date'])); ?></td>
                         <td><?php echo date('F d, Y g:i A', strtotime($row['discharge_date'])); ?></td>
+                        <td><?php echo date('F d, Y g:i A', strtotime($row['transaction_datetime'])); ?></td>
                         <td class="text-right">
                             <div class="dropdown dropdown-action">
                                 <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><i class="fa fa-ellipsis-v"></i></a>
                                 <div class="dropdown-menu dropdown-menu-right">
-                                    <?php 
+                                    <?php
                                     if ($_SESSION['role'] == 1) {
                                         echo '<a class="dropdown-item" href="edit-billing.php?id='.$row['id'].'"><i class="fa fa-pencil m-r-5"></i> Edit</a>';
                                         echo '<a class="dropdown-item" href="billing.php?ids='.$row['id'].'" onclick="return confirmDelete()"><i class="fa fa-trash-o m-r-5"></i> Delete</a>';
                                     }
                                     ?>
-                                    </div>
                                 </div>
-                            </td>
-                        </tr>
+                            </div>
+                        </td>
+                    </tr>
                     <?php } ?>
                 </tbody>
             </table>
             <!-- Charges Details Table -->
             <h4 class="mt-6">Charges Details</h4>
-            <table class="datatable table table-bordered" id="billingTable">
+            <table class="datatable table table-bordered table-hover" id="billingTable">
                 <thead style="background-color: #CCCCCC;">
                     <tr>
                         <th>Room Charges</th>
                         <th>Laboratory Charges</th>
+                        <th>Radiology Charges</th>
                         <th>Medication Charges</th>
                         <th>Operating Room Charges</th>
                         <th>Supplies Charges</th> 
                         <th>Other Charges</th> 
-                        <th>Professional's Fee</th>
+                        <th>Professional Fee</th>
                         <th>Reader's Fee</th>
-                        <th>Subtotal</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -150,25 +164,65 @@ if ($patientType === 'hemodialysis') {
                     <tr data-billing-id="<?php echo $row['billing_id']; ?>">
                         <td><?php echo number_format($row['room_fee'], 2); ?></td>
                         <td><?php echo number_format($row['lab_fee'], 2); ?></td>
+                        <td><?php echo number_format($row['rad_fee'], 2); ?></td>
                         <td><?php echo number_format($row['medication_fee'], 2); ?></td>
                         <td><?php echo number_format($row['operating_room_fee'], 2); ?></td>
                         <td><?php echo $row['supplies_fee']; ?></td>
                         <td><?php echo $otherItems . ' (' . $otherCosts . ')'; ?></td>
                         <td><?php echo number_format($row['professional_fee'], 2); ?></td>
                         <td><?php echo number_format($row['readers_fee'], 2); ?></td>
-                        <td><?php echo number_format($row['non_discounted_total'], 2); ?></td>
                     </tr>
                     <?php } ?>
                 </tbody>
             </table>
             <!-- Discount Details Table -->
             <h4 class="mt-6">Discount Details</h4>
-            <table class="datatable table table-bordered" id="discountTable">
+            <table class="datatable table table-bordered table-hover" id="discountTable">
                 <thead style="background-color: #CCCCCC;">
                     <tr>
+                        <th>Room Discount</th>
+                        <th>Laboratory Discount</th>
+                        <th>Radiology Discount</th>
+                        <th>Medication Discount</th>
+                        <th>Operating Room Discount</th>
+                        <th>Supplies Discount</th>
+                        <th>Other Items Discount</th>
                         <th>Professional Fee Discount</th>
-                        <th>VAT Exempt Discount</th>
-                        <th>Senior/PWD Discount</th>
+                        <th>Reader's Fee Discount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php
+                    $discount_details_query = mysqli_query($connection, $query);
+                    while ($row = mysqli_fetch_array($discount_details_query)) {
+                    ?>
+                    <tr data-billing-id="<?php echo $row['billing_id']; ?>">
+                        <td><?php echo number_format($row['room_discount'], 2); ?></td>
+                        <td><?php echo number_format($row['lab_discount'], 2); ?></td>
+                        <td><?php echo number_format($row['rad_discount'], 2); ?></td>
+                        <td><?php echo number_format($row['med_discount'], 2); ?></td>
+                        <td><?php echo number_format($row['or_discount'], 2); ?></td>
+                        <td><?php echo number_format($row['supplies_discount'], 2); ?></td>
+                        <td><?php echo number_format($row['other_discount'], 2); ?></td>
+                        <td><?php echo number_format($row['pf_discount'], 2); ?></td>
+                        <td><?php echo number_format($row['readers_discount'], 2); ?></td>
+                    </tr>
+                    <?php } ?>
+                </tbody>
+            </table>
+            <!-- Amount Details Table -->
+            <h4 class="mt-6">Amount Details</h4>
+            <table class="datatable table table-bordered table-hover" id="amountTable">
+                <thead style="background-color: #CCCCCC;">
+                    <tr>
+                        <th>VAT Exempt</th>
+                        <th>Senior Discount</th>
+                        <th>PWD Discount</th>
+                        <th>PhilHealth First Case</th>
+                        <th>PhilHealth Second Case</th>
+                        <th>PhilHealth PF</th>
+                        <th>PhilHealth HB</th>
+                        <th>Subtotal</th>
                         <th>Amount Due</th>
                     </tr>
                 </thead>
@@ -179,9 +233,14 @@ if ($patientType === 'hemodialysis') {
                     while ($row = mysqli_fetch_array($discount_query)) {
                     ?>
                     <tr data-billing-id="<?php echo $row['billing_id']; ?>">
-                        <td><?php echo number_format($row['pf_discount_amount'], 2); ?></td>
                         <td><?php echo number_format($row['vat_exempt_discount_amount'], 2); ?></td>
                         <td><?php echo number_format($row['discount_amount'], 2); ?></td>      
+                        <td><?php echo number_format($row['pwd_discount_amount'], 2); ?></td>
+                        <td><?php echo $row['first_case']; ?></td>
+                        <td><?php echo $row['second_case']; ?></td>
+                        <td><?php echo number_format($row['philhealth_pf'], 2); ?></td>
+                        <td><?php echo number_format($row['philhealth_hb'], 2); ?></td>
+                        <td><?php echo number_format($row['non_discounted_total'], 2); ?></td>
                         <td><strong><?php echo number_format($row['total_due'], 2); ?></strong></td>
                     </tr>
                     <?php } ?>
@@ -200,83 +259,192 @@ function confirmDelete(){
 }
 
 function showTable(patientType) {
-    // This will reload the page with the selected patient type as part of the URL
-    window.location.href = "billing.php?patient_type=" + patientType;
+    window.location.href = `billing.php?patient_type=${patientType}`;
 }
-// JavaScript function for filtering patients
+
+function clearSearch() {
+    document.getElementById("patientSearchInput").value = '';
+    filterPatients();
+}
+
 function filterPatients() {
     var input = document.getElementById("patientSearchInput");
     var filter = input.value.toUpperCase();
     var patientTable = document.getElementById("patientInfoTable");
-    var billingTable = document.getElementById("billingTable");
-    var discountTable = document.getElementById("discountTable");
     var patientRows = patientTable.getElementsByTagName("tr");
-    var billingRows = billingTable.getElementsByTagName("tr");
-    var discountRows = discountTable.getElementsByTagName("tr");
 
-    var patientMatchIds = [];
-
-    // Filter Patient Information Table
-    for (let i = 1; i < patientRows.length; i++) {
-        let matchFound = false;
-        for (let j = 0; j < patientRows[i].cells.length; j++) {
-            let td = patientRows[i].cells[j];
-            if (td) {
-                let txtValue = td.textContent || td.innerText;
-                if (txtValue.toUpperCase().indexOf(filter) > -1) {
-                    matchFound = true;
+    // Loop through all table rows
+    for (var i = 1; i < patientRows.length; i++) {
+        var cells = patientRows[i].getElementsByTagName("td");
+        var showRow = false;
+        
+        // Search through each cell in the row
+        for (var j = 0; j < cells.length; j++) {
+            var cell = cells[j];
+            if (cell) {
+                var text = cell.textContent || cell.innerText;
+                if (text.toUpperCase().indexOf(filter) > -1) {
+                    showRow = true;
                     break;
                 }
             }
         }
-        patientRows[i].style.display = matchFound ? "" : "none";
-        if (matchFound) {
-            patientMatchIds.push(patientRows[i].getAttribute("data-billing-id"));
-        }
+        
+        // Show/hide the row based on search match
+        patientRows[i].style.display = showRow ? "" : "none";
+        
+        // Show/hide corresponding rows in other tables
+        var billingId = patientRows[i].getAttribute("data-billing-id");
+        updateRelatedRows(billingId, showRow);
     }
-
-    // Filter Billing Details Table based on Patient Information Table results
-    for (let i = 1; i < billingRows.length; i++) {
-        let billingId = billingRows[i].getAttribute("data-billing-id");
-        billingRows[i].style.display = patientMatchIds.includes(billingId) ? "" : "none";
-    }
-
-    // Filter Discount Details Table based on Patient Information Table results
-    for (let i = 1; i < discountRows.length; i++) {
-        let billingId = discountRows[i].getAttribute("data-billing-id");
-        discountRows[i].style.display = patientMatchIds.includes(billingId) ? "" : "none";
-    }
-
-    // Show or hide Billing and Discount Tables if no matches are found
-    billingTable.style.display = patientMatchIds.length > 0 ? "" : "none";
-    discountTable.style.display = patientMatchIds.length > 0 ? "" : "none";
 }
 
-$('.dropdown-toggle').on('click', function (e) {
-    var $el = $(this).next('.dropdown-menu');
-    var isVisible = $el.is(':visible');
-    
-    // Hide all dropdowns
-    $('.dropdown-menu').slideUp('400');
-    
-    // If this wasn't already visible, slide it down
-    if (!isVisible) {
-        $el.stop(true, true).slideDown('400');
-    }
-    
-    // Close the dropdown if clicked outside of it
-    $(document).on('click', function (e) {
-        if (!$(e.target).closest('.dropdown').length) {
-            $('.dropdown-menu').slideUp('400');
-        }
+function updateRelatedRows(billingId, show) {
+    var tables = ["billingTable", "amountTable", "discountTable"];
+    tables.forEach(function(tableId) {
+        var rows = document.querySelectorAll(`#${tableId} tr[data-billing-id="${billingId}"]`);
+        rows.forEach(function(row) {
+            row.style.display = show ? "" : "none";
+        });
     });
-});
+}
+
+
+function updateBillingTables(data) {
+    var patientTableBody = $('#patientInfoTable tbody');
+    var billingTableBody = $('#billingTable tbody');
+    var discountTableBody = $('#discountTable tbody');
+    var amountTableBody = $('#amountTable tbody');
+    
+    // Clear all tables
+    patientTableBody.empty();
+    billingTableBody.empty();
+    discountTableBody.empty();
+    amountTableBody.empty();
+    
+    data.forEach(function(record) {
+        // Update Patient Info Table
+        patientTableBody.append(`
+            <tr data-billing-id="${record.patient_info.billing_id}">
+                <td>${record.patient_info.billing_id}</td>
+                <td>${record.patient_info.patient_id}</td>
+                <td>${record.patient_info.patient_name}</td>
+                <td>${record.patient_info.age}</td>
+                <td>${record.patient_info.address}</td>
+                <td>${record.patient_info.diagnosis}</td>
+                <td>${record.patient_info.admission_date}</td>
+                <td>${record.patient_info.discharge_date}</td>
+                <td>${record.patient_info.transaction_date}</td>
+                <td class="text-right">
+                    <div class="dropdown dropdown-action">
+                        <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
+                            <i class="fa fa-ellipsis-v"></i>
+                        </a>
+                        <div class="dropdown-menu dropdown-menu-right">
+                            ${getActionButtons(record.patient_info.billing_id)}
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        `);
+
+        // Update Charges Table
+        billingTableBody.append(`
+            <tr data-billing-id="${record.patient_info.billing_id}">
+                <td>${record.charges.room_fee}</td>
+                <td>${record.charges.lab_fee}</td>
+                <td>${record.charges.rad_fee}</td>
+                <td>${record.charges.medication_fee}</td>
+                <td>${record.charges.operating_room_fee}</td>
+                <td>${record.charges.supplies_fee}</td>
+                <td>${record.charges.other_items}</td>
+                <td>${record.charges.professional_fee}</td>
+                <td>${record.charges.readers_fee}</td>
+            </tr>
+        `);
+
+        // Update Discount Table
+        discountTableBody.append(`
+            <tr data-billing-id="${record.patient_info.billing_id}">
+                <td>${record.discounts.room_discount}</td>
+                <td>${record.discounts.lab_discount}</td>
+                <td>${record.discounts.rad_discount}</td>
+                <td>${record.discounts.med_discount}</td>
+                <td>${record.discounts.or_discount}</td>
+                <td>${record.discounts.supplies_discount}</td>
+                <td>${record.discounts.other_discount}</td>
+                <td>${record.discounts.pf_discount}</td>
+                <td>${record.discounts.readers_discount}</td>
+            </tr>
+        `);
+
+        // Update Amount Table
+        amountTableBody.append(`
+            <tr data-billing-id="${record.patient_info.billing_id}">
+                <td>${record.amounts.vat_exempt}</td>
+                <td>${record.amounts.senior_discount}</td>
+                <td>${record.amounts.pwd_discount}</td>
+                <td>${record.amounts.first_case}</td>
+                <td>${record.amounts.second_case}</td>
+                <td>${record.amounts.philhealth_pf}</td>
+                <td>${record.amounts.philhealth_hb}</td>
+                <td>${record.amounts.subtotal}</td>
+                <td><strong>${record.amounts.total_due}</strong></td>
+            </tr>
+        `);
+    });
+
+    // Show/hide tables based on results
+    ['billingTable', 'discountTable', 'amountTable'].forEach(tableId => {
+        document.getElementById(tableId).style.display = data.length > 0 ? '' : 'none';
+    });
+}
+
+function getActionButtons(billingId) {
+    if (userRole === 1) {
+        return `
+            <a class="dropdown-item" href="edit-billing.php?id=${billingId}">
+                <i class="fa fa-pencil m-r-5"></i> Edit
+            </a>
+            <a class="dropdown-item" href="billing.php?ids=${billingId}" onclick="return confirmDelete()">
+                <i class="fa fa-trash-o m-r-5"></i> Delete
+            </a>
+        `;
+    }
+    return '';
+}
+
 </script>
 
 <style>
 #billingTable_wrapper .dataTables_length,
-#discountTable_wrapper .dataTables_length {
+#discountTable_wrapper .dataTables_length,
+#amountTable_wrapper .dataTables_length{
     display: none;
+}
+.btn-outline-primary {
+    background-color:rgb(252, 252, 252);
+    color: gray;
+    border: 1px solid rgb(228, 228, 228);
+}
+.btn-outline-primary:hover {
+    background-color: #12369e;
+    color: #fff;
+}
+
+.input-group-text {
+    background-color:rgb(255, 255, 255);
+    border: 1px solid rgb(228, 228, 228);
+    color: gray;
+}
+.btn-secondary{
+    background: #CCCCCC;
+    color: black;
+    border: 1px solid rgb(189, 189, 189);
+}
+.btn-secondary:hover {
+    background:rgb(133, 133, 133);
+    border: 1px solid rgb(189, 189, 189);
 }
 .btn-primary {
     background: #12369e;
@@ -290,7 +458,7 @@ $('.dropdown-toggle').on('click', function (e) {
     top: 0;
     right: 0;
     z-index: 9999;
-    min-width: 150px; /* Adjust according to your preference */
+    min-width: 150px; 
 }
 
 .dropdown-toggle:focus {
@@ -301,7 +469,22 @@ $('.dropdown-toggle').on('click', function (e) {
     cursor: pointer;
 }
 .btn-black {
-    background-color:rgb(4, 0, 107)!important;
-    color: white;
+    background: #c0c3c6; /* Lighter Gray */
+    border: none;
+    color: #212529; /* Black Text */
+    box-shadow: 0 2px 4px rgba(26, 12, 12, 0.1); /* Softer Shadow */
+    transition: all 0.3s ease;
 }
+
+.btn-black:hover {
+    background: #b3b6b9; /* Slightly Darker Gray on Hover */
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px rgba(73, 80, 87, 0.3); /* Slightly deeper shadow */
+}
+
+.btn-black:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
 </style>

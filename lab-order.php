@@ -28,13 +28,13 @@ if (isset($_POST['save-order'])) {
 
     // Fetch patient details
     $fetch_patient_stmt = mysqli_prepare($connection, "
-        SELECT patient_id, gender, dob 
+        SELECT patient_id, patient_type, gender, dob 
         FROM tbl_patient 
         WHERE CONCAT(first_name, ' ', last_name) = ?
     ");
     mysqli_stmt_bind_param($fetch_patient_stmt, 's', $patient_name);
     mysqli_stmt_execute($fetch_patient_stmt);
-    mysqli_stmt_bind_result($fetch_patient_stmt, $patient_id, $gender, $dob);
+    mysqli_stmt_bind_result($fetch_patient_stmt, $patient_id, $patient_type, $gender, $dob);
     mysqli_stmt_fetch($fetch_patient_stmt);
     mysqli_stmt_close($fetch_patient_stmt);
 
@@ -53,8 +53,8 @@ if (isset($_POST['save-order'])) {
         // Prepare the insert statement for tbl_laborder
         $insert_stmt = mysqli_prepare($connection, "
             INSERT INTO tbl_laborder 
-            (test_id, patient_id, patient_name, gender, dob, lab_department, lab_test, price, status, requested_date, stat, shift) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'In-Progress', NOW(), ?, ?)
+            (test_id, patient_id, patient_name, patient_type, gender, dob, lab_department, lab_test, price, status, requested_date, stat, shift) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'In-Progress', NOW(), ?, ?)
         ");
 
         foreach ($_POST['lab_test'] as $selected_lab_test) {
@@ -82,13 +82,56 @@ if (isset($_POST['save-order'])) {
             $price = (float)$lab_test_data['lab_test_price']; // Ensure price is treated as a decimal
 
             // Bind and execute the insert statement
-            mysqli_stmt_bind_param($insert_stmt, 'sssssssdss', $test_id, $patient_id, $patient_name, $gender, $dob, $department, $selected_lab_test, $price, $stat_status, $shift);
+            mysqli_stmt_bind_param($insert_stmt, 'ssssssssdss', $test_id, $patient_id, $patient_name, $patient_type, $gender, $dob, $department, $selected_lab_test, $price, $stat_status, $shift);
             if (mysqli_stmt_execute($insert_stmt)) {
-                $msg = "Lab order created successfully!";
+                echo "
+                    <script src='https://cdn.jsdelivr.net/npm/sweetalert2@11'></script>
+                    <script>
+                        Swal.fire({
+                            title: 'Success!',
+                            text: 'Lab order created successfully!',
+                            icon: 'success',
+                            confirmButtonColor: '#12369e',
+                            confirmButtonText: 'OK'
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                window.location.href = 'lab-order.php';
+                            }
+                        });
+                    </script>
+                    <style>
+                        .swal2-confirm {
+                            background-color: #12369e !important;
+                            color: white !important;
+                            border: none !important;
+                        }
+                        .swal2-confirm:hover {
+                            background-color: #05007E !important;
+                        }
+                        .swal2-confirm:focus {
+                            box-shadow: 0 0 0 0.2rem rgba(18, 54, 158, 0.5) !important;
+                        }
+                    </style>
+                ";
             } else {
-                $msg = "Error saving data: " . mysqli_error($connection);
-                break; // Exit the loop on failure
+                echo "
+                    <script src='https://cdn.jsdelivr.net/npm/sweetalert2@11'></script>
+                    <script>
+                        Swal.fire({
+                            title: 'Error!',
+                            text: 'Error saving data: " . mysqli_error($connection) . "',
+                            icon: 'error',
+                            confirmButtonColor: '#12369e',
+                            confirmButtonText: 'OK'
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                window.location.href = 'lab-order.php';
+                            }
+                        });
+                    </script>
+                ";
             }
+
         }
 
         mysqli_stmt_close($insert_stmt);
@@ -102,16 +145,16 @@ if (isset($_POST['save-order'])) {
 <div class="page-wrapper">
     <div class="content">
         <div class="row">
-            <div class="col-sm-4">
+            <div class="col-sm-6">
                 <h4 class="page-title">Add Order</h4>
             </div>
-            <div class="col-sm-8 text-right m-b-20">
+            <div class="col-sm-6 text-right m-b-20">
                 <a href="lab-order-patients.php" class="btn btn-primary btn-rounded float-right">Back</a>
             </div>
         </div>
-        <div class="row">
-            <div class="col-lg-8 offset-lg-2">
-                <form method="post" class="container mt-5" id="labOrderForm" onsubmit="return validateForm()">
+        <div class="row justify-content-center">
+            <div class="col-xl-10 col-lg-12">
+                <form method="post" id="labOrderForm" onsubmit="return validateForm()">
                     <div class="row">
                         <div class="col-md-6">
                             <div class="form-group">
@@ -121,13 +164,16 @@ if (isset($_POST['save-order'])) {
                                         echo 'TEST-' . $tst_id;
                                     } else {
                                         echo "TEST-1";
-                                    } ?>" disabled>
+                                    }
+                                ?>" disabled>
                             </div>
                         </div>
                         <div class="col-md-6">
-                            <label>Patient Name</label>
-                            <input type="text" class="form-control" id="patient-search" name="patient_name" placeholder="Search for patient" required>
-                            <div id="patient-list" class="patient-list"></div>
+                            <div class="form-group">
+                                <label>Patient Name</label>
+                                <input type="text" class="form-control" id="patient-search" name="patient_name" placeholder="Search for patient" required>
+                                <div id="patient-list" class="patient-list"></div>
+                            </div>
                         </div>
                     </div>
                     <div class="row">
@@ -153,10 +199,25 @@ if (isset($_POST['save-order'])) {
                         </div>
                     </div>
                     <div class="table-responsive">
-                        <h4>Lab Tests</h4>
-                        <input class="form-control" type="text" id="labTestSearchInput" onkeyup="filterTests()" placeholder="Search for Lab Test">
-                        <table class="table table-hover" id="labTestTable">
-                        <thead style="background-color: #CCCCCC;">
+                    <div class="sticky-search">
+                    <h5 class="font-weight-bold mb-2">Search for Laboratory Test:</h5>
+                        <div class="input-group mb-3">
+                            <div class="position-relative w-100">
+                                <!-- Search Icon -->
+                                <i class="fa fa-search position-absolute text-secondary" style="top: 50%; left: 12px; transform: translateY(-50%);"></i>
+                                <!-- Input Field -->
+                                <input class="form-control" type="text" id="labTestSearchInput" onkeyup="filterTests()" style="padding-left: 35px; padding-right: 35px;">
+                                <!-- Clear Button -->
+                                <button class="position-absolute border-0 bg-transparent text-secondary" type="button" onclick="clearSearch()" style="top: 50%; right: 10px; transform: translateY(-50%);">
+                                    <i class="fa fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                        <table class="datatable table table-hover" id="labTestTable">
+                            <thead style="background-color: #CCCCCC;">
                                 <tr>
                                     <th>Lab Test</th>
                                     <th>Code</th>
@@ -167,7 +228,7 @@ if (isset($_POST['save-order'])) {
                             </thead>
                             <tbody>
                                 <?php
-                               $fetch_tests_query = mysqli_query($connection, "SELECT lab_department, lab_test, code, lab_test_price FROM tbl_labtest WHERE status = 'Available'");
+                                $fetch_tests_query = mysqli_query($connection, "SELECT lab_department, lab_test, code, lab_test_price FROM tbl_labtest WHERE status = 'Available'");
                                 while ($test_row = mysqli_fetch_array($fetch_tests_query)) {
                                 ?>
                                     <tr>
@@ -195,14 +256,6 @@ include('footer.php');
 ?>
 
 <script type="text/javascript">
-    <?php
-    if (isset($msg)) {
-        echo 'swal("' . $msg . '");';
-    }
-    ?>
-</script>
-
-<script type="text/javascript">
     function validateForm() {
         var checkboxes = document.querySelectorAll('input[name="lab_test[]"]:checked');
 
@@ -215,31 +268,39 @@ include('footer.php');
 </script>
 
 <script>
+ function clearSearch() {
+    document.getElementById("labTestSearchInput").value = '';
+    filterTests();
+ }  
  function filterTests() {
-    var input, filter, table, tr, td, i, txtValue;
-    input = document.getElementById("labTestSearchInput");
-    filter = input.value.toUpperCase();
-    table = document.getElementById("labTestTable");
-    tr = table.getElementsByTagName("tr");
+    var input = document.getElementById("labTestSearchInput").value;
+    
+    $.ajax({
+        url: 'fetch_lab_order.php',
+        method: 'GET',
+        data: { query: input },
+        success: function(response) {
+            var data = JSON.parse(response);
+            updateLabTestTable(data);
+        }
+    });
+}
 
-    for (i = 0; i < tr.length; i++) {
-        var matchFound = false;
-        for (var j = 0; j < tr[i].cells.length; j++) {
-            td = tr[i].cells[j];
-            if (td) {
-                txtValue = td.textContent || td.innerText;
-                if (txtValue.toUpperCase().indexOf(filter) > -1) {
-                    matchFound = true;
-                    break;
-                }
-            }
-        }
-        if (matchFound || i === 0) {
-            tr[i].style.display = "";
-        } else {
-            tr[i].style.display = "none";
-        }
-    }
+function updateLabTestTable(data) {
+    var tbody = $('#labTestTable tbody');
+    tbody.empty();
+    
+    data.forEach(function(row) {
+        tbody.append(`
+            <tr>
+                <td>${row.lab_test}</td>
+                <td>${row.code}</td>
+                <td>${row.lab_department}</td>
+                <td>${row.lab_test_price}</td>
+                <td><input type="checkbox" name="lab_test[]" value="${row.lab_test}"></td>
+            </tr>
+        `);
+    });
 }
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -281,37 +342,59 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 
 <style>
+    .btn-outline-primary {
+        background-color:rgb(252, 252, 252);
+        color: gray;
+        border: 1px solid rgb(228, 228, 228);
+    }
+    .btn-outline-primary:hover {
+        background-color: #12369e;
+        color: #fff;
+    }
+    .btn-outline-secondary {
+        color:rgb(90, 90, 90);
+        border: 1px solid rgb(228, 228, 228);
+    }
+    .btn-outline-secondary:hover {
+        background-color: #12369e;
+        color: #fff;
+    }
+    .input-group-text {
+        background-color:rgb(255, 255, 255);
+        border: 1px solid rgb(228, 228, 228);
+        color: gray;
+    } 
     .btn-primary {
-            background: #12369e;
-            border: none;
-        }
-        .btn-primary:hover {
-            background: #05007E;
-        }
-        .form-control {
-            border-radius: .375rem; /* Rounded corners */
-            border-color: #ced4da; /* Border color */
-            background-color: #f8f9fa; /* Background color */
-        }
-        select.form-control {
-            border-radius: .375rem; /* Rounded corners */
-            border: 1px solid; /* Border color */
-            border-color: #ced4da; /* Border color */
-            background-color: #f8f9fa; /* Background color */
-            padding: .375rem 2.5rem .375rem .75rem; /* Adjust padding to make space for the larger arrow */
-            font-size: 1rem; /* Font size */
-            line-height: 1.5; /* Line height */
-            height: calc(2.25rem + 2px); /* Adjust height */
-            -webkit-appearance: none; /* Remove default styling on WebKit browsers */
-            -moz-appearance: none; /* Remove default styling on Mozilla browsers */
-            appearance: none; /* Remove default styling on other browsers */
-            background: url('data:image/svg+xml;charset=UTF-8,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20"%3E%3Cpath d="M7 10l5 5 5-5z" fill="%23aaa"/%3E%3C/svg%3E') no-repeat right 0.75rem center;
-            background-size: 20px; /* Size of the custom arrow */
-        }
-        select.form-control:focus {
-            border-color: #12369e; /* Border color on focus */
-            box-shadow: 0 0 0 .2rem rgba(38, 143, 255, .25); /* Shadow on focus */
-        }
+        background: #12369e;
+        border: none;
+    }
+    .btn-primary:hover {
+        background: #05007E;
+    }
+    .form-control {
+        border-radius: .375rem; /* Rounded corners */
+        border-color: #ced4da; /* Border color */
+        background-color: #f8f9fa; /* Background color */
+    }
+    select.form-control {
+        border-radius: .375rem; /* Rounded corners */
+        border: 1px solid; /* Border color */
+        border-color: #ced4da; /* Border color */
+        background-color: #f8f9fa; /* Background color */
+        padding: .375rem 2.5rem .375rem .75rem; /* Adjust padding to make space for the larger arrow */
+        font-size: 1rem; /* Font size */
+        line-height: 1.5; /* Line height */
+        height: calc(2.25rem + 2px); /* Adjust height */
+        -webkit-appearance: none; /* Remove default styling on WebKit browsers */
+        -moz-appearance: none; /* Remove default styling on Mozilla browsers */
+        appearance: none; /* Remove default styling on other browsers */
+        background: url('data:image/svg+xml;charset=UTF-8,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20"%3E%3Cpath d="M7 10l5 5 5-5z" fill="%23aaa"/%3E%3C/svg%3E') no-repeat right 0.75rem center;
+        background-size: 20px; /* Size of the custom arrow */
+    }
+    select.form-control:focus {
+        border-color: #12369e; /* Border color on focus */
+        box-shadow: 0 0 0 .2rem rgba(38, 143, 255, .25); /* Shadow on focus */
+    }
 </style>
 
 <style>
@@ -390,5 +473,5 @@ document.addEventListener('DOMContentLoaded', function () {
     .patient-list .patient-option:hover {
         background-color: #12369e;
         color: white;
-    }
+    }   
 </style>

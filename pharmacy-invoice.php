@@ -37,12 +37,28 @@ $fetch_query = mysqli_query($connection, "
                 <h4 class="page-title">Pharmacy Invoice</h4>
             </div>
             <div class="col-6 text-right">
-                <a href="add-pharmacy-invoice.php" class="btn btn-primary btn-rounded float-right"><i class="fa fa-plus"></i> Add Transaction</a>
+                <a href="add-pharmacy-invoice.php" class="btn btn-primary float-right"><i class="fa fa-plus"></i> Add Transaction</a>
             </div>
         </div>
         <div class="table-responsive">
-            <input class="form-control mb-3" type="text" id="medicineSearchInput" onkeyup="filterMedicines()" placeholder="Search for Patient">
-            <table class="datatable table table-bordered" id="medicineTable">
+            <div class="sticky-search">
+            <h5 class="font-weight-bold mb-2">Search Patient:</h5>
+                <div class="input-group mb-3">
+                    <div class="position-relative w-100">
+                        <!-- Search Icon -->
+                        <i class="fa fa-search position-absolute text-secondary" style="top: 50%; left: 12px; transform: translateY(-50%);"></i>
+                        <!-- Input Field -->
+                        <input class="form-control" type="text" id="medicineSearchInput" onkeyup="filterMedicines()" style="padding-left: 35px; padding-right: 35px;">
+                        <!-- Clear Button -->
+                        <button class="position-absolute border-0 bg-transparent text-secondary" type="button" onclick="clearSearch()" style="top: 50%; right: 10px; transform: translateY(-50%);">
+                            <i class="fa fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="datatable table table-bordered table-hover" id="medicineTable">
                 <thead style="background-color: #CCCCCC">
                     <tr>
                         <th>Patient ID</th>
@@ -103,40 +119,89 @@ include('footer.php');
         return confirm('Are you sure you want to delete this item?');
     }
 
+    function clearSearch() {
+        document.getElementById("medicineSearchInput").value = '';
+        filterMedicines();
+    }
     function filterMedicines() {
-        var input, filter, table, tr, td, i, txtValue;
-        input = document.getElementById("medicineSearchInput");
-        filter = input.value.toUpperCase();
-        table = document.getElementById("medicineTable");
-        tr = table.getElementsByTagName("tr");
+        var input = document.getElementById("medicineSearchInput").value;
+        
+        $.ajax({
+            url: 'fetch_pharmacy.php',
+            method: 'GET',
+            data: { query: input },
+            success: function(response) {
+                var data = JSON.parse(response);
+                updatePharmacyTable(data);
+            }
+        });
+    }
 
-        for (i = 0; i < tr.length; i++) {
-            var matchFound = false;
-            for (var j = 0; j < tr[i].cells.length; j++) {
-                td = tr[i].cells[j];
-                if (td) {
-                    txtValue = td.textContent || td.innerText;
-                    if (txtValue.toUpperCase().indexOf(filter) > -1) {
-                        matchFound = true;
-                        break;
-                    }
-                }
-            }
-            if (matchFound || i === 0) {
-                tr[i].style.display = "";
-            } else {
-                tr[i].style.display = "none";
-            }
-        }
+    function updatePharmacyTable(data) {
+        var tbody = $('#medicineTable tbody');
+        tbody.empty();
+        
+        data.forEach(function(row) {
+            tbody.append(`
+                <tr>
+                    <td>${row.patient_id}</td>
+                    <td>${row.invoice_id}</td>
+                    <td>${row.patient_name}</td>
+                    <td>${row.medicine_details}</td>
+                    <td>${row.total_price}</td>
+                    <td>${row.invoice_datetime}</td>
+                    <td>
+                        <div class="dropdown dropdown-action">
+                            <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
+                                <i class="fa fa-file-pdf-o"></i>
+                            </a>
+                            <div class="dropdown-menu dropdown-menu-right">
+                                <form action="generate-pharmacy-pdf.php" method="get">
+                                    <input type="hidden" name="id" value="${row.invoice_id}">
+                                    <div class="form-group">
+                                        <input type="text" class="form-control" id="filename" name="filename" placeholder="Enter File Name">
+                                    </div>
+                                    <button class="btn btn-primary btn-block mt-1" type="submit">
+                                        <i class="fa fa-file-pdf-o m-r-5"></i> Generate Invoice
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            `);
+        });
     }
 </script>
 
 <style>
-    .btn-primary {
-            background: #12369e;
-            border: none;
-        }
-        .btn-primary:hover {
-            background: #05007E;
-        }
+.btn-outline-primary {
+    background-color:rgb(252, 252, 252);
+    color: gray;
+    border: 1px solid rgb(228, 228, 228);
+}
+.btn-outline-primary:hover {
+    background-color: #12369e;
+    color: #fff;
+}
+.btn-outline-secondary {
+    color:rgb(90, 90, 90);
+    border: 1px solid rgb(228, 228, 228);
+}
+.btn-outline-secondary:hover {
+    background-color: #12369e;
+    color: #fff;
+}
+.input-group-text {
+    background-color:rgb(255, 255, 255);
+    border: 1px solid rgb(228, 228, 228);
+    color: gray;
+} 
+.btn-primary {
+    background: #12369e;
+    border: none;
+}
+.btn-primary:hover {
+    background: #05007E;
+}
 </style>

@@ -142,6 +142,8 @@ var newMedicineChart = new Chart(ctx, {
         }]
     },
     options: {
+            responsive: true,
+            maintainAspectRatio: false,
         scales: {
             y: {
                 beginAtZero: true
@@ -164,6 +166,8 @@ var soldMedicineChart = new Chart(soldCtx, {
         }]
     },
     options: {
+            responsive: true,
+            maintainAspectRatio: false,
         scales: {
             y: {
                 beginAtZero: true,                      // Start Y-axis at zero
@@ -201,11 +205,15 @@ include('footer.php');
 
 <!-- Custom Button Styling -->
 <style>
-    .btn-primary {
-        background: #12369e;
-        border: none;
-    }
-    .btn-primary:hover {
-        background: #05007E;
-    }
+.btn-primary {
+    background: #12369e;
+    border: none;
+}
+.btn-primary:hover {
+    background: #05007E;
+}
+canvas {
+    width: 100% !important;
+    height: 300px !important; /* Palitan depende sa gusto mong height */
+}
 </style>

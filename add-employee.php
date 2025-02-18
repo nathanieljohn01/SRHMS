@@ -51,24 +51,54 @@ if (isset($_POST['add-employee'])) {
     if (!isset($msg)) {
         // Prepared statement for inserting employee data
         $stmt = mysqli_prepare($connection, "INSERT INTO tbl_employee (first_name, last_name, specialization, username, emailid, password, dob, employee_id, joining_date, gender, address, phone, bio, role, status, profile_picture) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-
+    
         // Bind parameters (updated with hashed password and correct binary type)
         mysqli_stmt_bind_param($stmt, 'sssssssssssssssb', $first_name, $last_name, $specialization, $username, $emailid, $hashed_pwd, $dob, $employee_id, $joining_date, $gender, $address, $phone, $bio, $role, $status, $profile_picture);
-
+    
         // Send the binary data for `profile_picture` (index 16)
         if ($profile_picture) {
             mysqli_stmt_send_long_data($stmt, 15, $profile_picture);
         }
-
+    
         // Execute the statement and check for success
         if (mysqli_stmt_execute($stmt)) {
             $msg = "Employee created successfully.";
+            // SweetAlert success message
+            echo "
+            <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    var style = document.createElement('style');
+                    style.innerHTML = '.swal2-confirm { background-color: #12369e !important; color: white !important; border: none !important; } .swal2-confirm:hover { background-color: #05007E !important; } .swal2-confirm:focus { box-shadow: 0 0 0 0.2rem rgba(18, 54, 158, 0.5) !important; }';
+                    document.head.appendChild(style);
+    
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Success!',
+                        text: '$msg',
+                        confirmButtonColor: '#12369e'
+                    }).then(() => {
+                        window.location.href = 'employees.php'; // Adjust the redirection URL as needed
+                    });
+                });
+            </script>";
         } else {
             $msg = "Error: " . mysqli_error($connection);
+            // SweetAlert error message
+            echo "
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: '$msg'
+                    });
+                });
+            </script>";
         }
-
+    
         mysqli_stmt_close($stmt);
-    }
+    }    
 }
 ?>
 
@@ -79,7 +109,7 @@ if (isset($_POST['add-employee'])) {
                 <h4 class="page-title">Add Employee</h4>
             </div>
             <div class="col-sm-8 text-right m-b-20">
-                <a href="employees.php" class="btn btn-primary btn-rounded float-right">Back</a>
+                <a href="employees.php" class="btn btn-primary float-right">Back</a>
             </div>
         </div>
         <div class="row">
@@ -90,7 +120,7 @@ if (isset($_POST['add-employee'])) {
                         <div class="col-sm-6">
                             <div class="form-group">
                                 <label>Profile Picture</label>
-                                <input type="file" class="form-control-file" name="profile_picture">
+                                <input type="file" class="form-control-file" name="profile_picture" required>
                             </div>
                         </div>
                         <!-- First Name -->
@@ -237,13 +267,6 @@ if (isset($_POST['add-employee'])) {
 <?php
 include('footer.php');
 ?>
-<script type="text/javascript">
-    <?php
-    if (isset($msg)) {
-        echo '<div>' . htmlspecialchars($msg, ENT_QUOTES, 'UTF-8') . '</div>';
-    }
-    ?>
-</script>
 
 <script type="text/javascript">
     function toggleSpecialization() {
@@ -282,6 +305,11 @@ include('footer.php');
             background: url('data:image/svg+xml;charset=UTF-8,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20"%3E%3Cpath d="M7 10l5 5 5-5z" fill="%23aaa"/%3E%3C/svg%3E') no-repeat right 0.75rem center;
             background-size: 20px; /* Size of the custom arrow */
         }
+    .btn-primary.submit-btn {
+        border-radius: 4px; 
+        padding: 10px 20px;
+        font-size: 16px;
+    }    
     .btn-primary {
         background: #12369e;
         border: none;

@@ -47,12 +47,43 @@ if (isset($_REQUEST['update-newborn'])) {
     // Execute the update query and check if it was successful
     if (mysqli_stmt_execute($update_query)) {
         $msg = "Newborn details updated successfully";
+
+        // SweetAlert success message
+        echo "
+        <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Success',
+                    text: 'Newborn details updated successfully.',
+                    confirmButtonColor: '#12369e'
+                }).then(() => {
+                    // Optional: Redirect after success
+                    window.location.href = 'newborn.php'; // Adjust URL to your relevant page
+                });
+            });
+        </script>";
     } else {
         $msg = "Error updating details: " . mysqli_error($connection);
+
+        // SweetAlert error message
+        echo "
+        <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Error updating details: " . mysqli_error($connection) . "',
+                });
+            });
+        </script>";
     }
 
     // Close the update statement
     mysqli_stmt_close($update_query);
+
 }
 
 // Close the fetch statement
@@ -66,7 +97,7 @@ mysqli_stmt_close($fetch_query);
                 <h4 class="page-title">Edit Newborn</h4>
             </div>
             <div class="col-sm-8 text-right mb-3">
-                <a href="newborn.php" class="btn btn-primary btn-rounded float-right">Back</a>
+                <a href="newborn.php" class="btn btn-primary float-right">Back</a>
             </div>
         </div>
         <div class="row">
@@ -176,6 +207,11 @@ include('footer.php');
 </script>
 
 <style>
+    .btn-primary.submit-btn {
+        border-radius: 4px; 
+        padding: 10px 20px;
+        font-size: 16px;
+    }
 /* Optional: Style the input field */
 .form-control {
     border-radius: .375rem; /* Rounded corners */

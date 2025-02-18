@@ -18,7 +18,6 @@ $id = sanitize($connection, $_GET['id']);
 // Fetch existing medicine data
 $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_medicines WHERE id='$id'");
 $row = mysqli_fetch_array($fetch_query);
-$expiryDate = $row['expiration_date'];
 
 $msg = ''; // Initialize message variable
 
@@ -33,23 +32,45 @@ if (isset($_POST['save-medicine'])) {
     $expiration_date = sanitize($connection, $_POST['expiration_date']);
     $price = sanitize($connection, $_POST['price']);
 
-    // Prepare the update query using a prepared statement
-    $stmt = mysqli_prepare($connection, "UPDATE tbl_medicines SET medicine_name = ?, medicine_brand = ?, category = ?, weight_measure = ?, unit_measure = ?, quantity = ?, expiration_date = ?, price = ? WHERE id = ?");
-
-    // Bind parameters
-    mysqli_stmt_bind_param($stmt, 'ssssssdsd', $medicine_name, $medicine_brand, $category, $weight_measure, $unit_measure, $quantity, $expiration_date, $price, $id);
+    // Prepare the update query without bind_param
+    $update_query = "UPDATE tbl_medicines SET medicine_name = '$medicine_name', medicine_brand = '$medicine_brand', category = '$category', weight_measure = '$weight_measure', unit_measure = '$unit_measure', quantity = '$quantity', expiration_date = '$expiration_date', price = '$price' WHERE id = '$id'";
 
     // Execute the query and check if it was successful
-    if (mysqli_stmt_execute($stmt)) {
-        $msg = "Medicine updated successfully";
-    } else {
-        $msg = "Error updating medicine record: " . mysqli_error($connection);
-    }
+    if (mysqli_query($connection, $update_query)) {
+        // Display SweetAlert success message
+        echo "
+        <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                var style = document.createElement('style');
+                style.innerHTML = '.swal2-confirm { background-color: #12369e !important; color: white !important; border: none !important; } .swal2-confirm:hover { background-color: #05007E !important; } .swal2-confirm:focus { box-shadow: 0 0 0 0.2rem rgba(18, 54, 158, 0.5) !important; }';
+                document.head.appendChild(style);
 
-    // Close the statement
-    mysqli_stmt_close($stmt);
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Success!',
+                    text: 'Medicine updated successfully',
+                    confirmButtonColor: '#12369e'
+                }).then(() => {
+                    window.location.href = 'medicines.php';
+                });
+            });
+        </script>";
+    } else {
+        // Display SweetAlert error message
+        echo "<script>
+            document.addEventListener('DOMContentLoaded', function() {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Error updating medicine record: " . mysqli_error($connection) . "'
+                });
+            });
+        </script>";
+    }
 }
 ?>
+
 
 <div class="page-wrapper">
     <div class="content">
@@ -58,7 +79,7 @@ if (isset($_POST['save-medicine'])) {
                 <h4 class="page-title">Edit Medicine</h4>
             </div>
             <div class="col-sm-8 text-right m-b-20">
-                <a href="medicines.php" class="btn btn-primary btn-rounded float-right">Back</a>
+                <a href="medicines.php" class="btn btn-primary float-right">Back</a>
             </div>
         </div>
         <div class="row">
@@ -102,7 +123,7 @@ if (isset($_POST['save-medicine'])) {
                     <div class="form-group">
                         <label for="expiry_date">Expiration Date</label>
                         <div class="input-group date" id="expiry_date" data-target-input="nearest">
-                            <input type="text" class="form-control datetimepicker-input" data-target="#expiry_date" name="expiration_date" value="<?php echo $expiryDate; ?>"/>
+                            <input type="text" class="form-control datetimepicker-input" data-target="#expiry_date" name="expiration_date" value="<?php echo $row['expiration_date']; ?>"/>
                             <div class="input-group-append" data-target="#expiry_date" data-toggle="datetimepicker">
                                 <div class="input-group-text"><i class="fa fa-calendar"></i></div>
                             </div>
@@ -128,9 +149,11 @@ if (isset($_POST['save-medicine'])) {
 <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/tempusdominus-bootstrap-4/5.39.0/js/tempusdominus-bootstrap-4.min.js"></script>
 
-<script type="text/javascript">
-    <?php if (isset($msg)) { echo 'swal("' . $msg . '");'; } ?>
-</script>
+<?php
+if (isset($msg)) {
+    echo 'swal("' . $msg . '");';
+}
+?>
 
 <script type="text/javascript">
     $(function () {
@@ -141,6 +164,11 @@ if (isset($_POST['save-medicine'])) {
 </script>
 
 <style>
+    .btn-primary.submit-btn {
+        border-radius: 4px; 
+        padding: 10px 20px;
+        font-size: 16px;
+    }
     .btn-primary {
         background: #12369e;
         border: none;
