@@ -16,6 +16,7 @@ if (isset($_GET['search'])) {
         WHERE 
             l.patient_name LIKE ?
             AND l.deleted = 0
+            AND l.is_billed = 0
             AND l.patient_type = 'Outpatient')
         
         UNION
@@ -29,6 +30,7 @@ if (isset($_GET['search'])) {
         WHERE 
             r.patient_name LIKE ?
             AND r.deleted = 0
+            AND r.is_billed = 0
             AND r.patient_type = 'Outpatient')
     ";
 
@@ -56,4 +58,3 @@ if (isset($_GET['search'])) {
 
 }
 ?>
-    

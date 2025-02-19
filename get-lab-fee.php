@@ -8,9 +8,9 @@ $patient_name = isset($_GET['patient_name']) ? $_GET['patient_name'] : '';
 if (!empty($patient_name)) {
     // Query to get the patient ID from both inpatient and hemodialysis records
     $sql_patient = "SELECT patient_id FROM (
-        SELECT patient_id FROM tbl_inpatient_record WHERE patient_name = ? AND deleted = 0
+        SELECT patient_id FROM tbl_inpatient_record WHERE patient_name = ? AND deleted = 0 AND is_billed = 0
         UNION
-        SELECT patient_id FROM tbl_hemodialysis WHERE patient_name = ? AND deleted = 0
+        SELECT patient_id FROM tbl_hemodialysis WHERE patient_name = ? AND deleted = 0 AND is_billed = 0
     ) combined_patients";
    
     if ($stmt_patient = mysqli_prepare($connection, $sql_patient)) {

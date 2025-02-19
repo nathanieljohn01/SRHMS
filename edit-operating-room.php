@@ -44,16 +44,16 @@ if (isset($_REQUEST['edit-operating-room'])) {
     $end_time = date("g:i A", strtotime(sanitize($connection, $_REQUEST['end_time'])));
     $notes = sanitize($connection, $_REQUEST['notes']);
     $operation_status = sanitize($connection, $_REQUEST['operation_status']);
+    $remarks = '';
 
     // Handle remarks based on operation status
     if ($operation_status == 'Cancelled') {
         $remarks = sanitize($connection, $_REQUEST['remarks']);
-        $operation_status = "Cancelled - Remarks: " . $remarks;
     }
 
     // Update the operating room record using prepared statements
     $update_query = mysqli_prepare($connection, "UPDATE tbl_operating_room 
-        SET patient_id = ?, current_surgery = ?, surgeon = ?, end_time = ?, notes = ?, operation_status = ? 
+        SET patient_id = ?, current_surgery = ?, surgeon = ?, end_time = ?, notes = ?, operation_status = ?
         WHERE id = ?");
     
     // Bind all parameters as strings
@@ -124,7 +124,7 @@ if (isset($_REQUEST['edit-operating-room'])) {
                         <div class="col-md-12">
                             <div class="form-group">
                                 <label>Patient Name</label>
-                                <select class="select form-control" name="patient_id" required>
+                                <select class="form-control" name="patient_id" required>
                                     <option value="">Select Patient</option>
                                     <?php
                                     // Fetch patients from tbl_patient
@@ -158,7 +158,7 @@ if (isset($_REQUEST['edit-operating-room'])) {
                         <div class="col-md-6">
                             <div class="form-group">
                                 <label>Surgeon</label>
-                                <select class="select form-control" name="surgeon" required>
+                                <select class="form-control" name="surgeon" required>
                                     <option value="">Select Surgeon</option>
                                     <?php
                                     // Fetch doctors (role=2) with their specializations from tbl_employee
@@ -192,7 +192,7 @@ if (isset($_REQUEST['edit-operating-room'])) {
                         <div class="col-md-6">
                             <div class="form-group">
                                 <label>Operation Status</label>
-                                <select class="select form-control" name="operation_status" id="operation_status" required onchange="checkOperationStatus()">
+                                <select class="form-control" name="operation_status" id="operation_status" required onchange="checkOperationStatus()">
                                     <option value="">Select Status</option>
                                     <option value="Completed" <?php echo ($operating_room['operation_status'] == 'Completed') ? 'selected' : ''; ?>>Completed</option>
                                     <option value="Cancelled" <?php echo (strpos($operating_room['operation_status'], 'Cancelled') !== false) ? 'selected' : ''; ?>>Cancelled</option>
@@ -206,7 +206,7 @@ if (isset($_REQUEST['edit-operating-room'])) {
                         <div class="col-md-12">
                             <div class="form-group">
                                 <label>Remarks (if cancelled)</label>
-                                <textarea cols="30" rows="4" class="form-control" name="remarks" placeholder="Enter remarks if cancelled"></textarea>
+                                <textarea cols="30" rows="4" class="form-control" name="remarks" placeholder="Enter remarks if cancelled"><?php echo htmlspecialchars($operating_room['remarks']); ?></textarea>
                             </div>
                         </div>
                     </div>
@@ -235,13 +235,6 @@ if (isset($_REQUEST['edit-operating-room'])) {
 include('footer.php');
 ?>
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script type="text/javascript">
-    <?php
-        if(isset($msg)) {
-            echo 'swal("' . $msg . '");';
-        }
-    ?>
-</script>
 
 <script>
 function checkOperationStatus() {
@@ -254,18 +247,18 @@ function checkOperationStatus() {
     } else {
         remarksSection.style.display = 'none'; // Hide remarks field
     }
-
-    // Disable operation status selection if it is already "Completed" or "Cancelled"
-    if (operationStatus === 'Completed' || operationStatus.includes('Cancelled')) {
-        document.getElementById('operation_status').disabled = true; // Disable dropdown
-    } else {
-        document.getElementById('operation_status').disabled = false; // Enable dropdown
-    }
 }
 
 // Check initial state on page load
 document.addEventListener("DOMContentLoaded", function() {
     checkOperationStatus(); // Set initial state for remarks and operation status
+    
+    // Set the initial end time value from PHP
+    var endTimeInput = document.getElementById('end_time');
+    if (endTimeInput) {
+        var phpEndTime = "<?php echo date('H:i', strtotime($operating_room['end_time'])); ?>";
+        endTimeInput.value = phpEndTime;
+    }
 });
 </script>
 

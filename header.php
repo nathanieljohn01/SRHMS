@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="description" content="Santa Rosa Community Hospital Management System">
+    
     <!-- Security headers -->
     <meta http-equiv="Content-Security-Policy" content="default-src 'self' https:; script-src 'self' 'unsafe-inline' https:; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: https:;">
     <meta http-equiv="X-Frame-Options" content="SAMEORIGIN">
@@ -24,6 +25,8 @@
     <!-- Core styles with defer -->
     <link rel="stylesheet" href="assets/css/bootstrap.min.css">
     <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/font-awesome.min.css">
+    <link rel="stylesheet" href="assets/css/fontawesome.min.css">
     
     <!-- Third-party components -->
     <link rel="stylesheet" href="assets/css/select2.min.css">

@@ -78,7 +78,7 @@ include('includes/connection.php');
                                     <div class="dropdown-menu dropdown-menu-right">
                                     <?php 
                                     if ($_SESSION['role'] == 1 || $_SESSION['role'] == 3) {
-                                        echo '<a class="dropdown-item" href="edit-operating-room.php?id='.$row['id'].'"><i class="fa fa-pencil m-r-5"></i> Edit</a>';
+                                        echo '<a class="dropdown-item" href="edit-operating-room.php?id='.$row['id'].'"><i class="fa fa-tasks m-r-5"></i> Update Progress</a>';
                                         echo '<a class="dropdown-item" href="operating-room.php?id='.$row['id'].'" onclick="return confirmDelete()"><i class="fa fa-trash-o m-r-5"></i> Delete</a>';
                                     }
                                     ?>
@@ -131,7 +131,7 @@ function confirmDelete(){
             if (<?php echo $_SESSION['role']; ?> == 1 || <?php echo $_SESSION['role']; ?> == 3) {
                 actionButtons = `
                     <a class="dropdown-item" href="edit-operating-room.php?id=${row.id}">
-                        <i class="fa fa-pencil m-r-5"></i> Edit
+                        <i class="fa fa-tasks m-r-5"></i> Update Progress
                     </a>
                     <a class="dropdown-item" href="operating-room.php?id=${row.id}" onclick="return confirmDelete()">
                         <i class="fa fa-trash-o m-r-5"></i> Delete

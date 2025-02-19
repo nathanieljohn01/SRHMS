@@ -140,15 +140,15 @@ if (isset($_GET['patient_id'])) {
                             <td>
                                 <form method="post">
                                     <?php
-                                    $disable_button = ($lab_test_row['status'] == 'Completed' || strpos($lab_test_row['status'], 'Cancelled') !== false) ? 'disabled' : '';
+                                    $disable_button = ($lab_test_row['status'] == 'Completed' || strpos($lab_test_row['status'], 'Cancelled') !== false || !empty($lab_test_row['update_date'])) ? 'disabled' : '';
                                     ?>
-                                    <div class="btn-group">
-                                        <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" <?php echo $disable_button; ?>>
-                                            <span>&#x22EE;</span>
+                                    <div class="dropdown action-dropdown">
+                                        <button class="btn btn-link p-0" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" <?php echo $disable_button; ?>>
+                                            <i class="fa fa-ellipsis-v fa-lg"></i>
                                         </button>
-                                        <div class="dropdown-menu">
-                                            <button type="submit" class="dropdown-item" name="selected_action" value="Completed">Completed</button>
-                                            <button type="button" class="dropdown-item" data-toggle="modal" data-target="#cancelReasonModal_<?php echo $lab_test_row['id']; ?>">Cancelled</button>
+                                        <div class="dropdown-menu dropdown-menu-left">
+                                            <button type="submit" class="dropdown-item" name="selected_action" value="Completed" <?php echo $disable_button; ?>><i class="fa fa-check-circle m-r-5"></i> Completed</button>
+                                            <button type="button" class="dropdown-item" data-toggle="modal" data-target="#cancelReasonModal_<?php echo $lab_test_row['id']; ?>" <?php echo $disable_button; ?>><i class="fa fa-times-circle m-r-5"></i> Cancelled</button>
                                         </div>
                                     </div>
                                     <input type="hidden" name="update_status" value="1">
@@ -336,5 +336,52 @@ a.status-red {
 
 .info-value {
     color: #555;
+}
+
+.action-dropdown {
+    position: relative;
+    display: flex;
+    align-items: right;
+    justify-content: right;
+}
+.action-dropdown .dropdown-menu {
+    right: auto;
+    left: 0;
+    min-width: 120px;
+    margin-top: 0;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+.action-dropdown .btn-link {
+    color: #333;
+    font-size: 14px;
+    padding: 2px 6px;
+    transition: all 0.2s ease;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+}
+.action-dropdown .btn-link:hover {
+    color: #12369e;
+    transform: scale(1.05);
+}
+.action-dropdown .dropdown-item {
+    padding: 8px 15px;
+}
+.action-dropdown .btn-link[disabled] {
+    color: #999;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+.action-dropdown .btn-link[disabled]:hover {
+    transform: none;
+}
+.dropdown-item[disabled] {
+    cursor: not-allowed;
+    opacity: 0.6;
+    pointer-events: none;
 }
 </style>

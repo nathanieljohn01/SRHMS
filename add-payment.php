@@ -19,53 +19,97 @@ if (isset($_POST['submit_payment'])) {
     $patient_type = $_POST['patient_type'];
     $amount_to_pay = $_POST['amount_to_pay'];
     $amount_paid = $_POST['amount_paid'];
-   
-    $connection->begin_transaction();
-   
-    $insert_query = $connection->prepare("INSERT INTO tbl_payment
-        (payment_id, patient_name, patient_type, amount_to_pay, amount_paid, payment_datetime)
-        VALUES (?, ?, ?, ?, ?, NOW())");
-   
-    $insert_query->bind_param("sssdd", $payment_id, $patient_name, $patient_type, $amount_to_pay, $amount_paid);
-   
-    if ($insert_query->execute()) {
-        $update_lab = $connection->prepare("UPDATE tbl_laborder SET deleted = 1 WHERE patient_name = ? AND deleted = 0");
-        $update_lab->bind_param("s", $patient_name);
-        $update_lab->execute();
 
-        $update_rad = $connection->prepare("UPDATE tbl_radiology SET deleted = 1 WHERE patient_name = ? AND deleted = 0");
-        $update_rad->bind_param("s", $patient_name);
-        $update_rad->execute();
+    // Validation checks
+    $errors = [];
+    
+    if (empty($patient_name)) {
+        $errors[] = "Patient name is required";
+    }
+    
+    if (empty($patient_type)) {
+        $errors[] = "Patient type is required";
+    }
+    
+    if (!is_numeric($amount_to_pay) || $amount_to_pay <= 0) {
+        $errors[] = "Amount to pay must be greater than 0";
+    }
+    
+    if (!is_numeric($amount_paid) || $amount_paid <= 0) {
+        $errors[] = "Amount paid must be greater than 0";
+    }
+    
+    if (empty($errors)) {
+        $connection->begin_transaction();
+        
+        try {
+            $insert_query = $connection->prepare("INSERT INTO tbl_payment
+                (payment_id, patient_name, patient_type, amount_to_pay, amount_paid, payment_datetime)
+                VALUES (?, ?, ?, ?, ?, NOW())");
+            
+            $insert_query->bind_param("sssdd", $payment_id, $patient_name, $patient_type, $amount_to_pay, $amount_paid);
+            
+            if ($insert_query->execute()) {
+                // Only update is_billed status if payment is complete
+                if ($amount_paid == $amount_to_pay) {
+                    // Update lab orders
+                    $update_lab = $connection->prepare("UPDATE tbl_laborder SET is_billed = 1 WHERE patient_name = ? AND is_billed = 0");
+                    $update_lab->bind_param("s", $patient_name);
+                    $update_lab->execute();
 
-        $connection->commit();
+                    // Update radiology orders
+                    $update_rad = $connection->prepare("UPDATE tbl_radiology SET is_billed = 1 WHERE patient_name = ? AND is_billed = 0");
+                    $update_rad->bind_param("s", $patient_name);
+                    $update_rad->execute();
+                }
 
-        echo "
-        <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
-        <script>
-            document.addEventListener('DOMContentLoaded', function() {
-                var style = document.createElement('style');
-                style.innerHTML = '.swal2-confirm { background-color: #12369e !important; color: white !important; border: none !important; } .swal2-confirm:hover { background-color: #05007E !important; } .swal2-confirm:focus { box-shadow: 0 0 0 0.2rem rgba(18, 54, 158, 0.5) !important; }';
-                document.head.appendChild(style);
+                $connection->commit();
 
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Success!',
-                    text: 'Payment recorded successfully!',
-                    confirmButtonColor: '#12369e'
-                }).then(() => {
-                    window.location.href = 'payment-processing.php';
+                echo "
+                <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
+                <script>
+                    document.addEventListener('DOMContentLoaded', function() {
+                        var style = document.createElement('style');
+                        style.innerHTML = '.swal2-confirm { background-color: #12369e !important; color: white !important; border: none !important; } .swal2-confirm:hover { background-color: #05007E !important; } .swal2-confirm:focus { box-shadow: 0 0 0 0.2rem rgba(18, 54, 158, 0.5) !important; }';
+                        document.head.appendChild(style);
+
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Success!',
+                            text: 'Payment recorded successfully!',
+                            confirmButtonColor: '#12369e'
+                        }).then(() => {
+                            window.location.href = 'payment-processing.php';
+                        });
+                    });
+                </script>";
+            }
+        } catch (Exception $e) {
+            $connection->rollback();
+            
+            echo "
+            <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'An error occurred while processing payment.',
+                        confirmButtonColor: '#12369e'
+                    });
                 });
-            });
-        </script>";
+            </script>";
+        }
     } else {
+        // Display validation errors
         echo "
         <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
         <script>
             document.addEventListener('DOMContentLoaded', function() {
                 Swal.fire({
                     icon: 'error',
-                    title: 'Error',
-                    text: 'An error occurred while processing payment.',
+                    title: 'Validation Error',
+                    html: '" . implode("<br>", $errors) . "',
                     confirmButtonColor: '#12369e'
                 });
             });
@@ -138,7 +182,7 @@ if (isset($_POST['submit_payment'])) {
                             <div id="total_results" class="mt-4">
                                 <!-- Laboratory Fees Table -->
                                 <table class="table table-bordered" id="outpatientLabTable" style="display: none;">
-                                    <thead class="thead-light">
+                                    <thead style="background-color: #CCCCCC;">
                                         <tr>
                                             <th>Lab Test</th>
                                             <th>Lab Price</th>
@@ -150,7 +194,7 @@ if (isset($_POST['submit_payment'])) {
 
                                 <!-- Radiology Fees Table -->
                                 <table class="table table-bordered mt-4" id="outpatientRadTable" style="display: none;">
-                                    <thead class="thead-light">
+                                    <thead style="background-color: #CCCCCC;">
                                         <tr>
                                             <th>Radiology Test</th>
                                             <th>Price</th>
@@ -158,6 +202,50 @@ if (isset($_POST['submit_payment'])) {
                                         </tr>
                                     </thead>
                                     <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="mt-4">
+                                <table class="table table-bordered" id="inpatientBillingTable" style="display: none;">
+                                    <thead style="background-color: #CCCCCC;">
+                                        <tr>
+                                            <th>Description</th>
+                                            <th>Amount</th>
+                                            <th>Discount</th>
+                                            <th>Net Amount</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                    <tfoot>
+                                        <tr>
+                                            <th colspan="4">Total Fees: <span id="inpatientGrossAmount" class="float-right">₱0.00</span></th>
+                                        </tr>
+                                        <tr>
+                                            <td colspan="4" class="pl-4">Less:</td>
+                                        </tr>
+                                        <tr>
+                                            <td colspan="4" class="pl-5">PhilHealth (PF) <span id="inpatientPhilhealthPF" class="float-right">₱0.00</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td colspan="4" class="pl-5">PhilHealth (HB) <span id="inpatientPhilhealthHB" class="float-right">₱0.00</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td colspan="4" class="pl-5">VAT Exempt <span id="inpatientVatExempt" class="float-right">₱0.00</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td colspan="4" class="pl-5">Senior Citizen Discount <span id="inpatientSeniorDiscount" class="float-right">₱0.00</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td colspan="4" class="pl-5">PWD Discount <span id="inpatientPWDDiscount" class="float-right">₱0.00</span></td>
+                                        </tr>
+                                        <tr class="font-weight-bold">
+                                            <th colspan="4">Total Amount Due: <span id="inpatientAmountDue" class="float-right">₱0.00</span></th>
+                                        </tr>
+                                    </tfoot>
                                 </table>
                             </div>
                         </div>
@@ -185,21 +273,47 @@ const patientTypeSelect = document.getElementById('patient_type');
 
 function togglePatientSearch() {
     const selectedType = patientTypeSelect.value;
+    patientSearch.parentElement.parentElement.style.display = 'block';
+    
+    // Clear all tables and amounts
+    outpatientLabTable.style.display = 'none';
+    outpatientRadTable.style.display = 'none';
+    inpatientBillingTable.style.display = 'none';
+    
+    // Clear table contents
+    outpatientLabTable.querySelector('tbody').innerHTML = '';
+    outpatientRadTable.querySelector('tbody').innerHTML = '';
+    inpatientBillingTable.querySelector('tbody').innerHTML = '';
+    
+    // Clear all amounts and spans
+    document.getElementById('inpatientGrossAmount').textContent = '₱0.00';
+    document.getElementById('inpatientPhilhealthPF').textContent = '₱0.00';
+    document.getElementById('inpatientPhilhealthHB').textContent = '₱0.00';
+    document.getElementById('inpatientVatExempt').textContent = '₱0.00';
+    document.getElementById('inpatientSeniorDiscount').textContent = '₱0.00';
+    document.getElementById('inpatientPWDDiscount').textContent = '₱0.00';
+    document.getElementById('inpatientAmountDue').textContent = '₱0.00';
+    
+    // Show appropriate table based on type
     if (selectedType === 'Outpatient') {
-        patientSearch.parentElement.parentElement.style.display = 'block'; // Changed to target the form-group
-        outpatientLabTable.style.display = 'table'; // Show the bills table
-        outpatientRadTable.style.display = 'table'; // Show the bills table
-        patientSearch.value = '';
-    } else {
-        patientSearch.parentElement.parentElement.style.display = 'none';
-        outpatientLabTable.style.display = 'none'; // Hide the bills table
-        outpatientRadTable.style.display = 'none'; // Hide the bills table
+        outpatientLabTable.style.display = 'table';
+        outpatientRadTable.style.display = 'table';
+    } else if (selectedType === 'Inpatient') {
+        inpatientBillingTable.style.display = 'table';
     }
+    
+    // Clear search and amounts
+    patientSearch.value = '';
+    document.getElementById('selected_patient_name').value = '';
+    document.querySelector('input[name="amount_to_pay"]').value = '';
+    document.querySelector('input[name="amount_paid"]').value = '';
 }
+
 patientSearch.addEventListener('keyup', function() {
     const selectedType = patientTypeSelect.value;
-    if (this.value.length > 0 && selectedType === 'Outpatient') {
-        fetch('search-opt.php?search=' + this.value)
+    if (this.value.length > 0) {
+        const searchEndpoint = selectedType === 'Outpatient' ? 'search-opt.php' : 'search-ipt-payment.php';
+        fetch(searchEndpoint + '?search=' + this.value)
             .then(response => response.json())
             .then(data => {
                 searchResults.style.display = 'block';
@@ -212,7 +326,6 @@ patientSearch.addEventListener('keyup', function() {
     }
 });
 
-
 document.addEventListener('click', function(e) {
     if (e.target && e.target.classList.contains('search-result')) {
         const patientName = e.target.textContent;
@@ -220,49 +333,109 @@ document.addEventListener('click', function(e) {
         document.getElementById('selected_patient_name').value = patientName;
         searchResults.style.display = 'none';
 
+        const selectedType = patientTypeSelect.value;
         let totalAmount = 0;
 
-        // Fetch laboratory fees
-        fetch('opt-lab-fee.php?patient_name=' + patientName)
-            .then(response => response.json())
-            .then(data => {
-                outpatientLabTable.style.display = 'table';
-                const tbody = outpatientLabTable.querySelector('tbody');
-                tbody.innerHTML = '';
+        if (selectedType === 'Outpatient') {
+            // Fetch laboratory fees
+            fetch('opt-lab-fee.php?patient_name=' + patientName)
+                .then(response => response.json())
+                .then(data => {
+                    outpatientLabTable.style.display = 'table';
+                    const tbody = outpatientLabTable.querySelector('tbody');
+                    tbody.innerHTML = '';
 
-                data.forEach(bill => {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${bill.lab_test}</td>
-                        <td>₱${bill.lab_price}</td>
-                        <td>${bill.lab_requested_date}</td>
-                    `;
-                    tbody.appendChild(row);
-                    totalAmount += parseFloat(bill.lab_price);
+                    data.forEach(bill => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${bill.lab_test}</td>
+                            <td>₱${bill.lab_price}</td>
+                            <td>${bill.lab_requested_date}</td>
+                        `;
+                        tbody.appendChild(row);
+                        totalAmount += parseFloat(bill.lab_price);
+                    });
+                    updateAmountToPay(totalAmount);
                 });
-                updateAmountToPay(totalAmount);
-            });
 
-        // Fetch radiology fees
-        fetch('opt-rad-fee.php?patient_name=' + patientName)
-            .then(response => response.json())
-            .then(data => {
-                outpatientRadTable.style.display = 'table';
-                const tbody = outpatientRadTable.querySelector('tbody');
-                tbody.innerHTML = '';
+            // Fetch radiology fees
+            fetch('opt-rad-fee.php?patient_name=' + patientName)
+                .then(response => response.json())
+                .then(data => {
+                    outpatientRadTable.style.display = 'table';
+                    const tbody = outpatientRadTable.querySelector('tbody');
+                    tbody.innerHTML = '';
 
-                data.forEach(bill => {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${bill.test_type}</td>
-                        <td>₱${bill.price}</td>
-                        <td>${bill.requested_date}</td>
-                    `;
-                    tbody.appendChild(row);
-                    totalAmount += parseFloat(bill.price);
+                    data.forEach(bill => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${bill.test_type}</td>
+                            <td>₱${bill.price}</td>
+                            <td>${bill.requested_date}</td>
+                        `;
+                        tbody.appendChild(row);
+                        totalAmount += parseFloat(bill.price);
+                    });
+                    updateAmountToPay(totalAmount);
                 });
-                updateAmountToPay(totalAmount);
-            });
+        } else {
+            // For inpatients, fetch their billing data
+            fetch('ipt-billing-fee.php?patient_name=' + patientName)
+                .then(response => response.json())
+                .then(data => {
+                    const tbody = inpatientBillingTable.querySelector('tbody');
+                    tbody.innerHTML = '';
+                    inpatientBillingTable.style.display = 'table';
+
+                    // Add rows for each fee type
+                    const fees = [
+                        { name: 'Room Fee', fee: data.room_fee, discount: data.room_discount, net: data.net_room_fee },
+                        { name: 'Medication Fee', fee: data.medication_fee, discount: data.med_discount, net: data.net_medication_fee },
+                        { name: 'Laboratory Fee', fee: data.lab_fee, discount: data.lab_discount, net: data.net_lab_fee },
+                        { name: 'Radiology Fee', fee: data.rad_fee, discount: data.rad_discount, net: data.net_rad_fee },
+                        { name: 'Operating Room Fee', fee: data.operating_room_fee, discount: data.or_discount, net: data.net_or_fee },
+                        { name: 'Supplies Fee', fee: data.supplies_fee, discount: data.supplies_discount, net: data.net_supplies_fee },
+                        { name: 'Others Fee', fee: data.others_fee, discount: data.other_discount, net: data.net_others_fee },
+                        { name: 'Professional Fee', fee: data.professional_fee, discount: data.pf_discount, net: data.net_pf_fee },
+                        { name: 'Readers Fee', fee: data.readers_fee, discount: data.readers_discount, net: data.net_readers_fee }
+                    ];
+
+                    fees.forEach(item => {
+                        if (parseFloat(item.fee || 0) > 0) {  // Only show rows with fees
+                            const row = document.createElement('tr');
+                            row.innerHTML = `
+                                <td>${item.name}</td>
+                                <td>₱${parseFloat(item.fee || 0).toFixed(2)}</td>
+                                <td>₱${parseFloat(item.discount || 0).toFixed(2)}</td>
+                                <td>₱${parseFloat(item.net || 0).toFixed(2)}</td>
+                            `;
+                            tbody.appendChild(row);
+                        }
+                    });
+
+                    // Show total fees
+                    const subTotal = parseFloat(data.total_amount || 0);
+                    document.getElementById('inpatientGrossAmount').textContent = `₱${subTotal.toFixed(2)}`;
+                    
+                    // Show all discounts
+                    const philHealthPF = parseFloat(data.philhealth_pf || 0);
+                    const philHealthHB = parseFloat(data.philhealth_hb || 0);
+                    const vatExempt = parseFloat(data.vat_exempt_discount_amount || 0);
+                    const seniorDiscount = parseFloat(data.discount_amount || 0);
+                    const pwdDiscount = parseFloat(data.pwd_discount_amount || 0);
+                    
+                    document.getElementById('inpatientPhilhealthPF').textContent = `₱${philHealthPF.toFixed(2)}`;
+                    document.getElementById('inpatientPhilhealthHB').textContent = `₱${philHealthHB.toFixed(2)}`;
+                    document.getElementById('inpatientVatExempt').textContent = `₱${vatExempt.toFixed(2)}`;
+                    document.getElementById('inpatientSeniorDiscount').textContent = `₱${seniorDiscount.toFixed(2)}`;
+                    document.getElementById('inpatientPWDDiscount').textContent = `₱${pwdDiscount.toFixed(2)}`;
+                    
+                    // Calculate final amount due
+                    const totalDue = subTotal - vatExempt - seniorDiscount - pwdDiscount - philHealthPF - philHealthHB;
+                    document.getElementById('inpatientAmountDue').textContent = `₱${totalDue.toFixed(2)}`;
+                    updateAmountToPay(totalDue);
+                });
+        }
     }
 });
 
@@ -338,5 +511,3 @@ select.form-control {
     position: relative;
 }
 </style>
-
-
