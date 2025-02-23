@@ -19,6 +19,7 @@ if (isset($_POST['submit_payment'])) {
     $patient_type = $_POST['patient_type'];
     $amount_to_pay = $_POST['amount_to_pay'];
     $amount_paid = $_POST['amount_paid'];
+    $total_due = 0; // Initialize total_due
 
     // Validation checks
     $errors = [];
@@ -41,7 +42,7 @@ if (isset($_POST['submit_payment'])) {
 
     // Fetch patient_id
     $patient_id = null;
-    $patient_query = $connection->prepare("SELECT id FROM tbl_patient WHERE CONCAT(first_name, ' ', last_name) = ?");
+    $patient_query = $connection->prepare("SELECT patient_id FROM tbl_patient WHERE CONCAT(first_name, ' ', last_name) = ?");
     $patient_query->bind_param("s", $patient_name);
     $patient_query->execute();
     $patient_query->bind_result($patient_id);
@@ -56,15 +57,73 @@ if (isset($_POST['submit_payment'])) {
         $connection->begin_transaction();
         
         try {
+            // Get total_due from tbl_billing_inpatient if patient is Inpatient
+            if ($patient_type == 'Inpatient') {
+                $total_due_query = $connection->prepare("
+                    SELECT total_due 
+                    FROM tbl_billing_inpatient 
+                    WHERE patient_name = ? 
+                    ORDER BY id DESC LIMIT 1
+                ");
+                $total_due_query->bind_param("s", $patient_name);
+                $total_due_query->execute();
+                $total_due_result = $total_due_query->get_result();
+                $total_due_row = $total_due_result->fetch_assoc();
+                
+                if ($total_due_row) {
+                    $total_due = $total_due_row['total_due'];
+                } else {
+                    $total_due = $amount_to_pay; // Fallback if no billing record found
+                }
+            } else {
+                $total_due = $amount_to_pay; // For non-inpatient, use amount_to_pay as total_due
+            }
+
+            // Insert into payment table with total_due
             $insert_query = $connection->prepare("INSERT INTO tbl_payment
-                (payment_id, patient_id, patient_name, patient_type, amount_to_pay, amount_paid, payment_datetime)
-                VALUES (?, ?, ?, ?, ?, ?, NOW())");
+                (payment_id, patient_id, patient_name, patient_type, total_due, amount_to_pay, amount_paid, payment_datetime)
+                VALUES (?, ?, ?, ?, ?, ?, ?, NOW())");
             
-            $insert_query->bind_param("sissdd", $payment_id, $patient_id, $patient_name, $patient_type, $amount_to_pay, $amount_paid);
+            $insert_query->bind_param("sissddd", $payment_id, $patient_id, $patient_name, $patient_type, $total_due, $amount_to_pay, $amount_paid);
             
             if ($insert_query->execute()) {
-                // Only update is_billed status if payment is complete
-                if ($amount_paid == $amount_to_pay) {
+                // Update remaining balance in billing table based on patient type
+                if ($patient_type == 'Inpatient') {
+                    // Get current remaining balance
+                    $balance_query = $connection->prepare("
+                        SELECT remaining_balance 
+                        FROM tbl_billing_inpatient 
+                        WHERE patient_name = ? 
+                        ORDER BY id DESC LIMIT 1
+                    ");
+                    $balance_query->bind_param("s", $patient_name);
+                    $balance_query->execute();
+                    $balance_result = $balance_query->get_result();
+                    $balance_row = $balance_result->fetch_assoc();
+                    
+                    if ($balance_row) {
+                        // Calculate new remaining balance
+                        $current_balance = $balance_row['remaining_balance'];
+                        $new_balance = max(0, $current_balance - $amount_paid);
+                        
+                        // Update the remaining balance and status if needed
+                        $update_balance = $connection->prepare("
+                            UPDATE tbl_billing_inpatient 
+                            SET remaining_balance = ?,
+                                status = CASE 
+                                    WHEN ? <= 0 THEN 'Paid'
+                                    ELSE status 
+                                END
+                            WHERE patient_name = ? 
+                            ORDER BY id DESC LIMIT 1
+                        ");
+                        $update_balance->bind_param("dds", $new_balance, $new_balance, $patient_name);
+                        $update_balance->execute();
+                    }
+                }
+
+                // Only update is_billed status if payment is complete (remaining balance is 0)
+                if ($amount_paid >= $amount_to_pay) {
                     // Update lab orders
                     $update_lab = $connection->prepare("UPDATE tbl_laborder SET is_billed = 1 WHERE patient_id = ? AND is_billed = 0");
                     $update_lab->bind_param("i", $patient_id);

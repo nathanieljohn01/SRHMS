@@ -194,7 +194,7 @@
                                         <a href="payment-processing.php"> <i class="fa-solid fa-credit-card"></i> <span>Payment Processing</span></a>
                                     </li>
                                     <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'lab-order-patients.php') ? 'active' : ''; ?>">
-                                        <a href="lab-order-patients.php"> <i class="fa-solid fa-file-invoice-dollar"></i> <span>Patient Ledger</span></a>
+                                        <a href="patient-ledger.php"> <i class="fa-solid fa-file-invoice-dollar"></i> <span>Patient Ledger</span></a>
                                     </li>
                                 </ul>
                             </li>
