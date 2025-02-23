@@ -21,11 +21,30 @@ $highest_id = max($row_inpatient[0], $row_hemodialysis[0]);
 // Generate the next billing ID
 $bl_id = ($highest_id == 0) ? 1 : $highest_id + 1;
 
+// Add input validation function
+function validateInput($data) {
+    $data = trim($data);
+    $data = stripslashes($data);
+    $data = htmlspecialchars($data);
+    return $data;
+}
 
 if (isset($_POST['add-billing'])) {
     $billing_id = 'BL-' . $bl_id;
-    $patient_name = mysqli_real_escape_string($connection, $_POST['patient_name']);
-    $patient_type = $_POST['patient_type'];
+    $patient_name = validateInput(mysqli_real_escape_string($connection, $_POST['patient_name']));
+    $patient_type = validateInput($_POST['patient_type']);
+
+    // Validate patient type
+    if (!in_array($patient_type, ['inpatient', 'hemodialysis', 'newborn'])) {
+        echo "<script>
+            Swal.fire({
+                icon: 'error',
+                title: 'Invalid Patient Type',
+                text: 'Please select a valid patient type.'
+            });
+        </script>";
+        exit();
+    }
 
     // Fetch patient details based on patient type
     if ($patient_type == 'inpatient') {
@@ -210,7 +229,7 @@ if (isset($_POST['add-billing'])) {
 
         // Insert billing details
         if ($patient_type == 'inpatient') {
-            $query = "
+            $query = $connection->prepare("
             INSERT INTO tbl_billing_inpatient
             (billing_id, patient_id, patient_name, dob, gender, admission_date, discharge_date, diagnosis, address, 
             lab_fee, room_fee, medication_fee, operating_room_fee, supplies_fee, total_due, non_discounted_total, 
@@ -218,17 +237,50 @@ if (isset($_POST['add-billing'])) {
             vat_exempt_discount_amount, first_case, second_case, philhealth_pf, philhealth_hb,
             room_discount, lab_discount, rad_discount, med_discount, or_discount, supplies_discount, 
             other_discount, pf_discount, readers_discount) 
-            VALUES 
-            ('$billing_id', '$patient_id', '$patient_name', $dob, $gender, $admission_date, $discharge_date, 
-            $diagnosis, $address, $lab_fee, $room_fee, $medication_fee, $operating_room_fee, $supplies_fee, 
-            $total_due, $non_discounted_total, $total_discount, $professional_fee, $pwd_discount_amount, 
-            $readers_fee, $others_fee, $rad_fee, $vat_exempt_discount_amount, '$first_case', '$second_case', 
-            '$philhealth_pf', '$philhealth_hb', '$room_discount', '$lab_discount', '$rad_discount', 
-            '$med_discount', '$or_discount', '$supplies_discount', '$other_discount', '$pf_discount', 
-            '$readers_discount')";
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
+            if ($query) {
+                $query->bind_param("sssssssssdddddddddddddssssdddddddddd", 
+                    $billing_id, $patient_id, $patient_name, $dob, $gender, $admission_date, $discharge_date, 
+                    $diagnosis, $address, $lab_fee, $room_fee, $medication_fee, $operating_room_fee, 
+                    $supplies_fee, $total_due, $non_discounted_total, $total_discount, $professional_fee, 
+                    $pwd_discount_amount, $readers_fee, $others_fee, $rad_fee, $vat_exempt_discount_amount, 
+                    $first_case, $second_case, $philhealth_pf, $philhealth_hb, $room_discount, $lab_discount, 
+                    $rad_discount, $med_discount, $or_discount, $supplies_discount, $other_discount, 
+                    $pf_discount, $readers_discount);
+
+                if ($query->execute()) {
+                    echo "
+                    <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
+                    <script>
+                        document.addEventListener('DOMContentLoaded', function() {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Success!',
+                                text: 'Billing account added successfully!',
+                                confirmButtonColor: '#12369e'
+                            }).then(() => {
+                                window.location.href = 'billing.php';
+                            });
+                        });
+                    </script>";
+                } else {
+                    echo "
+                    <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
+                    <script>
+                        document.addEventListener('DOMContentLoaded', function() {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Database Error',
+                                text: 'Failed to add billing account. Please try again.',
+                                confirmButtonColor: '#12369e'
+                            });
+                        });
+                    </script>";
+                }
+            }
         } elseif ($patient_type == 'hemodialysis') {
-            $query = "
+            $query = $connection->prepare("
             INSERT INTO tbl_billing_hemodialysis
             (billing_id, patient_id, patient_name, dob, gender, admission_date, discharge_date, diagnosis, address,
             lab_fee, room_fee, medication_fee, operating_room_fee, supplies_fee, total_due, non_discounted_total,
@@ -236,56 +288,50 @@ if (isset($_POST['add-billing'])) {
             vat_exempt_discount_amount, first_case, second_case, philhealth_pf, philhealth_hb,
             room_discount, lab_discount, rad_discount, med_discount, or_discount, supplies_discount,
             other_discount, pf_discount, readers_discount)
-            VALUES
-            ('$billing_id', '$patient_id', '$patient_name', $dob, $gender, $admission_date, $discharge_date,
-            $diagnosis, $address, $lab_fee, $room_fee, $medication_fee, $operating_room_fee, $supplies_fee,
-            $total_due, $non_discounted_total, $total_discount, $professional_fee, $pwd_discount_amount,
-            $readers_fee, $others_fee, $rad_fee, $vat_exempt_discount_amount, '$first_case', '$second_case',
-            '$philhealth_pf', '$philhealth_hb', '$room_discount', '$lab_discount', '$rad_discount',
-            '$med_discount', '$or_discount', '$supplies_discount', '$other_discount', '$pf_discount',
-            '$readers_discount')";        
-            
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+
+            if ($query) {
+                $query->bind_param("sssssssssdddddddddddddssssdddddddddd", 
+                    $billing_id, $patient_id, $patient_name, $dob, $gender, $admission_date, $discharge_date, 
+                    $diagnosis, $address, $lab_fee, $room_fee, $medication_fee, $operating_room_fee, 
+                    $supplies_fee, $total_due, $non_discounted_total, $total_discount, $professional_fee, 
+                    $pwd_discount_amount, $readers_fee, $others_fee, $rad_fee, $vat_exempt_discount_amount, 
+                    $first_case, $second_case, $philhealth_pf, $philhealth_hb, $room_discount, $lab_discount, 
+                    $rad_discount, $med_discount, $or_discount, $supplies_discount, $other_discount, 
+                    $pf_discount, $readers_discount);
+
+                if ($query->execute()) {
+                    echo "
+                    <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
+                    <script>
+                        document.addEventListener('DOMContentLoaded', function() {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Success!',
+                                text: 'Billing account added successfully!',
+                                confirmButtonColor: '#12369e'
+                            }).then(() => {
+                                window.location.href = 'billing.php';
+                            });
+                        });
+                    </script>";
+                } else {
+                    echo "
+                    <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
+                    <script>
+                        document.addEventListener('DOMContentLoaded', function() {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Database Error',
+                                text: 'Failed to add billing account. Please try again.',
+                                confirmButtonColor: '#12369e'
+                            });
+                        });
+                    </script>";
+                }
+            }
         } else {
             $msg = "Error: Patient type not selected.";
-        }
-
-        if (mysqli_query($connection, $query)) {
-            $msg = "Billing account added successfully!";
-
-            // SweetAlert success message
-            echo "
-            <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
-            <script>
-                document.addEventListener('DOMContentLoaded', function() {
-                    var style = document.createElement('style');
-                    style.innerHTML = '.swal2-confirm { background-color: #12369e !important; color: white !important; border: none !important; } .swal2-confirm:hover { background-color: #05007E !important; } .swal2-confirm:focus { box-shadow: 0 0 0 0.2rem rgba(18, 54, 158, 0.5) !important; }';
-                    document.head.appendChild(style);
-
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Success!',
-                        text: 'Billing account added successfully!',
-                        confirmButtonColor: '#12369e'
-                    }).then(() => {
-                        window.location.href = 'billing.php'; // Adjust the redirect page if needed
-                    });
-                });
-            </script>";
-        } else {
-            $msg = "Error: " . $query . "<br>" . mysqli_error($connection);
-
-            // SweetAlert error message
-            echo "
-            <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
-            <script>
-                document.addEventListener('DOMContentLoaded', function() {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error',
-                        text: 'An error occurred while adding the billing account.'
-                    });
-                });
-            </script>";
         }
     }
 }
@@ -1114,19 +1160,28 @@ document.getElementById('case-rate-select').addEventListener('change', function(
     border-radius: 4px; 
     padding: 10px 20px;
     font-size: 16px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(18, 54, 158, 0.2);
 }
+
 .btn-primary {
     background: #12369e;
     border: none;
 }
+
 .btn-primary:hover {
     background: #05007E;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(18, 54, 158, 0.3);
 }
+
 .form-control {
     border-radius: .375rem; /* Rounded corners */
     border-color: #ced4da; /* Border color */
     background-color: #f8f9fa; /* Background color */
 }
+
 select.form-control {
     border-radius: .375rem; /* Rounded corners */
     border: 1px solid; /* Border color */
@@ -1347,7 +1402,7 @@ table tr:hover {
 }
 
 .patient-type-section:hover {
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
     transform: translateY(-4px);
 }
 

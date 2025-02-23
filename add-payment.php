@@ -163,7 +163,9 @@ if (isset($_POST['submit_payment'])) {
                                 </select>
                             </div>
                         </div>
+                    </div>
 
+                    <div class="row">
                         <div class="col-md-6">
                             <div class="form-group">
                                 <label>Patient Name</label>
@@ -178,93 +180,86 @@ if (isset($_POST['submit_payment'])) {
                         <div class="col-md-3">
                             <div class="form-group">
                                 <label>Amount to Pay</label>
-                                <input type="number" step="0.01" class="form-control" name="amount_to_pay" required>
+                                <input type="number" step="0.01" class="form-control" name="amount_to_pay" required readonly>
                             </div>
                         </div>
 
                         <div class="col-md-3">
                             <div class="form-group">
                                 <label>Amount Paid</label>
-                                <input type="number" step="0.01" class="form-control" name="amount_paid" required>
+                                <input type="number" step="0.01" class="form-control" name="amount_paid" required onchange="calculateRemainingBalance()">
                             </div>
                         </div>
                     </div>
 
                     <div class="row">
                         <div class="col-md-12">
-                            <div id="total_results" class="mt-4">
-                                <!-- Laboratory Fees Table -->
-                                <table class="table table-bordered" id="outpatientLabTable" style="display: none;">
-                                    <thead style="background-color: #CCCCCC;">
-                                        <tr>
-                                            <th>Lab Test</th>
-                                            <th>Lab Price</th>
-                                            <th>Request Date</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody></tbody>
-                                </table>
+                            <!-- Laboratory Fees Table -->
+                            <table class="table table-bordered mt-4" id="outpatientLabTable" style="display: none;">
+                                <thead style="background-color: #CCCCCC;">
+                                    <tr>
+                                        <th>Lab Test</th>
+                                        <th>Lab Price</th>
+                                        <th>Request Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
 
-                                <!-- Radiology Fees Table -->
-                                <table class="table table-bordered mt-4" id="outpatientRadTable" style="display: none;">
-                                    <thead style="background-color: #CCCCCC;">
-                                        <tr>
-                                            <th>Radiology Test</th>
-                                            <th>Price</th>
-                                            <th>Request Date</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody></tbody>
-                                </table>
-                            </div>
+                            <!-- Radiology Fees Table -->
+                            <table class="table table-bordered mt-4" id="outpatientRadTable" style="display: none;">
+                                <thead style="background-color: #CCCCCC;">
+                                    <tr>
+                                        <th>Radiology Test</th>
+                                        <th>Price</th>
+                                        <th>Request Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+
+                            <!-- Inpatient Billing Table -->
+                            <table class="table table-bordered mt-4" id="inpatientBillingTable" style="display: none;">
+                                <thead style="background-color: #CCCCCC;">
+                                    <tr>
+                                        <th>Description</th>
+                                        <th>Amount</th>
+                                        <th>Discount</th>
+                                        <th>Net Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                                <tfoot>
+                                    <tr>
+                                        <th colspan="4">Total Fees: <span id="inpatientGrossAmount" class="float-right">₱0.00</span></th>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="4" class="pl-4">Less:</td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="4" class="pl-5">PhilHealth (PF) <span id="inpatientPhilhealthPF" class="float-right">₱0.00</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="4" class="pl-5">PhilHealth (HB) <span id="inpatientPhilhealthHB" class="float-right">₱0.00</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="4" class="pl-5">VAT Exempt <span id="inpatientVatExempt" class="float-right">₱0.00</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="4" class="pl-5">Senior Citizen Discount <span id="inpatientSeniorDiscount" class="float-right">₱0.00</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="4" class="pl-5">PWD Discount <span id="inpatientPWDDiscount" class="float-right">₱0.00</span></td>
+                                    </tr>
+                                    <tr class="font-weight-bold">
+                                        <th colspan="4">Total Amount Due: <span id="inpatientAmountDue" class="float-right">₱0.00</span></th>
+                                    </tr>
+                                </tfoot>
+                            </table>
                         </div>
                     </div>
 
-                    <div class="row">
-                        <div class="col-md-12">
-                            <div class="mt-4">
-                                <table class="table table-bordered" id="inpatientBillingTable" style="display: none;">
-                                    <thead style="background-color: #CCCCCC;">
-                                        <tr>
-                                            <th>Description</th>
-                                            <th>Amount</th>
-                                            <th>Discount</th>
-                                            <th>Net Amount</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody></tbody>
-                                    <tfoot>
-                                        <tr>
-                                            <th colspan="4">Total Fees: <span id="inpatientGrossAmount" class="float-right">₱0.00</span></th>
-                                        </tr>
-                                        <tr>
-                                            <td colspan="4" class="pl-4">Less:</td>
-                                        </tr>
-                                        <tr>
-                                            <td colspan="4" class="pl-5">PhilHealth (PF) <span id="inpatientPhilhealthPF" class="float-right">₱0.00</span></td>
-                                        </tr>
-                                        <tr>
-                                            <td colspan="4" class="pl-5">PhilHealth (HB) <span id="inpatientPhilhealthHB" class="float-right">₱0.00</span></td>
-                                        </tr>
-                                        <tr>
-                                            <td colspan="4" class="pl-5">VAT Exempt <span id="inpatientVatExempt" class="float-right">₱0.00</span></td>
-                                        </tr>
-                                        <tr>
-                                            <td colspan="4" class="pl-5">Senior Citizen Discount <span id="inpatientSeniorDiscount" class="float-right">₱0.00</span></td>
-                                        </tr>
-                                        <tr>
-                                            <td colspan="4" class="pl-5">PWD Discount <span id="inpatientPWDDiscount" class="float-right">₱0.00</span></td>
-                                        </tr>
-                                        <tr class="font-weight-bold">
-                                            <th colspan="4">Total Amount Due: <span id="inpatientAmountDue" class="float-right">₱0.00</span></th>
-                                        </tr>
-                                    </tfoot>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="row mt-3">
+                    <div class="row mt-4">
                         <div class="col-md-12">
                             <button type="submit" name="submit_payment" class="btn btn-primary">Submit Payment</button>
                         </div>
@@ -283,6 +278,7 @@ const searchResults = document.getElementById('search_results');
 const outpatientLabTable = document.getElementById('outpatientLabTable');
 const outpatientRadTable = document.getElementById('outpatientRadTable');
 const patientTypeSelect = document.getElementById('patient_type');
+let currentTotalDue = 0;
 
 function togglePatientSearch() {
     const selectedType = patientTypeSelect.value;
@@ -306,6 +302,7 @@ function togglePatientSearch() {
     document.getElementById('inpatientSeniorDiscount').textContent = '₱0.00';
     document.getElementById('inpatientPWDDiscount').textContent = '₱0.00';
     document.getElementById('inpatientAmountDue').textContent = '₱0.00';
+    currentTotalDue = 0;
     
     // Show appropriate table based on type
     if (selectedType === 'Outpatient') {
@@ -320,6 +317,20 @@ function togglePatientSearch() {
     document.getElementById('selected_patient_name').value = '';
     document.querySelector('input[name="amount_to_pay"]').value = '';
     document.querySelector('input[name="amount_paid"]').value = '';
+}
+
+function calculateRemainingBalance() {
+    const amountPaidInput = document.querySelector('input[name="amount_paid"]');
+    const amountToPayInput = document.querySelector('input[name="amount_to_pay"]');
+    const amountPaid = parseFloat(amountPaidInput.value) || 0;
+    
+    if (amountPaid > currentTotalDue) {
+        amountPaidInput.value = currentTotalDue.toFixed(2);
+        amountToPayInput.value = '0.00';
+    } else {
+        const remainingBalance = currentTotalDue - amountPaid;
+        amountToPayInput.value = remainingBalance.toFixed(2);
+    }
 }
 
 patientSearch.addEventListener('keyup', function() {
@@ -446,6 +457,7 @@ document.addEventListener('click', function(e) {
                     // Calculate final amount due
                     const totalDue = subTotal - vatExempt - seniorDiscount - pwdDiscount - philHealthPF - philHealthHB;
                     document.getElementById('inpatientAmountDue').textContent = `₱${totalDue.toFixed(2)}`;
+                    currentTotalDue = totalDue;
                     updateAmountToPay(totalDue);
                 });
         }

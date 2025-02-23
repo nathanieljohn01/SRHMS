@@ -12,6 +12,7 @@ if (isset($_GET['patient_name'])) {
         readers_discount, philhealth_pf, philhealth_hb, 
         vat_exempt_discount_amount, discount_amount,
         pwd_discount_amount, total_due, non_discounted_total,
+        remaining_balance,
         (room_fee - COALESCE(room_discount, 0)) as net_room_fee,
         (medication_fee - COALESCE(med_discount, 0)) as net_medication_fee,
         (lab_fee - COALESCE(lab_discount, 0)) as net_lab_fee,
