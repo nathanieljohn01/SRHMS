@@ -7,7 +7,7 @@ if (isset($_GET['search'])) {
     $query = "SELECT DISTINCT b.patient_name, b.patient_id 
               FROM tbl_billing_inpatient b 
               WHERE b.patient_name LIKE ? 
-              AND b.deleted = 0 
+              AND b.deleted = 0 AND is_billed = 0
               ORDER BY b.patient_name 
               LIMIT 10";
               

@@ -6,6 +6,8 @@ if (empty($_SESSION['name'])) {
 include('header.php');
 include('includes/connection.php');
 
+date_default_timezone_set('Asia/Manila');
+
 // Determine the current shift
 $currentHour = date('H');
 
@@ -26,21 +28,18 @@ $in_progress_tests = mysqli_fetch_row(mysqli_query($connection, "
     SELECT COUNT(*) 
     FROM tbl_laborder 
     WHERE status='In-Progress' 
-    AND requested_date BETWEEN '$shift_start' AND '$shift_end'
 "))[0];
 
 $completed_tests = mysqli_fetch_row(mysqli_query($connection, "
     SELECT COUNT(*) 
     FROM tbl_laborder 
     WHERE status='Completed' 
-    AND requested_date BETWEEN '$shift_start' AND '$shift_end'
 "))[0];
 
 $cancelled_tests = mysqli_fetch_row(mysqli_query($connection, "
     SELECT COUNT(*) 
     FROM tbl_laborder 
     WHERE status LIKE 'Cancelled%' 
-    AND requested_date BETWEEN '$shift_start' AND '$shift_end'
 "))[0];
 
 $stat_tests = mysqli_fetch_row(mysqli_query($connection, "
@@ -49,7 +48,6 @@ $stat_tests = mysqli_fetch_row(mysqli_query($connection, "
     WHERE stat='STAT' 
     AND status NOT LIKE 'Completed' 
     AND status NOT LIKE 'Cancelled%' 
-    AND requested_date BETWEEN '$shift_start' AND '$shift_end'
 "))[0];
 ?>
 
@@ -90,6 +88,29 @@ $stat_tests = mysqli_fetch_row(mysqli_query($connection, "
                     <div class="dash-widget-info text-right">
                         <h3><?php echo $stat_tests; ?></h3>
                         <span class="widget-title4">Stat Tests <i class="fa fa-check" aria-hidden="true"></i></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-body">
+                        <h4 class="card-title">Current Shift</h4>
+                        <div class="current-shift">
+                            <?php
+                            if ($currentHour >= 6 && $currentHour < 14) {
+                                echo '<i class="fa fa-sun shift-icon"></i>';
+                                echo '<h3>Morning Shift (6:00 AM - 2:00 PM)</h3>';
+                            } elseif ($currentHour >= 14 && $currentHour < 22) {
+                                echo '<i class="fa fa-cloud-sun shift-icon"></i>';
+                                echo '<h3>Afternoon Shift (2:00 PM - 10:00 PM)</h3>';
+                            } else {
+                                echo '<i class="fa fa-moon shift-icon"></i>';
+                                echo '<h3>Night Shift (10:00 PM - 6:00 AM)</h3>';
+                            }
+                            ?>
+                           <p class="text-muted">Current Time: <span id="currentTime"></span></p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -181,6 +202,26 @@ $stat_tests = mysqli_fetch_row(mysqli_query($connection, "
     .catch(error => console.error('Error fetching data:', error));
 </script>
 
+<script>
+function updateTime() {
+    const now = new Date();
+    let hours = now.getHours();
+    let minutes = now.getMinutes();
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    minutes = minutes < 10 ? '0' + minutes : minutes;
+    
+    document.getElementById('currentTime').innerHTML = hours + ':' + minutes + ' ' + ampm;
+}
+
+// Update time every second
+setInterval(updateTime, 1000);
+// Initial call to display time immediately
+updateTime();
+</script>
+
 <style>
 .btn-primary {
     background: #12369e;
@@ -192,5 +233,70 @@ $stat_tests = mysqli_fetch_row(mysqli_query($connection, "
 canvas {
     width: 100% !important;
     height: 300px !important; /* Palitan depende sa gusto mong height */
+}
+.current-shift {
+    text-align: center;
+    padding: 20px;
+}
+
+.current-shift h3 {
+    color: #333;
+    font-size: 24px;
+    margin-bottom: 15px;
+    font-weight: 600;
+}
+
+.current-shift p {
+    font-size: 18px;
+    margin: 0;
+}
+
+.card {
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    border-radius: 8px;
+    border: none;
+    transition: transform 0.2s;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+}
+
+.card-body {
+    padding: 25px;
+}
+
+.card-title {
+    color: #333;
+    font-size: 20px;
+    font-weight: 500;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.text-muted {
+    color: #6c757d;
+}
+.shift-icon {
+    font-size: 48px;
+    margin-bottom: 15px;
+    display: block;
+}
+
+.fa-sun {
+    color: #FDB813;
+}
+
+.fa-cloud-sun {
+    color: #FF8C00;
+}
+
+.fa-moon {
+    color: #4A4A8F;
+}
+
+.current-shift {
+    text-align: center;
+    padding: 20px;
 }
 </style>

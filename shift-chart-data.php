@@ -1,7 +1,9 @@
 <?php
 include('includes/connection.php');
-
 header('Content-Type: application/json');
+
+// Set Philippine timezone
+date_default_timezone_set('Asia/Manila');
 
 // Define shift times
 $shifts = [
@@ -16,9 +18,10 @@ $data = [
     'Cancelled' => []
 ];
 
-// Get the current date for today and tomorrow
+// Get current date and next day in PH time
 $current_date = date('Y-m-d');
 $next_day = date('Y-m-d', strtotime($current_date . ' + 1 day'));
+
 
 // Fetch and count lab orders for each shift
 foreach ($shifts as $shiftName => $times) {

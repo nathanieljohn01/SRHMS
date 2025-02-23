@@ -38,28 +38,41 @@ if (isset($_POST['submit_payment'])) {
     if (!is_numeric($amount_paid) || $amount_paid <= 0) {
         $errors[] = "Amount paid must be greater than 0";
     }
+
+    // Fetch patient_id
+    $patient_id = null;
+    $patient_query = $connection->prepare("SELECT id FROM tbl_patient WHERE CONCAT(first_name, ' ', last_name) = ?");
+    $patient_query->bind_param("s", $patient_name);
+    $patient_query->execute();
+    $patient_query->bind_result($patient_id);
+    $patient_query->fetch();
+    $patient_query->close();
+
+    if (!$patient_id) {
+        $errors[] = "Patient not found in the system.";
+    }
     
     if (empty($errors)) {
         $connection->begin_transaction();
         
         try {
             $insert_query = $connection->prepare("INSERT INTO tbl_payment
-                (payment_id, patient_name, patient_type, amount_to_pay, amount_paid, payment_datetime)
-                VALUES (?, ?, ?, ?, ?, NOW())");
+                (payment_id, patient_id, patient_name, patient_type, amount_to_pay, amount_paid, payment_datetime)
+                VALUES (?, ?, ?, ?, ?, ?, NOW())");
             
-            $insert_query->bind_param("sssdd", $payment_id, $patient_name, $patient_type, $amount_to_pay, $amount_paid);
+            $insert_query->bind_param("sissdd", $payment_id, $patient_id, $patient_name, $patient_type, $amount_to_pay, $amount_paid);
             
             if ($insert_query->execute()) {
                 // Only update is_billed status if payment is complete
                 if ($amount_paid == $amount_to_pay) {
                     // Update lab orders
-                    $update_lab = $connection->prepare("UPDATE tbl_laborder SET is_billed = 1 WHERE patient_name = ? AND is_billed = 0");
-                    $update_lab->bind_param("s", $patient_name);
+                    $update_lab = $connection->prepare("UPDATE tbl_laborder SET is_billed = 1 WHERE patient_id = ? AND is_billed = 0");
+                    $update_lab->bind_param("i", $patient_id);
                     $update_lab->execute();
 
                     // Update radiology orders
-                    $update_rad = $connection->prepare("UPDATE tbl_radiology SET is_billed = 1 WHERE patient_name = ? AND is_billed = 0");
-                    $update_rad->bind_param("s", $patient_name);
+                    $update_rad = $connection->prepare("UPDATE tbl_radiology SET is_billed = 1 WHERE patient_id = ? AND is_billed = 0");
+                    $update_rad->bind_param("i", $patient_id);
                     $update_rad->execute();
                 }
 
