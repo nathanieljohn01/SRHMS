@@ -93,52 +93,7 @@ if (isset($_POST['add-billing'])) {
         $supplies_fee = isset($_POST['supplies_fee']) && $_POST['supplies_fee'] !== '' ? $_POST['supplies_fee'] : 0;
         $professional_fee = isset($_POST['professional_fee']) && $_POST['professional_fee'] !== '' ? $_POST['professional_fee'] : 0;
         $readers_fee = isset($_POST['readers_fee']) && $_POST['readers_fee'] !== '' ? $_POST['readers_fee'] : 0;
-        $others_fee = 0;
-        $remaining_balance = 0;
-
-        // Calculate medication fee
-        $medication_query = $connection->prepare("SELECT SUM(total_price) AS medication_fee FROM tbl_treatment WHERE patient_name = ? AND deleted = 0");
-        $medication_query->bind_param("s", $patient_name);
-        $medication_query->execute();
-        $medication_result = $medication_query->get_result();
-        if ($medication = $medication_result->fetch_assoc()) {
-            $medication_fee = $medication['medication_fee'] ?? 0;
-        }
-
-        // Handle others fees
-        if (isset($_POST['others']) && !empty($_POST['others'])) {
-            foreach ($_POST['others'] as $item) {
-                $item_name = mysqli_real_escape_string($connection, $item['name']);
-                $item_cost = mysqli_real_escape_string($connection, $item['cost']);
-
-                $insert_query = "
-                    INSERT INTO tbl_billing_others (billing_id, item_name, item_cost, date_time)
-                    VALUES ('$billing_id', '$item_name', '$item_cost', NOW())
-                ";
-                mysqli_query($connection, $insert_query);
-            }
-
-            $others_fee_query = "
-            SELECT SUM(item_cost) AS others_fee
-            FROM tbl_billing_others
-            WHERE billing_id = '$billing_id' AND deleted = 0
-            ";
-
-            $others_fee_result = mysqli_query($connection, $others_fee_query);
-            $others_fee_row = mysqli_fetch_assoc($others_fee_result);
-            $others_fee = $others_fee_row['others_fee'] ?? 0;
-        }
-
-        // Apply discounts if checked
-        $apply_discount = isset($_POST['discount_checkbox']) && $_POST['discount_checkbox'] == 'on';
-        $room_fee = isset($_POST['room_fee']) ? floatval($_POST['room_fee']) : 0;
-        $lab_fee = isset($_POST['lab_fee']) ? floatval($_POST['lab_fee']) : 0;
-        $rad_fee = isset($_POST['rad_fee']) ? floatval($_POST['rad_fee']) : 0;
-        $medication_fee = isset($_POST['medication_fee']) ? floatval($_POST['medication_fee']) : 0;
-        $operating_room_fee = isset($_POST['operating_room_fee']) ? floatval($_POST['operating_room_fee']) : 0;
-        $supplies_fee = isset($_POST['supplies_fee']) ? floatval($_POST['supplies_fee']) : 0;
-        $professional_fee = isset($_POST['professional_fee']) ? floatval($_POST['professional_fee']) : 0;
-        $readers_fee = isset($_POST['readers_fee']) ? floatval($_POST['readers_fee']) : 0;
+        $others_fee = isset($_POST['others_fee']) && $_POST['others_fee'] !== '' ? $_POST['others_fee'] : 0;
         
         // Get checkbox states
         $vat_exempt_checkbox = isset($_POST['vat_exempt_checkbox']) ? $_POST['vat_exempt_checkbox'] : 'off';
@@ -225,35 +180,38 @@ if (isset($_POST['add-billing'])) {
             $total_discount = 0;
         }
 
-      
-        // Calculate and assign to both variables at once
-        $total_due = $remaining_balance = $after_vat - $total_discount - floatval($philhealth_pf) - floatval($philhealth_hb);
+        // Calculate final total due
+        $total_due = $non_discounted_total - $pwd_discount_amount - $vat_exempt_discount_amount - $total_discount - floatval($philhealth_pf) - floatval($philhealth_hb);
+        
+        // Set remaining balance equal to total due for new billing
+        $remaining_balance = $total_due;
 
+        // Ensure values are not negative
+        $total_due = max(0, $total_due);
+        $remaining_balance = max(0, $remaining_balance);
 
         // Insert billing details
         if ($patient_type == 'inpatient') {
             $query = $connection->prepare("
             INSERT INTO tbl_billing_inpatient
             (billing_id, patient_id, patient_name, dob, gender, admission_date, discharge_date, diagnosis, address, 
-            lab_fee, room_fee, medication_fee, operating_room_fee, supplies_fee, total_due, remaining_balance, non_discounted_total, 
+            lab_fee, room_fee, medication_fee, operating_room_fee, supplies_fee, total_due, non_discounted_total, 
             discount_amount, professional_fee, pwd_discount_amount, readers_fee, others_fee, rad_fee, 
             vat_exempt_discount_amount, first_case, second_case, philhealth_pf, philhealth_hb,
             room_discount, lab_discount, rad_discount, med_discount, or_discount, supplies_discount, 
-            other_discount, pf_discount, readers_discount) 
+            other_discount, pf_discount, readers_discount, remaining_balance) 
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
             if ($query) {
-                $query->bind_param("sssssssssdddddddddddddssssdddddddddd", 
-                $billing_id, $patient_id, $patient_name, $dob, $gender, $admission_date, $discharge_date, 
-                $diagnosis, $address, $lab_fee, $room_fee, $medication_fee, $operating_room_fee, 
-                $supplies_fee, $total_due, $remaining_balance, 
-                $non_discounted_total, $total_discount, $professional_fee, 
-                $pwd_discount_amount, $readers_fee, $others_fee, $rad_fee, $vat_exempt_discount_amount, 
-                $first_case, $second_case, $philhealth_pf, $philhealth_hb, $room_discount, $lab_discount, 
-                $rad_discount, $med_discount, $or_discount, $supplies_discount, $other_discount, 
-                $pf_discount, $readers_discount);
+                $query->bind_param("sssssssssdddddddddddddssssddddddddddd", 
+                    $billing_id, $patient_id, $patient_name, $dob, $gender, $admission_date, $discharge_date, 
+                    $diagnosis, $address, $lab_fee, $room_fee, $medication_fee, $operating_room_fee, 
+                    $supplies_fee, $total_due, $non_discounted_total, $total_discount, $professional_fee, 
+                    $pwd_discount_amount, $readers_fee, $others_fee, $rad_fee, $vat_exempt_discount_amount, 
+                    $first_case, $second_case, $philhealth_pf, $philhealth_hb, $room_discount, $lab_discount, 
+                    $rad_discount, $med_discount, $or_discount, $supplies_discount, $other_discount, 
+                    $pf_discount, $readers_discount, $remaining_balance);
 
-        
                 if ($query->execute()) {
                     echo "
                     <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
@@ -288,24 +246,22 @@ if (isset($_POST['add-billing'])) {
             $query = $connection->prepare("
             INSERT INTO tbl_billing_hemodialysis
             (billing_id, patient_id, patient_name, dob, gender, admission_date, discharge_date, diagnosis, address,
-            lab_fee, room_fee, medication_fee, operating_room_fee, supplies_fee, total_due, remaining_balance, non_discounted_total,
+            lab_fee, room_fee, medication_fee, operating_room_fee, supplies_fee, total_due, non_discounted_total,
             discount_amount, professional_fee, pwd_discount_amount, readers_fee, others_fee, rad_fee,
             vat_exempt_discount_amount, first_case, second_case, philhealth_pf, philhealth_hb,
             room_discount, lab_discount, rad_discount, med_discount, or_discount, supplies_discount,
-            other_discount, pf_discount, readers_discount)
+            other_discount, pf_discount, readers_discount, remaining_balance)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            
 
             if ($query) {
-                $query->bind_param("sssssssssdddddddddddddssssdddddddddd", 
-                $billing_id, $patient_id, $patient_name, $dob, $gender, $admission_date, $discharge_date, 
-                $diagnosis, $address, $lab_fee, $room_fee, $medication_fee, $operating_room_fee, 
-                $supplies_fee, $total_due, $remaining_balance, // 'd' type for decimal remaining_balance
-                $non_discounted_total, $total_discount, $professional_fee, 
-                $pwd_discount_amount, $readers_fee, $others_fee, $rad_fee, $vat_exempt_discount_amount, 
-                $first_case, $second_case, $philhealth_pf, $philhealth_hb, $room_discount, $lab_discount, 
-                $rad_discount, $med_discount, $or_discount, $supplies_discount, $other_discount, 
-                $pf_discount, $readers_discount);
+                $query->bind_param("sssssssssdddddddddddddssssddddddddddd", 
+                    $billing_id, $patient_id, $patient_name, $dob, $gender, $admission_date, $discharge_date, 
+                    $diagnosis, $address, $lab_fee, $room_fee, $medication_fee, $operating_room_fee, 
+                    $supplies_fee, $total_due, $non_discounted_total, $total_discount, $professional_fee, 
+                    $pwd_discount_amount, $readers_fee, $others_fee, $rad_fee, $vat_exempt_discount_amount, 
+                    $first_case, $second_case, $philhealth_pf, $philhealth_hb, $room_discount, $lab_discount, 
+                    $rad_discount, $med_discount, $or_discount, $supplies_discount, $other_discount, 
+                    $pf_discount, $readers_discount, $remaining_balance);
 
                 if ($query->execute()) {
                     echo "
@@ -1591,4 +1547,3 @@ table tr:hover {
     padding-bottom: 10px;
     border-bottom: 1px solid #e0e4e8;
 }
-</style>
