@@ -141,7 +141,7 @@ if (isset($_POST['add-radiology'])) {
                 <h4 class="page-title">Add Radiology</h4>
             </div>
             <div class="col-sm-8 text-right m-b-20">
-                <a href="radiology-patients.php" class="btn btn-primary float-right">Back</a>
+                <a href="radiology-patients.php" class="btn btn-primary float-right"><i class="fa fa-arrow-left"></i> Back</a>
             </div>
         </div>
         <form method="POST" enctype="multipart/form-data">
@@ -334,7 +334,7 @@ select.form-control {
 }
 select.form-control:focus {
     border-color: #12369e;
-    box-shadow: 0 0 0 .2rem rgba(38, 143, 255, .25);
+    box-shadow: 0 0 0 0.2rem rgba(38, 143, 255, .25);
 }
 #patient-search {
     position: relative; /* Makes sure the patient list is positioned below */

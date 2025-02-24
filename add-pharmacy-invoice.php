@@ -140,7 +140,7 @@ if (isset($_POST['add-invoice'])) {
                 <h4 class="page-title">Add Pharmacy Invoice</h4>
             </div>
             <div class="col-sm-8 text-right m-b-20">
-                <a href="pharmacy-invoice.php" class="btn btn-primary float-right">Back</a>
+                <a href="pharmacy-invoice.php" class="btn btn-primary float-right"><i class="fa fa-arrow-left"></i> Back</a>
             </div>
         </div>
         <div class="container">

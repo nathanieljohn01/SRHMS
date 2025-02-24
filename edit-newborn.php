@@ -97,7 +97,7 @@ mysqli_stmt_close($fetch_query);
                 <h4 class="page-title">Edit Newborn</h4>
             </div>
             <div class="col-sm-8 text-right mb-3">
-                <a href="newborn.php" class="btn btn-primary float-right">Back</a>
+                <a href="newborn.php" class="btn btn-primary float-right"><i class="fa fa-arrow-left"></i> Back</a>
             </div>
         </div>
         <div class="row">

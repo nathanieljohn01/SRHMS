@@ -79,7 +79,7 @@ if (isset($_POST['save-medicine'])) {
                 <h4 class="page-title">Edit Medicine</h4>
             </div>
             <div class="col-sm-8 text-right m-b-20">
-                <a href="medicines.php" class="btn btn-primary float-right">Back</a>
+                <a href="medicines.php" class="btn btn-primary float-right"><i class="fa fa-arrow-left"></i> Back</a>
             </div>
         </div>
         <div class="row">

@@ -32,7 +32,7 @@ if(isset($_REQUEST['save-doc']))
       // File path after upload
       $profile_picture = isset($targetFile) ? $targetFile : '';
 
-      $update_query = mysqli_query($connection, "update tbl_employee set first_name='$first_name', last_name='$last_name', username='$username', emailid='$emailid', password='$pwd',  dob='$dob', employee_id='$employee_id', joining_date = '$joining_date', gender='$gender', address='$address', phone='$phone',  bio='$bio',  status='$status' profile_picture='$profile_picture' where id='$id'");
+      $update_query = mysqli_query($connection, "update tbl_employee set first_name='$first_name', last_name='$last_name', username='$username', emailid='$emailid', password='$pwd',  dob='$dob', employee_id='$employee_id', joining_date = '$joining_date', gender='$gender', address='$address', phone='$phone',  bio='$bio',  status='$status', profile_picture='$profile_picture' where id='$id'");
       if($update_query>0)
       {
           $msg = "Doctor updated successfully";
@@ -53,7 +53,7 @@ if(isset($_REQUEST['save-doc']))
                         <h4 class="page-title">Edit Doctor</h4>
                     </div>
                     <div class="col-sm-8  text-right m-b-20">
-                        <a href="doctors.php" class="btn btn-primary btn-rounded float-right">Back</a>
+                        <a href="doctors.php" class="btn btn-primary btn-rounded float-right"><i class="fa fa-arrow-left"></i> Back</a>
                     </div>
                 </div>
                 <div class="row">

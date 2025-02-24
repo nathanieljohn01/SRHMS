@@ -111,7 +111,7 @@ if (isset($_POST['update-cbc'])) {
                 <h4 class="page-title">Edit CBC Result</h4>
             </div>
             <div class="col-sm-8 text-right mb-3">
-                <a href="cbc.php" class="btn btn-primary">Back</a>
+                <a href="cbc.php" class="btn btn-primary"><i class="fa fa-arrow-left"></i> Back</a>
             </div>
         </div>
         <div class="row">

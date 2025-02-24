@@ -115,7 +115,7 @@ if (isset($_POST['save-patient'])) {
                 <h4 class="page-title">Edit Patient</h4>
             </div>
             <div class="col-sm-8 text-right mb-3">
-                <a href="patients.php" class="btn btn-primary btn-rounded">Back</a>
+                <a href="patients.php" class="btn btn-primary btn-rounded"><i class="fa fa-arrow-left"></i> Back</a>
             </div>
         </div>
         <div class="row">
@@ -349,9 +349,3 @@ select.form-control {
             box-shadow: 0 0 0 .2rem rgba(38, 143, 255, .25); /* Shadow on focus */
         }
 </style>
-
-
-
-
-
-

@@ -139,7 +139,7 @@ if (isset($_REQUEST['add-operating-room'])) {
                 <h4 class="page-title">Add Operating Room</h4>
             </div>
             <div class="col-sm-8 text-right m-b-20">
-                <a href="operating-room.php" class="btn btn-primary float-right">Back</a>
+                <a href="operating-room.php" class="btn btn-primary float-right"><i class="fa fa-arrow-left"></i> Back</a>
             </div>
         </div>
 

@@ -22,34 +22,37 @@ include('includes/connection.php');
 
        
             <div class="table-responsive">
-                <div class="sticky-search">
-                    <h5 class="font-weight-bold mb-2">Search Payment:</h5>
+                <div class="sticky-search bg-white p-4 mb-4 border rounded">
+                    <h5 class="font-weight-bold mb-3">Search Payment:</h5>
                     <div class="row">
                         <div class="col-sm-6 col-md-4">
-                            <div class="position-relative w-100 mb-3">
-                                <!-- Search Icon -->
-                                <i class="fa fa-search position-absolute text-secondary" style="top: 50%; left: 12px; transform: translateY(-50%);"></i>
-                                <!-- Input Field -->
-                                <input class="form-control" type="text" id="paymentSearchInput" onkeyup="filterPayments()" placeholder="" style="padding-left: 35px; padding-right: 35px;">
-                                <!-- Clear Button -->
-                                <button class="position-absolute border-0 bg-transparent text-secondary" type="button" onclick="clearSearch()" style="top: 50%; right: 10px; transform: translateY(-50%);">
-                                    <i class="fa fa-times"></i>
-                                </button>
+                            <div class="form-group mb-md-0">
+                                <div class="position-relative">
+                                    <i class="fa fa-search position-absolute text-secondary" style="top: 50%; left: 12px; transform: translateY(-50%);"></i>
+                                    <input class="form-control" type="text" id="paymentSearchInput" onkeyup="filterPayments()" placeholder="Search" style="padding-left: 35px; padding-right: 35px;">
+                                    <button class="position-absolute border-0 bg-transparent text-secondary" type="button" onclick="clearSearch()" style="top: 50%; right: 10px; transform: translateY(-50%);">
+                                        <i class="fa fa-times"></i>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                         <div class="col-sm-6 col-md-4">
-                            <select class="form-control mb-3" id="patientTypeFilter">
-                                <option value="">All Patient Types</option>
-                                <option value="Inpatient">Inpatient</option>
-                                <option value="Outpatient">Outpatient</option>
-                            </select>
+                            <div class="form-group mb-md-0">
+                                <select class="form-control" id="patientTypeFilter">
+                                    <option value="">All Patient Types</option>
+                                    <option value="Inpatient">Inpatient</option>
+                                    <option value="Outpatient">Outpatient</option>
+                                </select>
+                            </div>
                         </div>
                         <div class="col-sm-6 col-md-4">
-                            <select class="form-control mb-3" id="statusFilter">
-                                <option value="">All Status</option>
-                                <option value="Fully Paid">Fully Paid</option>
-                                <option value="Partially Paid">Partially Paid</option>
-                            </select>
+                            <div class="form-group mb-0">
+                                <select class="form-control" id="statusFilter">
+                                    <option value="">All Status</option>
+                                    <option value="Fully Paid">Fully Paid</option>
+                                    <option value="Partially Paid">Partially Paid</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -80,14 +83,14 @@ include('includes/connection.php');
     <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Payment History Details</h5>
+                <h4 class="modal-title">Payment History Details</h4>
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
             <div class="modal-body">
                 <div class="table-responsive">
-                    <table class="table table-hover">
+                    <table class="datatable table table-hover">
                         <thead style="background-color: #CCCCCC;">
                             <tr>
                                 <th>Payment ID</th>
@@ -103,7 +106,7 @@ include('includes/connection.php');
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" data-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
@@ -155,7 +158,7 @@ function updatePaymentTable(data) {
                 <td>₱${row.total_paid}</td>
                 <td>₱${row.balance}</td>
                 <td><span class="custom-badge ${statusClass}">${row.status}</span></td>
-                <td class="text-right">
+                <td class="text-center">
                     <button type="button" 
                             class="btn btn-outline-primary btn-sm" 
                             onclick="viewPaymentDetails('${row.patient_id}', '${row.patient_name}')"
@@ -224,21 +227,28 @@ $(document).ready(function() {
     background-color: rgb(252, 252, 252);
     color: gray;
     border: 1px solid rgb(228, 228, 228);
+    padding: 0.375rem 0.75rem;
+    transition: all 0.2s ease;
+    min-width: 38px;
 }
 
 .btn-outline-primary:hover {
     background-color: #12369e;
     color: #fff;
+    border-color: #12369e;
 }
 
 .btn-outline-secondary {
     color: gray;
     border: 1px solid rgb(228, 228, 228);
+    padding: 0.375rem 0.75rem;
+    transition: all 0.2s ease;
 }
 
 .btn-outline-secondary:hover {
     background-color: #12369e;
     color: #fff;
+    border-color: #12369e;
 }
 
 .input-group-text {
@@ -250,6 +260,8 @@ $(document).ready(function() {
 .btn-primary {
     background: #12369e;
     border: none;
+    padding: 0.375rem 1rem;
+    transition: all 0.2s ease;
 }
 
 .btn-primary:hover {
@@ -257,10 +269,13 @@ $(document).ready(function() {
 }
 
 .custom-badge {
-    padding: 5px 10px;
+    padding: 6px 12px;
     border-radius: 4px;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 500;
+    display: inline-block;
+    text-align: center;
+    min-width: 80px;
 }
 
 .status-green {
@@ -275,67 +290,62 @@ $(document).ready(function() {
     border: 1px solid #fb8c00;
 }
 
-.filter-row {
-    background-color: #fff;
-    padding: 15px;
-    margin-bottom: 20px;
-    border-radius: 4px;
-}
 
-.filter-row select {
+.form-control {
     height: 38px;
-}
-
-.dataTables_wrapper .dataTables_length {
-    margin-bottom: 15px;
-}
-
-.dataTables_wrapper .dataTables_length select {
     border: 1px solid #e3e3e3;
-    border-radius: 3px;
-    padding: 5px;
-    margin: 0 5px;
+    border-radius: 4px;
+    padding: 0.375rem 0.75rem;
 }
 
-.dataTables_wrapper .dataTables_paginate .paginate_button.current {
-    background: #12369e;
-    color: white !important;
-    border: 1px solid #12369e;
+.form-control:focus {
+    border-color: #12369e;
+    box-shadow: 0 0 0 0.2rem rgba(18, 54, 158, 0.25);
 }
 
-.dataTables_wrapper .dataTables_paginate .paginate_button:hover {
-    background: #05007E;
-    color: white !important;
-    border: 1px solid #05007E;
+.sticky-search {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 
-.table-hover tbody tr:hover {
-    background-color: rgba(18, 54, 158, 0.05);
-}
-
-.dataTables_wrapper .dataTables_info {
-    padding-top: 15px;
+.modal-content {
+    border-radius: 6px;
+    overflow: hidden;
 }
 
 .modal-header {
     background-color: #f8f9fa;
+    border-bottom: 1px solid #e3e3e3;
+    padding: 1rem 1.5rem;
 }
 
-.fa-eye {
-    margin-right: 5px;
+.modal-body {
+    padding: 1.5rem;
 }
 
-#paymentSearchInput {
-    height: 38px;
+.modal-footer {
+    border-top: 1px solid #e3e3e3;
+    padding: 1rem 1.5rem;
 }
 
-.filter-row .col-sm-6 {
-    margin-bottom: 10px;
-}
-
-@media (min-width: 768px) {
-    .filter-row .col-sm-6 {
-        margin-bottom: 0;
+@media (max-width: 767.98px) {
+    .form-group {
+        margin-bottom: 1rem;
+        background-color: #f8f9fa;
+        padding: 10px;
+        border-radius: 4px;
+        border: 1px solid #e9ecef;
+    }
+    
+    .sticky-search {
+        padding: 1rem !important;
+    }
+    
+    .custom-badge {
+        min-width: 70px;
+        padding: 4px 8px;
     }
 }
 </style>

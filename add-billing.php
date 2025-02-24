@@ -306,7 +306,7 @@ if (isset($_POST['add-billing'])) {
                 <h4 class="page-title">Add Account</h4>
             </div>
             <div class="col-sm-8 text-right mb-3">
-                <a href="billing.php" class="btn btn-primary float-right">Back</a>
+                <a href="billing.php" class="btn btn-primary float-right"><i class="fa fa-arrow-left"></i> Back</a>
             </div>
         </div>
         <div class="col-lg-10 offset-lg-1">

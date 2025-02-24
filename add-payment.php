@@ -197,7 +197,7 @@ if (isset($_POST['submit_payment'])) {
                 <h4 class="page-title">Add Payment</h4>
             </div>
             <div class="col-sm-8 text-right mb-3">
-                <a href="payment-processing.php" class="btn btn-primary float-right">Back</a>
+                <a href="payment-processing.php" class="btn btn-primary float-right"><i class="fa fa-arrow-left"></i> Back</a>
             </div>
         </div>
 

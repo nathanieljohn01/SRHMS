@@ -58,7 +58,7 @@ if (isset($_REQUEST['save-hemopatient'])) {
                 <h4 class="page-title">Add Patient</h4>
             </div>
             <div class="col-sm-8 text-right m-b-20">
-                <a href="hemodialysis.php" class="btn btn-primary btn-rounded float-right">Back</a>
+                <a href="hemodialysis.php" class="btn btn-primary btn-rounded float-right"><i class="fa fa-arrow-left"></i> Back</a>
             </div>
         </div>
         <div class="row">

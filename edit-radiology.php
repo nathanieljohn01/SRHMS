@@ -69,7 +69,7 @@ if (isset($_POST['edit-radiology'])) {
                 <h4 class="page-title">Edit Radiology</h4>
             </div>
             <div class="col-sm-8 text-right m-b-20">
-                <a href="radiology.php" class="btn btn-primary btn-rounded float-right">Back</a>
+                <a href="radiology.php" class="btn btn-primary btn-rounded float-right"><i class="fa fa-arrow-left"></i> Back</a>
             </div>
         </div>
         <form method="POST" enctype="multipart/form-data">

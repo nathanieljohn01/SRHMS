@@ -89,7 +89,7 @@ if (isset($_POST['update-housekeeping-schedule'])) {
                 <h4 class="page-title">Edit Housekeeping Schedule</h4>
             </div>
             <div class="col-sm-8 text-right m-b-20">
-                <a href="housekeeping-schedule.php" class="btn btn-primary float-right">Back</a>
+                <a href="housekeeping-schedule.php" class="btn btn-primary float-right"><i class="fa fa-arrow-left"></i> Back</a>
             </div>
         </div>
         <div class="row">
@@ -207,4 +207,3 @@ select.form-control {
             box-shadow: 0 0 0 .2rem rgba(38, 143, 255, .25); /* Shadow on focus */
         }
 </style>
-

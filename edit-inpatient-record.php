@@ -83,7 +83,7 @@ if (isset($_POST['update-inpatient'])) {
                 <h4 class="page-title">Edit Inpatient Record</h4>
             </div>
             <div class="col-sm-8 text-right m-b-20">
-                <a href="inpatient-record.php" class="btn btn-primary float-right">Back</a>
+                <a href="inpatient-record.php" class="btn btn-primary float-right"><i class="fa fa-arrow-left"></i> Back</a>
             </div>
         </div>
         <div class="row">
