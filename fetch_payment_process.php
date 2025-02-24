@@ -8,7 +8,6 @@ try {
     // Get search query and sanitize it
     $query = isset($_GET['query']) ? mysqli_real_escape_string($connection, $_GET['query']) : '';
     $patient_type = isset($_GET['patient_type']) ? $_GET['patient_type'] : '';
-    $payment_status = isset($_GET['payment_status']) ? $_GET['payment_status'] : '';
 
     $sql = "SELECT * FROM tbl_payment WHERE deleted = 0";
 
