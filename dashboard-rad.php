@@ -245,4 +245,18 @@ canvas {
     width: 100% !important;
     height: 300px !important; /* Palitan depende sa gusto mong height */
 }
+.card {
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    border-radius: 8px;
+    border: none;
+    transition: transform 0.2s;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+}
+
+.card-body {
+    padding: 25px;
+}
 </style>

@@ -333,7 +333,8 @@ $(document).ready(function() {
 @media (max-width: 767.98px) {
     .form-group {
         margin-bottom: 1rem;
-        background-color: #f8f9fa;
+        background-color: rgb(241, 241, 241);
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
         padding: 10px;
         border-radius: 4px;
         border: 1px solid #e9ecef;

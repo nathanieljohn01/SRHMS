@@ -84,7 +84,7 @@ if (isset($_GET['patient_id'])) {
                 <h4 class="page-title">Laboratory Test Records</h4>
             </div>
             <div class="col-sm-6 text-right">
-                <a href="lab-order-patients.php" class="btn btn-primary">Back</a>
+                <a href="lab-order-patients.php" class="btn btn-primary"><i class="fa fa-arrow-left"></i> Back</a>
             </div>
         </div>
         <div class="row mt-3">
