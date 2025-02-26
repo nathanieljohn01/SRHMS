@@ -11,7 +11,7 @@ if (isset($_GET['patient_name'])) {
         or_discount, supplies_discount, other_discount, pf_discount,
         readers_discount, philhealth_pf, philhealth_hb, 
         vat_exempt_discount_amount, discount_amount,
-        pwd_discount_amount, total_due, non_discounted_total,
+        pwd_discount_amount, total_due, remaining_balance, non_discounted_total,
         (room_fee - COALESCE(room_discount, 0)) as net_room_fee,
         (medication_fee - COALESCE(med_discount, 0)) as net_medication_fee,
         (lab_fee - COALESCE(lab_discount, 0)) as net_lab_fee,
@@ -33,8 +33,7 @@ if (isset($_GET['patient_name'])) {
     FROM tbl_billing_inpatient 
     WHERE patient_name = ? 
     AND deleted = 0 
-    AND (status IS NULL OR status = '') 
-    AND remaining_balance > 0";
+    AND (status IS NULL OR status = '')";
               
     $stmt = $connection->prepare($query);
     $stmt->bind_param("s", $patient_name);

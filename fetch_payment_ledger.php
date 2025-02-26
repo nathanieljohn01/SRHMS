@@ -22,7 +22,7 @@ $sql = "SELECT
             END as status
         FROM tbl_payment p
         LEFT JOIN (
-            SELECT patient_name, remaining_balance
+            SELECT patient_name, remaining_balance, billing_id
             FROM tbl_billing_inpatient
             WHERE id IN (
                 SELECT MAX(id)
@@ -43,14 +43,14 @@ if (!empty($patient_type)) {
 
 if (!empty($payment_status)) {
     if ($payment_status == 'Fully Paid') {
-        $sql .= " GROUP BY p.patient_id, p.patient_name, p.patient_type, p.total_due, bi.remaining_balance 
+        $sql .= " GROUP BY p.patient_id, p.patient_name, p.patient_type, p.total_due, bi.remaining_balance, bi.billing_id 
                   HAVING status = 'Fully Paid'";
     } else {
-        $sql .= " GROUP BY p.patient_id, p.patient_name, p.patient_type, p.total_due, bi.remaining_balance 
+        $sql .= " GROUP BY p.patient_id, p.patient_name, p.patient_type, p.total_due, bi.remaining_balance, bi.billing_id 
                   HAVING status = 'Partially Paid'";
     }
 } else {
-    $sql .= " GROUP BY p.patient_id, p.patient_name, p.patient_type, p.total_due, bi.remaining_balance";
+    $sql .= " GROUP BY p.patient_id, p.patient_name, p.patient_type, p.total_due, bi.remaining_balance, bi.billing_id";
 }
 
 $sql .= " ORDER BY p.patient_name";

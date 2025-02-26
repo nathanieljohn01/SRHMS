@@ -60,6 +60,8 @@ $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_payment WHERE delete
                         <th>Total Due</th>
                         <th>Amount to Pay</th>
                         <th>Amount Paid</th>
+                        <th>Remaining Balance</th>
+                        <th>Payment Status</th>
                         <th>Transaction Date and Time</th>
                         <th>Action</th>
                     </tr>
@@ -74,6 +76,15 @@ $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_payment WHERE delete
                         $total_due = number_format($row['total_due'], 2);
                         $amount_paid = number_format($row['amount_paid'], 2);
                         $amount_to_pay = number_format($row['amount_to_pay'], 2);
+                        $remaining_balance = number_format($row['remaining_balance'], 2);
+                        $payment_status = '';
+                        if ($row['remaining_balance'] <= 0) {
+                            $payment_status = '<span class="payment-status status-paid">PAID</span>';
+                        } else if ($row['amount_paid'] > 0) {
+                            $payment_status = '<span class="payment-status status-partial">PARTIAL</span>';
+                        } else {
+                            $payment_status = '<span class="payment-status status-unpaid">UNPAID</span>';
+                        }
                     ?>
                         <tr>
                             <td><?php echo $payment_id; ?></td>
@@ -82,6 +93,8 @@ $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_payment WHERE delete
                             <td>₱<?php echo $total_due; ?></td>
                             <td>₱<?php echo $amount_to_pay; ?></td>
                             <td>₱<?php echo $amount_paid; ?></td>
+                            <td>₱<?php echo $remaining_balance; ?></td>
+                            <td><?php echo $payment_status; ?></td>
                             <td><?php echo date('F d, Y g:i A', strtotime($row['payment_datetime'])); ?></td>
                             <td class="text-right">
                                 <div class="dropdown dropdown-action">
@@ -140,6 +153,14 @@ function updatePaymentTable(data) {
     tbody.empty();
     
     data.forEach(function(row) {
+        let paymentStatus = '';
+        if (parseFloat(row.remaining_balance) <= 0) {
+            paymentStatus = '<span class="payment-status status-paid">PAID</span>';
+        } else if (parseFloat(row.amount_paid) > 0) {
+            paymentStatus = '<span class="payment-status status-partial">PARTIAL</span>';
+        } else {
+            paymentStatus = '<span class="payment-status status-unpaid">UNPAID</span>';
+        }
         tbody.append(`
             <tr>
                 <td>${row.payment_id}</td>
@@ -148,6 +169,8 @@ function updatePaymentTable(data) {
                 <td>₱${row.total_due}</td>
                 <td>₱${row.amount_to_pay}</td>
                 <td>₱${row.amount_paid}</td>
+                <td>₱${row.remaining_balance}</td>
+                <td>${paymentStatus}</td>
                 <td>${row.payment_datetime}</td>
                 <td class="text-right">
                     <div class="dropdown dropdown-action">
@@ -247,5 +270,24 @@ function confirmDelete() {
 
 #paymentSearchInput {
     height: 38px;
+}
+
+.payment-status {
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: bold;
+}
+.status-paid {
+    background-color: #28a745;
+    color: white;
+}
+.status-partial {
+    background-color: #ffc107;
+    color: black;
+}
+.status-unpaid {
+    background-color: #dc3545;
+    color: white;
 }
 </style>

@@ -20,6 +20,7 @@ if (isset($_POST['submit_payment'])) {
     $amount_to_pay = $_POST['amount_to_pay'];
     $amount_paid = $_POST['amount_paid'];
     $total_due = 0; // Initialize total_due
+    $billing_id = null; // Initialize billing_id
 
     // Validation checks
     $errors = [];
@@ -31,6 +32,10 @@ if (isset($_POST['submit_payment'])) {
     if (empty($patient_type)) {
         $errors[] = "Patient type is required";
     }
+    
+    // Convert to float for proper numeric comparison
+    $amount_to_pay = floatval($amount_to_pay);
+    $amount_paid = floatval($amount_paid);
     
     if (!is_numeric($amount_to_pay) || $amount_to_pay <= 0) {
         $errors[] = "Amount to pay must be greater than 0";
@@ -45,22 +50,24 @@ if (isset($_POST['submit_payment'])) {
     $patient_query = $connection->prepare("SELECT patient_id FROM tbl_patient WHERE CONCAT(first_name, ' ', last_name) = ?");
     $patient_query->bind_param("s", $patient_name);
     $patient_query->execute();
-    $patient_query->bind_result($patient_id);
-    $patient_query->fetch();
+    $patient_result = $patient_query->get_result();
+    $patient_row = $patient_result->fetch_assoc();
     $patient_query->close();
 
-    if (!$patient_id) {
+    if (!$patient_row) {
         $errors[] = "Patient not found in the system.";
+    } else {
+        $patient_id = $patient_row['patient_id'];
     }
     
     if (empty($errors)) {
         $connection->begin_transaction();
         
         try {
-            // Get total_due from tbl_billing_inpatient if patient is Inpatient
+            // Get total_due and billing_id from tbl_billing_inpatient if patient is Inpatient
             if ($patient_type == 'Inpatient') {
                 $total_due_query = $connection->prepare("
-                    SELECT total_due 
+                    SELECT id as billing_id, total_due, remaining_balance 
                     FROM tbl_billing_inpatient 
                     WHERE patient_name = ? 
                     ORDER BY id DESC LIMIT 1
@@ -71,23 +78,28 @@ if (isset($_POST['submit_payment'])) {
                 $total_due_row = $total_due_result->fetch_assoc();
                 
                 if ($total_due_row) {
-                    $total_due = $total_due_row['total_due'];
+                    $billing_id = strval($total_due_row['billing_id']); // Convert to string since it's varchar
+                    $total_due = $total_due_row['remaining_balance']; // Use remaining_balance instead of total_due
                 } else {
+                    $billing_id = null;
                     $total_due = $amount_to_pay; // Fallback if no billing record found
                 }
             } else {
+                $billing_id = null;
                 $total_due = $amount_to_pay; // For non-inpatient, use amount_to_pay as total_due
             }
 
-            // Insert into payment table with total_due
+            // Insert into payment table with billing_id
             $insert_query = $connection->prepare("INSERT INTO tbl_payment
-                (payment_id, patient_id, patient_name, patient_type, total_due, amount_to_pay, amount_paid, payment_datetime)
-                VALUES (?, ?, ?, ?, ?, ?, ?, NOW())");
+                (payment_id, patient_id, patient_name, patient_type, billing_id, total_due, amount_to_pay, amount_paid, remaining_balance, payment_datetime)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
             
-            $insert_query->bind_param("sissddd", $payment_id, $patient_id, $patient_name, $patient_type, $total_due, $amount_to_pay, $amount_paid);
+            // Calculate initial remaining balance
+            $initial_remaining = max(0, $total_due - $amount_paid);
+            
+            $insert_query->bind_param("sssssdddd", $payment_id, $patient_id, $patient_name, $patient_type, $billing_id, $total_due, $amount_to_pay, $amount_paid, $initial_remaining);
             
             if ($insert_query->execute()) {
-                // Update remaining balance in billing table based on patient type
                 if ($patient_type == 'Inpatient') {
                     // Get current remaining balance
                     $balance_query = $connection->prepare("
@@ -119,20 +131,41 @@ if (isset($_POST['submit_payment'])) {
                         ");
                         $update_balance->bind_param("dds", $new_balance, $new_balance, $patient_name);
                         $update_balance->execute();
+                        
+                        // Update remaining balance in tbl_payment
+                        $update_payment = $connection->prepare("
+                            UPDATE tbl_payment 
+                            SET remaining_balance = ?
+                            WHERE payment_id = ?
+                        ");
+                        $update_payment->bind_param("ds", $new_balance, $payment_id);
+                        $update_payment->execute();
                     }
-                }
+                } else {
+                    // For outpatient, check if it's a full payment
+                    if ($amount_paid >= $amount_to_pay) {
+                        // Update lab orders
+                        $update_lab = $connection->prepare("
+                            UPDATE tbl_laborder 
+                            SET is_billed = 1 
+                            WHERE patient_id = ? 
+                            AND patient_name = ?
+                            AND is_billed = 0
+                        ");
+                        $update_lab->bind_param("ss", $patient_id, $patient_name);
+                        $update_lab->execute();
 
-                // Only update is_billed status if payment is complete (remaining balance is 0)
-                if ($amount_paid >= $amount_to_pay) {
-                    // Update lab orders
-                    $update_lab = $connection->prepare("UPDATE tbl_laborder SET is_billed = 1 WHERE patient_id = ? AND is_billed = 0");
-                    $update_lab->bind_param("i", $patient_id);
-                    $update_lab->execute();
-
-                    // Update radiology orders
-                    $update_rad = $connection->prepare("UPDATE tbl_radiology SET is_billed = 1 WHERE patient_id = ? AND is_billed = 0");
-                    $update_rad->bind_param("i", $patient_id);
-                    $update_rad->execute();
+                        // Update radiology orders
+                        $update_rad = $connection->prepare("
+                            UPDATE tbl_radiology 
+                            SET is_billed = 1 
+                            WHERE patient_id = ? 
+                            AND patient_name = ?
+                            AND is_billed = 0
+                        ");
+                        $update_rad->bind_param("ss", $patient_id, $patient_name);
+                        $update_rad->execute();
+                    }
                 }
 
                 $connection->commit();
@@ -310,8 +343,14 @@ if (isset($_POST['submit_payment'])) {
                                     <tr>
                                         <td colspan="4" class="pl-5">PWD Discount <span id="inpatientPWDDiscount" class="float-right">₱0.00</span></td>
                                     </tr>
+                                    <tr>
+                                        <td colspan="4" class="pl-5">Amount Already Paid <span id="inpatientAmountPaid" class="float-right">₱0.00</span></td>
+                                    </tr>
                                     <tr class="font-weight-bold">
                                         <th colspan="4">Total Amount Due: <span id="inpatientAmountDue" class="float-right">₱0.00</span></th>
+                                    </tr>
+                                    <tr class="font-weight-bold">
+                                        <th colspan="4">Remaining Balance: <span id="inpatientRemainingBalance" class="float-right">₱0.00</span></th>
                                     </tr>
                                 </tfoot>
                             </table>
@@ -360,7 +399,9 @@ function togglePatientSearch() {
     document.getElementById('inpatientVatExempt').textContent = '₱0.00';
     document.getElementById('inpatientSeniorDiscount').textContent = '₱0.00';
     document.getElementById('inpatientPWDDiscount').textContent = '₱0.00';
+    document.getElementById('inpatientAmountPaid').textContent = '₱0.00';
     document.getElementById('inpatientAmountDue').textContent = '₱0.00';
+    document.getElementById('inpatientRemainingBalance').textContent = '₱0.00';
     currentTotalDue = 0;
     
     // Show appropriate table based on type
@@ -513,11 +554,23 @@ document.addEventListener('click', function(e) {
                     document.getElementById('inpatientSeniorDiscount').textContent = `₱${seniorDiscount.toFixed(2)}`;
                     document.getElementById('inpatientPWDDiscount').textContent = `₱${pwdDiscount.toFixed(2)}`;
                     
+                    // Get amount paid from tbl_payment
+                    fetch('get-total-payments.php?patient_name=' + patientName)
+                        .then(response => response.json())
+                        .then(paymentData => {
+                            const amountPaid = parseFloat(paymentData.total_paid || 0);
+                            document.getElementById('inpatientAmountPaid').textContent = `₱${amountPaid.toFixed(2)}`;
+                        });
+                    
                     // Calculate final amount due
                     const totalDue = subTotal - vatExempt - seniorDiscount - pwdDiscount - philHealthPF - philHealthHB;
                     document.getElementById('inpatientAmountDue').textContent = `₱${totalDue.toFixed(2)}`;
                     currentTotalDue = totalDue;
-                    updateAmountToPay(totalDue);
+                    
+                    // Show remaining balance and set as amount_to_pay
+                    const remainingBalance = parseFloat(data.remaining_balance || 0);
+                    document.getElementById('inpatientRemainingBalance').textContent = `₱${remainingBalance.toFixed(2)}`;
+                    updateAmountToPay(remainingBalance);
                 });
         }
     }

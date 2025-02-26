@@ -93,6 +93,7 @@ if ($patientType === 'hemodialysis') {
                         <th>Patient ID</th>
                         <th>Patient Name</th>
                         <th>Age</th>
+                        <th>Gender</th>
                         <th>Address</th>
                         <th>Diagnosis</th>
                         <th>Admission Date</th>
@@ -115,6 +116,7 @@ if ($patientType === 'hemodialysis') {
                         <td><?php echo $row['patient_id']; ?></td>
                         <td><?php echo $row['patient_name']; ?></td>
                         <td><?php echo $year; ?></td>
+                        <td><?php echo $row['gender']; ?></td>
                         <td><?php echo $row['address']; ?></td>
                         <td><?php echo $row['diagnosis']; ?></td>
                         <td><?php echo date('F d, Y g:i A', strtotime($row['admission_date'])); ?></td>

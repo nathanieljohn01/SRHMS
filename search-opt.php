@@ -5,44 +5,30 @@ include('includes/connection.php');
 if (isset($_GET['search'])) {
     $search = trim($_GET['search']);
     
-    // Refined query
+    // Refined query to get outpatients with unbilled lab or rad orders
     $sql = "
-        (SELECT DISTINCT 
-            l.patient_id, 
-            l.patient_name, 
-            l.patient_type
-        FROM 
-            tbl_laborder l
+        SELECT DISTINCT 
+            p.patient_id,
+            CONCAT(p.first_name, ' ', p.last_name) as patient_name
+        FROM tbl_patient p
+        LEFT JOIN tbl_laborder l ON p.patient_id = l.patient_id AND l.is_billed = 0 AND l.deleted = 0
+        LEFT JOIN tbl_radiology r ON p.patient_id = r.patient_id AND r.is_billed = 0 AND r.deleted = 0
         WHERE 
-            l.patient_name LIKE ?
-            AND l.deleted = 0
-            AND l.is_billed = 0
-            AND l.patient_type = 'Outpatient')
-        
-        UNION
-        
-        (SELECT DISTINCT 
-            r.patient_id, 
-            r.patient_name, 
-            r.patient_type
-        FROM 
-            tbl_radiology r
-        WHERE 
-            r.patient_name LIKE ?
-            AND r.deleted = 0
-            AND r.is_billed = 0
-            AND r.patient_type = 'Outpatient')
+            (CONCAT(p.first_name, ' ', p.last_name) LIKE ?)
+            AND (l.patient_id IS NOT NULL OR r.patient_id IS NOT NULL)
+            AND (l.patient_type = 'Outpatient' OR r.patient_type = 'Outpatient')
+        GROUP BY p.patient_id
+        HAVING COUNT(l.id) > 0 OR COUNT(r.id) > 0
     ";
 
-
-    if ($stmt = mysqli_prepare($connection, $sql)) {
-        $search_term = "%{$search}%";  // The search term with wildcards
-        mysqli_stmt_bind_param($stmt, 'ss', $search_term, $search_term); // Two 's' because you have two placeholders
-        mysqli_stmt_execute($stmt);
-        $result = mysqli_stmt_get_result($stmt);
+    if ($stmt = $connection->prepare($sql)) {
+        $search_term = "%{$search}%";
+        $stmt->bind_param("s", $search_term);
+        $stmt->execute();
+        $result = $stmt->get_result();
     
         $patients = [];
-        while ($row = mysqli_fetch_assoc($result)) {
+        while ($row = $result->fetch_assoc()) {
             $patients[] = [
                 'patient_id' => $row['patient_id'],
                 'patient_name' => $row['patient_name']
@@ -50,11 +36,11 @@ if (isset($_GET['search'])) {
         }
         
         // Return results as JSON
+        header('Content-Type: application/json');
         echo json_encode($patients);
         
         // Close the statement
-        mysqli_stmt_close($stmt);
+        $stmt->close();
     }
-
 }
 ?>

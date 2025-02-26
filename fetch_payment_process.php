@@ -17,7 +17,8 @@ try {
             patient_name LIKE '%" . $query . "%' OR 
             patient_type LIKE '%" . $query . "%' OR
             amount_to_pay LIKE '%" . $query . "%' OR
-            amount_paid LIKE '%" . $query . "%'
+            amount_paid LIKE '%" . $query . "%' OR
+            remaining_balance LIKE '%" . $query . "%'
         )";
     }
 
@@ -40,6 +41,7 @@ try {
         $row['total_due'] = number_format($row['amount_to_pay'], 2, '.', '');
         $row['amount_to_pay'] = number_format($row['amount_to_pay'], 2, '.', '');
         $row['amount_paid'] = number_format($row['amount_paid'], 2, '.', '');
+        $row['remaining_balance'] = number_format($row['remaining_balance'], 2, '.', '');
         
         // Sanitize the output
         $row['payment_id'] = htmlspecialchars($row['payment_id'], ENT_QUOTES, 'UTF-8');
