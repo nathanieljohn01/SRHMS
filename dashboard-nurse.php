@@ -6,14 +6,20 @@ if(empty($_SESSION['name'])) {
 include('header.php');
 include('includes/connection.php');
 ?>
- <div class="page-wrapper">
+<div class="page-wrapper">
     <div class="content">
         <div class="row">
-            <!-- Widgets -->
+            <!-- Summary Header -->
+            <div class="col-12 mb-4">
+                <h4 class="text-primary">Nurse's Dashboard</h4>
+                <p class="text-muted">Welcome back, <?php echo $_SESSION['name']; ?></p>
+            </div>
+
+            <!-- Enhanced Stat Cards -->
             <div class="col-md-6 col-sm-6 col-lg-6 col-xl-3">
                 <!-- Employee Widget -->
                 <div class="dash-widget">
-                    <span class="dash-widget-bg1"><i class="fa fa-user" aria-hidden="true"></i></span>
+                    <span class="dash-widget-bg1"><i class="fa fa-users" aria-hidden="true"></i></span>
                     <?php
                     $fetch_query = mysqli_query($connection, "select count(*) as total from tbl_patient where patient_type='Inpatient' and status=1");
                     $doc = mysqli_fetch_row($fetch_query);
@@ -28,7 +34,7 @@ include('includes/connection.php');
             <div class="col-md-6 col-sm-6 col-lg-6 col-xl-3">
                 <!-- Doctors Widget -->
                 <div class="dash-widget">
-                    <span class="dash-widget-bg2"><i class="fa fa-user" aria-hidden="true"></i></span>
+                    <span class="dash-widget-bg2"><i class="fa fa-user-md" aria-hidden="true"></i></span>
                     <?php
                     $fetch_query = mysqli_query($connection, "select count(*) as total from tbl_patient where patient_type='Outpatient' and status=1");
                     $doc = mysqli_fetch_row($fetch_query);
@@ -49,8 +55,8 @@ include('includes/connection.php');
                     $doc = mysqli_fetch_row($fetch_query);
                     ?>
                     <div class="dash-widget-info text-right">
-                        <h3><?php echo $doc[0]; ?></h3>
-                        <span class="widget-title4">Hemodialysis <i class="fa fa-check" aria-hidden="true"></i></span>
+                        <h3 class="counter"><?php echo $pending_tasks[0]; ?></h3>
+                        <span class="widget-title3">Pending Tasks <i class="fa fa-check" aria-hidden="true"></i></span>
                     </div>
                 </div>
             </div>
@@ -60,59 +66,170 @@ include('includes/connection.php');
                 <div class="dash-widget">
                     <span class="dash-widget-bg3"><i class="fa fa-users"></i></span>
                     <?php
-                    $fetch_query = mysqli_query($connection, "select count(*) as total from tbl_patient where status=1");
-                    $patient = mysqli_fetch_row($fetch_query);
+                    $fetch_query = mysqli_query($connection, "SELECT COUNT(*) AS total FROM tbl_task WHERE nurse_id={$_SESSION['user_id']} AND DATE(due_date)='$today' AND status='Completed'"); 
+                    $completed_tasks = mysqli_fetch_row($fetch_query);
                     ?>
                     <div class="dash-widget-info text-right">
-                        <h3><?php echo $patient[0]; ?></h3>
-                        <span class="widget-title3">Patients <i class="fa fa-check" aria-hidden="true"></i></span>
+                        <h3 class="counter"><?php echo $completed_tasks[0]; ?></h3>
+                        <span class="widget-title4">Completed Tasks <i class="fa fa-check" aria-hidden="true"></i></span>
                     </div>
                 </div>
             </div>
 
-            <!-- New Patients Chart -->
-            <div class="col-12 col-md-6 col-lg-6 col-xl-6">
-                <div class="card">
-                    <div class="card-header">
-                        <h4 class="card-title d-inline-block">Patients Overview</h4>
+            <!-- Patient Care Tasks -->
+            <div class="col-12 col-lg-8 mt-4">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-white">
+                        <h4 class="card-title text-primary">Today's Patient Care Tasks</h4>
+                        <div class="card-tools float-right">
+                            <a href="add-task.php" class="btn btn-primary btn-sm">
+                                <i class="fa fa-plus"></i> Add New Task
+                            </a>
+                        </div>
                     </div>
                     <div class="card-body">
-                        <canvas id="patientChart"></canvas>
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Time</th>
+                                        <th>Patient</th>
+                                        <th>Task</th>
+                                        <th>Priority</th>
+                                        <th>Status</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php
+                                    $tasks_query = mysqli_query($connection, 
+                                        "SELECT t.*, p.name as patient_name 
+                                         FROM tbl_task t 
+                                         JOIN tbl_patient p ON t.patient_id = p.id 
+                                         WHERE t.nurse_id = {$_SESSION['user_id']} 
+                                         AND DATE(t.due_date) = '$today'
+                                         ORDER BY t.priority DESC, t.due_date ASC
+                                         LIMIT 5");
+                                    
+                                    while($row = mysqli_fetch_assoc($tasks_query)) {
+                                        $priority_class = '';
+                                        switch($row['priority']) {
+                                            case 'High': $priority_class = 'danger'; break;
+                                            case 'Medium': $priority_class = 'warning'; break;
+                                            case 'Low': $priority_class = 'info'; break;
+                                        }
+                                        
+                                        $status_class = $row['status'] == 'Completed' ? 'success' : 'warning';
+                                        ?>
+                                        <tr>
+                                            <td><?php echo date('h:i A', strtotime($row['due_date'])); ?></td>
+                                            <td><?php echo $row['patient_name']; ?></td>
+                                            <td><?php echo $row['task_description']; ?></td>
+                                            <td><span class="badge badge-<?php echo $priority_class; ?>"><?php echo $row['priority']; ?></span></td>
+                                            <td><span class="badge badge-<?php echo $status_class; ?>"><?php echo $row['status']; ?></span></td>
+                                            <td>
+                                                <div class="btn-group">
+                                                    <a href="view-task.php?id=<?php echo $row['id']; ?>" class="btn btn-sm btn-info">
+                                                        <i class="fa fa-eye"></i>
+                                                    </a>
+                                                    <?php if($row['status'] != 'Completed') { ?>
+                                                    <a href="complete-task.php?id=<?php echo $row['id']; ?>" class="btn btn-sm btn-success">
+                                                        <i class="fa fa-check"></i>
+                                                    </a>
+                                                    <?php } ?>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    <?php } ?>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Total Patients Chart -->
-            <div class="col-12 col-md-6 col-lg-6 col-xl-6">
-                <div class="card">
-                    <div class="card-header">
-                        <h4 class="card-title d-inline-block">Total Patients Overview</h4>
+            <!-- Ward Occupancy -->
+            <div class="col-12 col-lg-4 mt-4">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-white">
+                        <h4 class="card-title text-primary">Ward Occupancy</h4>
                     </div>
                     <div class="card-body">
-                        <canvas id="totalPatientChart"></canvas>
+                        <canvas id="wardOccupancyChart" height="300"></canvas>
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
+</div>
 
-            <?php
-// Create an array of months from current month to December
-$current_month = date('n');
-$months = array();
-for ($i = $current_month; $i <= 12; $i++) {
-    $months[] = $i;
-}
-?>
-
+<!-- Add CSS -->
 <style>
-/* Updated CSS for doctor name */
-.contact-name {
-    font-size: 1.1em; /* Slightly larger text */
-    font-weight: bold; /* Bold text */
-    color: #3c3c3c; /* Highlight color */
+.hover-effect {
+    transition: transform 0.3s ease-in-out;
 }
 .contact-info {
     padding: 10px;
     border-bottom: 1px solid #ddd; /* Optional: Adds a bottom border for separation */
+}
+canvas {
+    width: 100% !important;
+    height: 300px !important; /* Palitan depende sa gusto mong height */
+}
+canvas {
+    width: 100% !important;
+    height: 300px !important; /* Palitan depende sa gusto mong height */
+}
+.contact-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.doctor-card {
+    padding: 15px;
+    border-bottom: 1px solid #eee;
+    transition: all 0.3s ease;
+}
+
+.doctor-card:hover {
+    background-color: #f8f9fa;
+}
+
+.contact-info {
+    display: flex;
+    align-items: center;
+}
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+.card {
+    border: none;
+    border-radius: 10px;
+    margin-bottom: 20px;
+}
+.badge {
+    padding: 5px 10px;
+    border-radius: 20px;
+}
+.btn-group .btn {
+    margin: 0 2px;
+}
+.card {
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    border-radius: 8px;
+    border: none;
+    transition: transform 0.2s;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+}
+
+.card-body {
+    padding: 25px;
 }
 </style>
 
@@ -166,103 +283,34 @@ for ($i = $current_month; $i <= 12; $i++) {
  include('footer.php');
 ?>
 
-<style>
-/* Updated CSS for doctor name */
-.contact-name {
-    font-size: 1.1em; /* Slightly larger text */
-    font-weight: bold; /* Bold text */
-    color: #3c3c3c; /* Highlight color */
-}
-.contact-info {
-    padding: 10px;
-    border-bottom: 1px solid #ddd; /* Optional: Adds a bottom border for separation */
-}
-canvas {
-    width: 100% !important;
-    height: 300px !important; /* Palitan depende sa gusto mong height */
-}
-.contact-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-}
-
-.doctor-card {
-    padding: 15px;
-    border-bottom: 1px solid #eee;
-    transition: all 0.3s ease;
-}
-
-.doctor-card:hover {
-    background-color: #f8f9fa;
-}
-
-.contact-info {
-    display: flex;
-    align-items: center;
-}
-
-.doctor-image img {
-    width: 80px;
-    height: 80px;
-    border-radius: 50%;
-    object-fit: cover;
-    border: 3px solid #fff;
-    box-shadow: 0 0 10px rgba(0,0,0,0.1);
-}
-
-.doctor-details {
-    margin-left: 20px;
-}
-
-.doctor-name {
-    margin: 0;
-    color: #333;
-    font-size: 18px;
-    font-weight: 600;
-}
-
-.specialization {
-    color: rgba(15, 54, 159, 1);
-    margin: 5px 0;
-    font-weight: 500;
-}
-
-.schedule {
-    color: #666;
-    margin: 5px 0;
-    font-size: 14px;
-}
-
-.schedule i {
-    margin-right: 5px;
-    color: gray;
-}
-.card {
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    border-radius: 8px;
-    border: none;
-    transition: transform 0.2s;
-}
-
-.card:hover {
-    transform: translateY(-5px);
-}
-
-.card-body {
-    padding: 25px;
-}
-</style>
-
 <!-- Include Chart.js library -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
 <script>
-    // Get the canvas element
-    var ctx = document.getElementById('patientChart').getContext('2d');
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize ward occupancy chart
+    const ctx = document.getElementById('wardOccupancyChart').getContext('2d');
+    
+    <?php
+    // Fetch ward occupancy data
+    $ward_query = mysqli_query($connection, 
+        "SELECT w.ward_name, 
+                COUNT(CASE WHEN w.occupied = 1 THEN 1 END) as occupied,
+                COUNT(*) as total
+         FROM tbl_ward w
+         GROUP BY w.ward_name");
+    
+    $labels = [];
+    $occupied = [];
+    $available = [];
+    
+    while($row = mysqli_fetch_assoc($ward_query)) {
+        $labels[] = $row['ward_name'];
+        $occupied[] = $row['occupied'];
+        $available[] = $row['total'] - $row['occupied'];
+    }
+    ?>
 
-    // Create the chart
-    var patientChart = new Chart(ctx, {
+    new Chart(ctx, {
         type: 'bar',
         data: {
             labels: [
@@ -318,7 +366,7 @@ canvas {
                 }
             ]
         },
-        options: {  
+        options: {
             responsive: true,
             maintainAspectRatio: false,
             scales: {
@@ -341,46 +389,37 @@ canvas {
         data: {
             labels: months.map(month => new Date(Date.parse(month + " 1, 2000")).toLocaleString('en-US', { month: 'long' })),
             datasets: [{
-                label: 'Total Patients',
-                data: [
-                    <?php
-                    $total_patients = array();
-                    foreach ($months as $month) {
-                        $result = mysqli_query($connection, "SELECT COUNT(*) AS total FROM tbl_patient WHERE MONTH(created_at) = '$month' AND YEAR(created_at) = YEAR(NOW())");
-                        $row = mysqli_fetch_assoc($result);
-                        $total_patients[] = $row['total'];
-                    }
-                    echo implode(',', $total_patients);
-                    ?>
-                ],
-                backgroundColor: 'rgba(120, 182, 35, 0.5)',
-                borderColor: 'rgba(120, 182, 35, 1)',
-                borderWidth: 1,
-                lineTension: 0.3
+                label: 'Occupied',
+                data: <?php echo json_encode($occupied); ?>,
+                backgroundColor: 'rgba(255, 99, 132, 0.8)',
+                borderColor: 'rgba(255, 99, 132, 1)',
+                borderWidth: 1
+            }, {
+                label: 'Available',
+                data: <?php echo json_encode($available); ?>,
+                backgroundColor: 'rgba(75, 192, 192, 0.8)',
+                borderColor: 'rgba(75, 192, 192, 1)',
+                borderWidth: 1
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            },
             scales: {
-                yAxes: [{
-                    ticks: {
-                        beginAtZero: true,
-                        callback: function(value) {
-                            if (value % 1 === 0) {
-                                return value;
-                            }
-                        }
-                    }
-                }]
-            },
-            animation: {
-                duration: 2000,
-            },
-            hover: {
-                animationDuration: 2000,
-            },
-            responsiveAnimationDuration: 2000,
+                y: {
+                    beginAtZero: true,
+                    stacked: true
+                },
+                x: {
+                    stacked: true
+                }
+            }
         }
     });
+});
 </script>
