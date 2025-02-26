@@ -94,7 +94,41 @@ if (isset($_POST['add-billing'])) {
         $professional_fee = isset($_POST['professional_fee']) && $_POST['professional_fee'] !== '' ? $_POST['professional_fee'] : 0;
         $readers_fee = isset($_POST['readers_fee']) && $_POST['readers_fee'] !== '' ? $_POST['readers_fee'] : 0;
         $others_fee = isset($_POST['others_fee']) && $_POST['others_fee'] !== '' ? $_POST['others_fee'] : 0;
-        
+
+        // Calculate medication fee
+        $medication_query = $connection->prepare("SELECT SUM(total_price) AS medication_fee FROM tbl_treatment WHERE patient_name = ? AND deleted = 0");
+        $medication_query->bind_param("s", $patient_name);
+        $medication_query->execute();
+        $medication_result = $medication_query->get_result();
+        if ($medication = $medication_result->fetch_assoc()) {
+            $medication_fee = $medication['medication_fee'] ?? 0;
+        }
+
+        // Handle others fees
+        if (isset($_POST['others']) && !empty($_POST['others'])) {
+            foreach ($_POST['others'] as $item) {
+                $item_name = mysqli_real_escape_string($connection, $item['name']);
+                $item_cost = mysqli_real_escape_string($connection, $item['cost']);
+
+                $insert_query = "
+                    INSERT INTO tbl_billing_others (billing_id, item_name, item_cost, date_time)
+                    VALUES ('$billing_id', '$item_name', '$item_cost', NOW())
+                ";
+                mysqli_query($connection, $insert_query);
+            }
+
+            $others_fee_query = "
+            SELECT SUM(item_cost) AS others_fee
+            FROM tbl_billing_others
+            WHERE billing_id = '$billing_id' AND deleted = 0
+            ";
+
+            $others_fee_result = mysqli_query($connection, $others_fee_query);
+            $others_fee_row = mysqli_fetch_assoc($others_fee_result);
+            $others_fee = $others_fee_row['others_fee'] ?? 0;
+        }
+
+    
         // Get checkbox states
         $vat_exempt_checkbox = isset($_POST['vat_exempt_checkbox']) ? $_POST['vat_exempt_checkbox'] : 'off';
         $discount_checkbox = isset($_POST['discount_checkbox']) ? $_POST['discount_checkbox'] : 'off';
