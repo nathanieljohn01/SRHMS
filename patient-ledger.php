@@ -83,7 +83,7 @@ include('includes/connection.php');
     <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <h4 class="modal-title">Payment History Details</h4>
+                <h4 class="modal-title">Payment History</h4>
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
                 </button>
@@ -97,6 +97,7 @@ include('includes/connection.php');
                                 <th>Total Due</th>
                                 <th>Amount to Pay</th>
                                 <th>Amount Paid</th>
+                                <th>Remaining</th>
                                 <th>Payment Date</th>
                             </tr>
                         </thead>
@@ -148,11 +149,12 @@ function updatePaymentTable(data) {
     
     data.forEach(function(row) {
         const statusClass = row.status === 'Fully Paid' ? 'status-green' : 'status-orange';
+        const billingIdDisplay = row.patient_type === 'Inpatient' ? `(Billing ID: ${row.billing_id})` : '';
         
         tbody.append(`
             <tr>
                 <td>${row.patient_id}</td>
-                <td>${row.patient_name}</td>
+                <td>${row.patient_name} ${billingIdDisplay}</td>
                 <td>${row.patient_type}</td>
                 <td>₱${row.total_due}</td>
                 <td>₱${row.total_paid}</td>
@@ -188,20 +190,20 @@ function viewPaymentDetails(patientId, patientName) {
                     <td>₱${parseFloat(payment.total_due).toFixed(2)}</td>
                     <td>₱${parseFloat(payment.amount_to_pay).toFixed(2)}</td>
                     <td>₱${parseFloat(payment.amount_paid).toFixed(2)}</td>
+                    <td>₱${parseFloat(payment.remaining_balance).toFixed(2)}</td>
                     <td>${payment.payment_datetime}</td>
                 </tr>`;
             });
             
             $('#paymentDetailsBody').html(html);
-            $('#paymentDetailsModal .modal-title').text('Payment History');
+            $('#paymentDetailsModal .modal-title').text(`Payment History - ${patientName}`);
             $('#paymentDetailsModal').modal('show');
         },
         error: function() {
             Swal.fire({
                 icon: 'error',
                 title: 'Error',
-                text: 'Failed to load payment details',
-                confirmButtonColor: '#12369e'
+                text: 'Failed to fetch payment details'
             });
         }
     });

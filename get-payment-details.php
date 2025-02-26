@@ -9,6 +9,7 @@ if (isset($_POST['patient_id'])) {
                 total_due,
                 amount_to_pay,
                 amount_paid,
+                remaining_balance,
                 DATE_FORMAT(payment_datetime, '%M %d, %Y %h:%i %p') as payment_datetime
             FROM tbl_payment 
             WHERE patient_id = ?

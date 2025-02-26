@@ -15,13 +15,9 @@ $pay_id = $row[0] == 0 ? 1 : $row[0] + 1;
 
 if (isset($_POST['submit_payment'])) {
     $payment_id = 'PAY-' . $pay_id;
-    $patient_name = $_POST['patient_name'];
-    $patient_type = $_POST['patient_type'];
-    $amount_to_pay = $_POST['amount_to_pay'];
-    $amount_paid = $_POST['amount_paid'];
-    $total_due = 0; // Initialize total_due
-    $billing_id = null; // Initialize billing_id
-
+    $patient_name = mysqli_real_escape_string($connection, $_POST['patient_name']);
+    $patient_type = mysqli_real_escape_string($connection, $_POST['patient_type']);
+    
     // Validation checks
     $errors = [];
     
@@ -32,165 +28,196 @@ if (isset($_POST['submit_payment'])) {
     if (empty($patient_type)) {
         $errors[] = "Patient type is required";
     }
-    
-    // Convert to float for proper numeric comparison
-    $amount_to_pay = floatval($amount_to_pay);
-    $amount_paid = floatval($amount_paid);
-    
-    if (!is_numeric($amount_to_pay) || $amount_to_pay <= 0) {
-        $errors[] = "Amount to pay must be greater than 0";
-    }
-    
-    if (!is_numeric($amount_paid) || $amount_paid <= 0) {
-        $errors[] = "Amount paid must be greater than 0";
-    }
 
     // Fetch patient_id
     $patient_id = null;
-    $patient_query = $connection->prepare("SELECT patient_id FROM tbl_patient WHERE CONCAT(first_name, ' ', last_name) = ?");
-    $patient_query->bind_param("s", $patient_name);
-    $patient_query->execute();
-    $patient_result = $patient_query->get_result();
-    $patient_row = $patient_result->fetch_assoc();
-    $patient_query->close();
-
-    if (!$patient_row) {
-        $errors[] = "Patient not found in the system.";
+    $patient_query = mysqli_query($connection, "SELECT patient_id FROM tbl_patient WHERE CONCAT(first_name, ' ', last_name) = '$patient_name'");
+    if (!$patient_query) {
+        $errors[] = "Database error: " . mysqli_error($connection);
     } else {
-        $patient_id = $patient_row['patient_id'];
+        $patient_row = mysqli_fetch_assoc($patient_query);
+        if (!$patient_row) {
+            $errors[] = "Patient not found in the system.";
+        } else {
+            $patient_id = $patient_row['patient_id'];
+        }
     }
     
     if (empty($errors)) {
-        $connection->begin_transaction();
+        mysqli_begin_transaction($connection);
         
         try {
-            // Get total_due and billing_id from tbl_billing_inpatient if patient is Inpatient
             if ($patient_type == 'Inpatient') {
-                $total_due_query = $connection->prepare("
-                    SELECT id as billing_id, total_due, remaining_balance 
+                // Get inpatient billing details
+                $total_due_query = mysqli_query($connection, "
+                    SELECT total_due, remaining_balance 
                     FROM tbl_billing_inpatient 
-                    WHERE patient_name = ? 
+                    WHERE patient_name = '$patient_name' 
                     ORDER BY id DESC LIMIT 1
                 ");
-                $total_due_query->bind_param("s", $patient_name);
-                $total_due_query->execute();
-                $total_due_result = $total_due_query->get_result();
-                $total_due_row = $total_due_result->fetch_assoc();
                 
-                if ($total_due_row) {
-                    $billing_id = strval($total_due_row['billing_id']); // Convert to string since it's varchar
-                    $total_due = $total_due_row['remaining_balance']; // Use remaining_balance instead of total_due
-                } else {
-                    $billing_id = null;
-                    $total_due = $amount_to_pay; // Fallback if no billing record found
+                if (!$total_due_query) {
+                    throw new Exception("Error fetching billing details: " . mysqli_error($connection));
                 }
-            } else {
-                $billing_id = null;
-                $total_due = $amount_to_pay; // For non-inpatient, use amount_to_pay as total_due
-            }
+                
+                $total_due_row = mysqli_fetch_assoc($total_due_query);
+                $total_due = $total_due_row ? $total_due_row['remaining_balance'] : 0;
+                $amount_to_pay = $total_due;
+                $amount_paid = str_replace(',', '', $_POST['amount_paid']);
+                $amount_paid = floatval($amount_paid);
+                $initial_remaining = max(0, $total_due - $amount_paid);
+                
+                // Insert payment record for inpatient
+                $insert_query = "INSERT INTO tbl_payment (
+                    payment_id, patient_id, patient_name, patient_type,
+                    total_due, amount_to_pay, amount_paid, remaining_balance, payment_datetime
+                ) VALUES (
+                    '$payment_id', '$patient_id', '$patient_name', '$patient_type',
+                    $total_due, $amount_to_pay, $amount_paid, $initial_remaining, NOW()
+                )";
+                
+                if (!mysqli_query($connection, $insert_query)) {
+                    throw new Exception("Error inserting payment: " . mysqli_error($connection));
+                }
+                
+                // Update inpatient billing
+                $update_balance = mysqli_query($connection, "
+                    UPDATE tbl_billing_inpatient 
+                    SET remaining_balance = $initial_remaining,
+                        status = CASE 
+                            WHEN $initial_remaining <= 0 THEN 'Paid'
+                            ELSE status 
+                        END
+                    WHERE patient_name = '$patient_name' 
+                    ORDER BY id DESC LIMIT 1
+                ");
+                
+                if (!$update_balance) {
+                    throw new Exception("Error updating balance: " . mysqli_error($connection));
+                }
 
-            // Insert into payment table with billing_id
-            $insert_query = $connection->prepare("INSERT INTO tbl_payment
-                (payment_id, patient_id, patient_name, patient_type, billing_id, total_due, amount_to_pay, amount_paid, remaining_balance, payment_datetime)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
-            
-            // Calculate initial remaining balance
-            $initial_remaining = max(0, $total_due - $amount_paid);
-            
-            $insert_query->bind_param("sssssdddd", $payment_id, $patient_id, $patient_name, $patient_type, $billing_id, $total_due, $amount_to_pay, $amount_paid, $initial_remaining);
-            
-            if ($insert_query->execute()) {
-                if ($patient_type == 'Inpatient') {
-                    // Get current remaining balance
-                    $balance_query = $connection->prepare("
-                        SELECT remaining_balance 
+                // If payment is complete (remaining balance is 0), update billing_others
+                if ($initial_remaining <= 0) {
+                    // Get the billing_id from the latest inpatient billing
+                    $billing_id_query = mysqli_query($connection, "
+                        SELECT billing_id 
                         FROM tbl_billing_inpatient 
-                        WHERE patient_name = ? 
+                        WHERE patient_name = '$patient_name' 
                         ORDER BY id DESC LIMIT 1
                     ");
-                    $balance_query->bind_param("s", $patient_name);
-                    $balance_query->execute();
-                    $balance_result = $balance_query->get_result();
-                    $balance_row = $balance_result->fetch_assoc();
                     
-                    if ($balance_row) {
-                        // Calculate new remaining balance
-                        $current_balance = $balance_row['remaining_balance'];
-                        $new_balance = max(0, $current_balance - $amount_paid);
-                        
-                        // Update the remaining balance and status if needed
-                        $update_balance = $connection->prepare("
-                            UPDATE tbl_billing_inpatient 
-                            SET remaining_balance = ?,
-                                status = CASE 
-                                    WHEN ? <= 0 THEN 'Paid'
-                                    ELSE status 
-                                END
-                            WHERE patient_name = ? 
-                            ORDER BY id DESC LIMIT 1
-                        ");
-                        $update_balance->bind_param("dds", $new_balance, $new_balance, $patient_name);
-                        $update_balance->execute();
-                        
-                        // Update remaining balance in tbl_payment
-                        $update_payment = $connection->prepare("
-                            UPDATE tbl_payment 
-                            SET remaining_balance = ?
-                            WHERE payment_id = ?
-                        ");
-                        $update_payment->bind_param("ds", $new_balance, $payment_id);
-                        $update_payment->execute();
+                    if (!$billing_id_query) {
+                        throw new Exception("Error getting billing ID: " . mysqli_error($connection));
                     }
-                } else {
-                    // For outpatient, check if it's a full payment
-                    if ($amount_paid >= $amount_to_pay) {
-                        // Update lab orders
-                        $update_lab = $connection->prepare("
-                            UPDATE tbl_laborder 
+                    
+                    $billing_row = mysqli_fetch_assoc($billing_id_query);
+                    if ($billing_row) {
+                        $billing_id = $billing_row['billing_id'];
+                        
+                        // Update all related records in billing_others
+                        $update_others = mysqli_query($connection, "
+                            UPDATE tbl_billing_others 
                             SET is_billed = 1 
-                            WHERE patient_id = ? 
-                            AND patient_name = ?
-                            AND is_billed = 0
+                            WHERE billing_id = '$billing_id'
                         ");
-                        $update_lab->bind_param("ss", $patient_id, $patient_name);
-                        $update_lab->execute();
-
-                        // Update radiology orders
-                        $update_rad = $connection->prepare("
-                            UPDATE tbl_radiology 
-                            SET is_billed = 1 
-                            WHERE patient_id = ? 
-                            AND patient_name = ?
-                            AND is_billed = 0
-                        ");
-                        $update_rad->bind_param("ss", $patient_id, $patient_name);
-                        $update_rad->execute();
+                        
+                        if (!$update_others) {
+                            throw new Exception("Error updating billing others: " . mysqli_error($connection));
+                        }
                     }
                 }
+            } else {
+                // For outpatient, calculate total from lab and radiology
+                $lab_query = mysqli_query($connection, "
+                    SELECT COALESCE(SUM(price), 0) as total_lab 
+                    FROM tbl_laborder 
+                    WHERE patient_name = '$patient_name' 
+                    AND is_billed = 0 
+                    AND deleted = 0
+                ");
+                
+                $rad_query = mysqli_query($connection, "
+                    SELECT COALESCE(SUM(price), 0) as total_rad 
+                    FROM tbl_radiology 
+                    WHERE patient_name = '$patient_name' 
+                    AND is_billed = 0 
+                    AND deleted = 0
+                ");
+                
+                if (!$lab_query || !$rad_query) {
+                    throw new Exception("Error calculating fees: " . mysqli_error($connection));
+                }
+                
+                $lab_total = mysqli_fetch_assoc($lab_query)['total_lab'];
+                $rad_total = mysqli_fetch_assoc($rad_query)['total_rad'];
+                
+                // Set all payment values
+                $total_due = $lab_total + $rad_total;
+                $amount_to_pay = $total_due;
+                $amount_paid = $total_due; // For outpatient, always fully paid
+                $initial_remaining = 0;
+                
+                // Insert payment record for outpatient
+                $insert_query = "INSERT INTO tbl_payment (
+                    payment_id, patient_id, patient_name, patient_type,
+                    total_due, amount_to_pay, amount_paid, remaining_balance, payment_datetime
+                ) VALUES (
+                    '$payment_id', '$patient_id', '$patient_name', '$patient_type',
+                    $total_due, $amount_to_pay, $amount_paid, $initial_remaining, NOW()
+                )";
+                
+                if (!mysqli_query($connection, $insert_query)) {
+                    throw new Exception("Error inserting payment: " . mysqli_error($connection));
+                }
+                
+                // Update lab orders
+                $update_lab = mysqli_query($connection, "
+                    UPDATE tbl_laborder 
+                    SET is_billed = 1 
+                    WHERE patient_name = '$patient_name'
+                    AND is_billed = 0
+                    AND deleted = 0
+                ");
+                
+                if (!$update_lab) {
+                    throw new Exception("Error updating lab orders: " . mysqli_error($connection));
+                }
 
-                $connection->commit();
-
-                echo "
-                <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
-                <script>
-                    document.addEventListener('DOMContentLoaded', function() {
-                        var style = document.createElement('style');
-                        style.innerHTML = '.swal2-confirm { background-color: #12369e !important; color: white !important; border: none !important; } .swal2-confirm:hover { background-color: #05007E !important; } .swal2-confirm:focus { box-shadow: 0 0 0 0.2rem rgba(18, 54, 158, 0.5) !important; }';
-                        document.head.appendChild(style);
-
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Success!',
-                            text: 'Payment recorded successfully!',
-                            confirmButtonColor: '#12369e'
-                        }).then(() => {
-                            window.location.href = 'payment-processing.php';
-                        });
-                    });
-                </script>";
+                // Update radiology orders
+                $update_rad = mysqli_query($connection, "
+                    UPDATE tbl_radiology 
+                    SET is_billed = 1 
+                    WHERE patient_name = '$patient_name'
+                    AND is_billed = 0
+                    AND deleted = 0
+                ");
+                
+                if (!$update_rad) {
+                    throw new Exception("Error updating radiology orders: " . mysqli_error($connection));
+                }
             }
+
+            mysqli_commit($connection);
+
+            echo "
+            <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Success!',
+                        text: 'Payment recorded successfully!',
+                        confirmButtonColor: '#12369e'
+                    }).then(() => {
+                        window.location.href = 'payment-processing.php';
+                    });
+                });
+            </script>";
         } catch (Exception $e) {
-            $connection->rollback();
+            mysqli_rollback($connection);
+            
+            // Log the error for debugging
+            error_log("Payment Processing Error: " . $e->getMessage());
             
             echo "
             <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
@@ -199,7 +226,7 @@ if (isset($_POST['submit_payment'])) {
                     Swal.fire({
                         icon: 'error',
                         title: 'Error',
-                        text: 'An error occurred while processing payment.',
+                        text: 'Error details: " . addslashes($e->getMessage()) . "',
                         confirmButtonColor: '#12369e'
                     });
                 });

@@ -61,7 +61,6 @@ $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_payment WHERE delete
                         <th>Amount to Pay</th>
                         <th>Amount Paid</th>
                         <th>Remaining Balance</th>
-                        <th>Payment Status</th>
                         <th>Transaction Date and Time</th>
                         <th>Action</th>
                     </tr>
@@ -77,14 +76,6 @@ $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_payment WHERE delete
                         $amount_paid = number_format($row['amount_paid'], 2);
                         $amount_to_pay = number_format($row['amount_to_pay'], 2);
                         $remaining_balance = number_format($row['remaining_balance'], 2);
-                        $payment_status = '';
-                        if ($row['remaining_balance'] <= 0) {
-                            $payment_status = '<span class="payment-status status-paid">PAID</span>';
-                        } else if ($row['amount_paid'] > 0) {
-                            $payment_status = '<span class="payment-status status-partial">PARTIAL</span>';
-                        } else {
-                            $payment_status = '<span class="payment-status status-unpaid">UNPAID</span>';
-                        }
                     ?>
                         <tr>
                             <td><?php echo $payment_id; ?></td>
@@ -94,7 +85,6 @@ $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_payment WHERE delete
                             <td>₱<?php echo $amount_to_pay; ?></td>
                             <td>₱<?php echo $amount_paid; ?></td>
                             <td>₱<?php echo $remaining_balance; ?></td>
-                            <td><?php echo $payment_status; ?></td>
                             <td><?php echo date('F d, Y g:i A', strtotime($row['payment_datetime'])); ?></td>
                             <td class="text-right">
                                 <div class="dropdown dropdown-action">

@@ -9,25 +9,29 @@ $sql = "SELECT
             p.patient_id,
             p.patient_name,
             p.patient_type,
-            p.total_due,
+            CASE 
+                WHEN p.patient_type = 'Inpatient' THEN bi.total_due
+                ELSE p.total_due
+            END as total_due,
             SUM(p.amount_paid) as total_paid,
             CASE 
                 WHEN p.patient_type = 'Inpatient' THEN bi.remaining_balance
-                ELSE (p.total_due - SUM(p.amount_paid))
+                ELSE 0
             END as balance,
             CASE 
                 WHEN p.patient_type = 'Inpatient' AND bi.remaining_balance <= 0 THEN 'Fully Paid'
-                WHEN p.patient_type != 'Inpatient' AND (p.total_due <= SUM(p.amount_paid)) THEN 'Fully Paid'
+                WHEN p.patient_type != 'Inpatient' THEN 'Fully Paid'
                 ELSE 'Partially Paid'
-            END as status
+            END as status,
+            COALESCE(bi.billing_id, '') as billing_id
         FROM tbl_payment p
         LEFT JOIN (
-            SELECT patient_name, remaining_balance, billing_id
+            SELECT patient_name, remaining_balance, billing_id, total_due
             FROM tbl_billing_inpatient
             WHERE id IN (
                 SELECT MAX(id)
                 FROM tbl_billing_inpatient
-                GROUP BY patient_name
+                GROUP BY patient_name, billing_id
             )
         ) bi ON p.patient_name = bi.patient_name AND p.patient_type = 'Inpatient'
         WHERE p.deleted = 0";
@@ -41,19 +45,17 @@ if (!empty($patient_type)) {
     $sql .= " AND p.patient_type = '$patient_type'";
 }
 
+$sql .= " GROUP BY p.patient_id, p.patient_name, p.patient_type, bi.total_due, bi.remaining_balance, bi.billing_id";
+
 if (!empty($payment_status)) {
     if ($payment_status == 'Fully Paid') {
-        $sql .= " GROUP BY p.patient_id, p.patient_name, p.patient_type, p.total_due, bi.remaining_balance, bi.billing_id 
-                  HAVING status = 'Fully Paid'";
+        $sql .= " HAVING status = 'Fully Paid'";
     } else {
-        $sql .= " GROUP BY p.patient_id, p.patient_name, p.patient_type, p.total_due, bi.remaining_balance, bi.billing_id 
-                  HAVING status = 'Partially Paid'";
+        $sql .= " HAVING status = 'Partially Paid'";
     }
-} else {
-    $sql .= " GROUP BY p.patient_id, p.patient_name, p.patient_type, p.total_due, bi.remaining_balance, bi.billing_id";
 }
 
-$sql .= " ORDER BY p.patient_name";
+$sql .= " ORDER BY p.patient_name, bi.billing_id";
 
 $result = mysqli_query($connection, $sql);
 $data = array();
