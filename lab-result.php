@@ -181,7 +181,10 @@ $dashboardLink = ($role == 1) ? 'dashboard.php' : (($role == 5) ? 'dashboard-lab
         function showTests(department) {
             var tests = {
                 "Hematology": ["Complete Blood Count"],
-                "Clinical Microscopy": ["Urinalysis", "Fecalysis"]
+                "Clinical Microscopy": ["Urinalysis", "Fecalysis"],
+                "Clinical Chemistry": ["Electrolytes"],
+                "Serology": ["Dengue Duo"],
+                "Blood Bank": ["Crossmatching"]
             };
 
             var testSelect = $('#testSelect');
@@ -201,7 +204,11 @@ $dashboardLink = ($role == 1) ? 'dashboard.php' : (($role == 5) ? 'dashboard-lab
             var urlMap = {
                 "Complete Blood Count": "cbc.php",
                 "Urinalysis": "urinalysis.php",
-                "Fecalysis": "fecalysis.php"
+                "Fecalysis": "fecalysis.php",
+                "Electrolytes": "electrolytes.php",
+                "Dengue Duo": "dengue-duo.php",
+                "Crossmatching": "crossmatching.php"
+                
             };
             if (urlMap[selectedTest]) {
                 window.location.href = urlMap[selectedTest];
@@ -219,6 +226,9 @@ $dashboardLink = ($role == 1) ? 'dashboard.php' : (($role == 5) ? 'dashboard-lab
                 <option value="" disabled selected>Select Department</option>
                 <option value="Hematology">Hematology</option>
                 <option value="Clinical Microscopy">Clinical Microscopy</option>
+                <option value="Clinical Chemistry">Clinical Chemistry</option>
+                <option value="Serology">Serology</option>
+                <option value="Blood Bank">Blood Bank</option>
             </select>
         </div>
         <div class="form-group">
