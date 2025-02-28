@@ -127,7 +127,6 @@ if (isset($_POST['add-billing'])) {
             $others_fee = $others_fee_row['others_fee'] ?? 0;
         }
 
-    
         // Get checkbox states
         $vat_exempt_checkbox = isset($_POST['vat_exempt_checkbox']) ? $_POST['vat_exempt_checkbox'] : 'off';
         $discount_checkbox = isset($_POST['discount_checkbox']) ? $_POST['discount_checkbox'] : 'off';
