@@ -7,7 +7,7 @@ $query = isset($_GET['query']) ? trim($_GET['query']) : '';
 // Check if the query is not empty
 if (!empty($query)) {
     // Prepare the SQL query to search for patients by name and check for discharge_date being non-null
-    $sql = "SELECT patient_id, patient_name FROM tbl_inpatient_record WHERE patient_name LIKE ? AND discharge_date IS NOT NULL";
+    $sql = "SELECT patient_id, patient_name FROM tbl_inpatient_record WHERE patient_name LIKE ? AND discharge_date IS NOT NULL AND is_billed = 0";
     
     // Prepare the statement
     if ($stmt = mysqli_prepare($connection, $sql)) {

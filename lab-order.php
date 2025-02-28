@@ -95,7 +95,7 @@ if (isset($_POST['save-order'])) {
                             confirmButtonText: 'OK'
                         }).then((result) => {
                             if (result.isConfirmed) {
-                                window.location.href = 'lab-order.php';
+                                window.location.href = 'lab-order-patients.php';
                             }
                         });
                     </script>
