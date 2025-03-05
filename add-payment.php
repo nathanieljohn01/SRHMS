@@ -172,7 +172,7 @@ if (isset($_POST['submit_payment'])) {
                         }
                     }
                 }
-            } else {
+            } else if ($patient_type == 'Outpatient') {
                 // For outpatient, calculate total from lab and radiology
                 $lab_query = mysqli_query($connection, "
                     SELECT COALESCE(SUM(price), 0) as total_lab 
@@ -240,6 +240,131 @@ if (isset($_POST['submit_payment'])) {
                 
                 if (!$update_rad) {
                     throw new Exception("Error updating radiology orders: " . mysqli_error($connection));
+                }
+            } else if ($patient_type == 'Hemodialysis') {
+                // Get hemodialysis billing details
+                $total_due_query = mysqli_query($connection, "
+                    SELECT total_due, remaining_balance 
+                    FROM tbl_billing_hemodialysis 
+                    WHERE patient_name = '$patient_name' 
+                    ORDER BY id DESC LIMIT 1
+                ");
+                
+                if (!$total_due_query) {
+                    throw new Exception("Error fetching billing details: " . mysqli_error($connection));
+                }
+                
+                $total_due_row = mysqli_fetch_assoc($total_due_query);
+                $total_due = $total_due_row ? $total_due_row['total_due'] : 0;
+                $amount_to_pay = $total_due_row ? $total_due_row['remaining_balance'] : 0;
+                $amount_paid = str_replace(',', '', $_POST['amount_paid']);
+                $amount_paid = floatval($amount_paid);
+                $initial_remaining = max(0, $amount_to_pay - $amount_paid);
+                
+                // Insert payment record for hemodialysis
+                $insert_query = "INSERT INTO tbl_payment (
+                    payment_id, patient_id, patient_name, patient_type,
+                    total_due, amount_to_pay, amount_paid, remaining_balance, payment_datetime
+                ) VALUES (
+                    '$payment_id', '$patient_id', '$patient_name', '$patient_type',
+                    $total_due, $amount_to_pay, $amount_paid, $initial_remaining, NOW()
+                )";
+                
+                if (!mysqli_query($connection, $insert_query)) {
+                    throw new Exception("Error inserting payment: " . mysqli_error($connection));
+                }
+                
+                // Update hemodialysis billing
+                $update_balance = mysqli_query($connection, "
+                    UPDATE tbl_billing_hemodialysis 
+                    SET remaining_balance = $initial_remaining,
+                        status = CASE 
+                            WHEN $initial_remaining <= 0 THEN 'Paid'
+                            ELSE status 
+                        END
+                    WHERE patient_name = '$patient_name' 
+                    ORDER BY id DESC LIMIT 1
+                ");
+                
+                if (!$update_balance) {
+                    throw new Exception("Error updating balance: " . mysqli_error($connection));
+                }
+
+                // If payment is complete (remaining balance is 0), update related records
+                if ($initial_remaining <= 0) {
+                    // Get the billing_id from the latest hemodialysis billing
+                    $billing_id_query = mysqli_query($connection, "
+                        SELECT billing_id 
+                        FROM tbl_billing_hemodialysis 
+                        WHERE patient_name = '$patient_name' 
+                        ORDER BY id DESC LIMIT 1
+                    ");
+                    
+                    if (!$billing_id_query) {
+                        throw new Exception("Error getting billing ID: " . mysqli_error($connection));
+                    }
+                    
+                    $billing_row = mysqli_fetch_assoc($billing_id_query);
+                    if ($billing_row) {
+                        $billing_id = $billing_row['billing_id'];
+                        
+                        // Update all related records in billing_others
+                        $update_others = mysqli_query($connection, "
+                            UPDATE tbl_billing_others 
+                            SET is_billed = 1 
+                            WHERE billing_id = '$billing_id'
+                        ");
+                        
+                        if (!$update_others) {
+                            throw new Exception("Error updating billing others: " . mysqli_error($connection));
+                        }
+
+                        // Update hemodialysis record
+                        $update_hemodialysis = mysqli_query($connection, "
+                            UPDATE tbl_hemodialysis 
+                            SET is_billed = 1 
+                            WHERE patient_name = '$patient_name'
+                        ");
+                        
+                        if (!$update_hemodialysis) {
+                            throw new Exception("Error updating hemodialysis record: " . mysqli_error($connection));
+                        }
+
+                        // Update lab orders
+                        $update_lab = mysqli_query($connection, "
+                            UPDATE tbl_laborder 
+                            SET is_billed = 1 
+                            WHERE patient_name = '$patient_name'
+                            AND deleted = 0
+                        ");
+                        
+                        if (!$update_lab) {
+                            throw new Exception("Error updating lab orders: " . mysqli_error($connection));
+                        }
+
+                        // Update radiology orders
+                        $update_rad = mysqli_query($connection, "
+                            UPDATE tbl_radiology 
+                            SET is_billed = 1 
+                            WHERE patient_name = '$patient_name'
+                            AND deleted = 0
+                        ");
+                        
+                        if (!$update_rad) {
+                            throw new Exception("Error updating radiology orders: " . mysqli_error($connection));
+                        }
+
+                        // Update treatment records
+                        $update_treatment = mysqli_query($connection, "
+                            UPDATE tbl_treatment 
+                            SET is_billed = 1 
+                            WHERE patient_name = '$patient_name'
+                        ");
+                        
+                        if (!$update_treatment) {
+                            throw new Exception("Error updating treatment records: " . mysqli_error($connection));
+                        }
+                    }
                 }
             }
 
@@ -325,6 +450,7 @@ if (isset($_POST['submit_payment'])) {
                                     <option value="">Select Type</option>
                                     <option value="Inpatient">Inpatient</option>
                                     <option value="Outpatient">Outpatient</option>
+                                    <option value="Hemodialysis">Hemodialysis</option>
                                 </select>
                             </div>
                         </div>
@@ -427,6 +553,51 @@ if (isset($_POST['submit_payment'])) {
                                     </tr>
                                 </tfoot>
                             </table>
+
+                            <!-- Hemodialysis Billing Table -->
+                            <table class="table table-bordered mt-4" id="hemodialysisBillingTable" style="display: none;">
+                                <thead style="background-color: #CCCCCC;">
+                                    <tr>
+                                        <th>Description</th>
+                                        <th>Amount</th>
+                                        <th>Discount</th>
+                                        <th>Net Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                                <tfoot>
+                                    <tr>
+                                        <th colspan="4">Total Fees: <span id="hemodialysisGrossAmount" class="float-right">₱0.00</span></th>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="4" class="pl-4">Less:</td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="4" class="pl-5">PhilHealth (PF) <span id="hemodialysisPhilhealthPF" class="float-right">₱0.00</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="4" class="pl-5">PhilHealth (HB) <span id="hemodialysisPhilhealthHB" class="float-right">₱0.00</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="4" class="pl-5">VAT Exempt <span id="hemodialysisVatExempt" class="float-right">₱0.00</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="4" class="pl-5">Senior Citizen Discount <span id="hemodialysisSeniorDiscount" class="float-right">₱0.00</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="4" class="pl-5">PWD Discount <span id="hemodialysisPWDDiscount" class="float-right">₱0.00</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="4" class="pl-5">Amount Already Paid <span id="hemodialysisAmountPaid" class="float-right">₱0.00</span></td>
+                                    </tr>
+                                    <tr class="font-weight-bold">
+                                        <th colspan="4">Total Amount Due: <span id="hemodialysisAmountDue" class="float-right">₱0.00</span></th>
+                                    </tr>
+                                    <tr class="font-weight-bold">
+                                        <th colspan="4">Remaining Balance: <span id="hemodialysisRemainingBalance" class="float-right">₱0.00</span></th>
+                                    </tr>
+                                </tfoot>
+                            </table>
                         </div>
                     </div>
 
@@ -448,6 +619,8 @@ const patientSearch = document.getElementById('patient_search');
 const searchResults = document.getElementById('search_results');
 const outpatientLabTable = document.getElementById('outpatientLabTable');
 const outpatientRadTable = document.getElementById('outpatientRadTable');
+const inpatientBillingTable = document.getElementById('inpatientBillingTable');
+const hemodialysisBillingTable = document.getElementById('hemodialysisBillingTable');
 const patientTypeSelect = document.getElementById('patient_type');
 let currentTotalDue = 0;
 
@@ -459,11 +632,13 @@ function togglePatientSearch() {
     outpatientLabTable.style.display = 'none';
     outpatientRadTable.style.display = 'none';
     inpatientBillingTable.style.display = 'none';
+    hemodialysisBillingTable.style.display = 'none';
     
     // Clear table contents
     outpatientLabTable.querySelector('tbody').innerHTML = '';
     outpatientRadTable.querySelector('tbody').innerHTML = '';
     inpatientBillingTable.querySelector('tbody').innerHTML = '';
+    hemodialysisBillingTable.querySelector('tbody').innerHTML = '';
     
     // Clear all amounts and spans
     document.getElementById('inpatientGrossAmount').textContent = '₱0.00';
@@ -475,6 +650,16 @@ function togglePatientSearch() {
     document.getElementById('inpatientAmountPaid').textContent = '₱0.00';
     document.getElementById('inpatientAmountDue').textContent = '₱0.00';
     document.getElementById('inpatientRemainingBalance').textContent = '₱0.00';
+    
+    document.getElementById('hemodialysisGrossAmount').textContent = '₱0.00';
+    document.getElementById('hemodialysisPhilhealthPF').textContent = '₱0.00';
+    document.getElementById('hemodialysisPhilhealthHB').textContent = '₱0.00';
+    document.getElementById('hemodialysisVatExempt').textContent = '₱0.00';
+    document.getElementById('hemodialysisSeniorDiscount').textContent = '₱0.00';
+    document.getElementById('hemodialysisPWDDiscount').textContent = '₱0.00';
+    document.getElementById('hemodialysisAmountPaid').textContent = '₱0.00';
+    document.getElementById('hemodialysisAmountDue').textContent = '₱0.00';
+    document.getElementById('hemodialysisRemainingBalance').textContent = '₱0.00';
     currentTotalDue = 0;
     
     // Show appropriate table based on type
@@ -483,6 +668,8 @@ function togglePatientSearch() {
         outpatientRadTable.style.display = 'table';
     } else if (selectedType === 'Inpatient') {
         inpatientBillingTable.style.display = 'table';
+    } else if (selectedType === 'Hemodialysis') {
+        hemodialysisBillingTable.style.display = 'table';
     }
     
     // Clear search and amounts
@@ -509,7 +696,9 @@ function calculateRemainingBalance() {
 patientSearch.addEventListener('keyup', function() {
     const selectedType = patientTypeSelect.value;
     if (this.value.length > 0) {
-        const searchEndpoint = selectedType === 'Outpatient' ? 'search-opt.php' : 'search-ipt-payment.php';
+        const searchEndpoint = selectedType === 'Outpatient' ? 'search-opt.php' : 
+                             selectedType === 'Inpatient' ? 'search-ipt-payment.php' : 
+                             'search-hemodialysis-payment.php';
         fetch(searchEndpoint + '?search=' + this.value)
             .then(response => response.json())
             .then(data => {
@@ -575,7 +764,7 @@ document.addEventListener('click', function(e) {
                     });
                     updateAmountToPay(totalAmount);
                 });
-        } else {
+        } else if (selectedType === 'Inpatient') {
             // For inpatients, fetch their billing data
             fetch('ipt-billing-fee.php?patient_name=' + patientName)
                 .then(response => response.json())
@@ -643,6 +832,73 @@ document.addEventListener('click', function(e) {
                     // Show remaining balance and set as amount_to_pay
                     const remainingBalance = parseFloat(data.remaining_balance || 0);
                     document.getElementById('inpatientRemainingBalance').textContent = `₱${remainingBalance.toFixed(2)}`;
+                    updateAmountToPay(remainingBalance);
+                });
+        } else if (selectedType === 'Hemodialysis') {
+            // For hemodialysis patients, fetch their billing data
+            fetch('hemodialysis-billing-fee.php?patient_name=' + patientName)
+                .then(response => response.json())
+                .then(data => {
+                    const tbody = hemodialysisBillingTable.querySelector('tbody');
+                    tbody.innerHTML = '';
+                    hemodialysisBillingTable.style.display = 'table';
+
+                    // Add rows for each fee type
+                    const fees = [
+                        { name: 'Dialysis Fee', fee: data.dialysis_fee, discount: data.dialysis_discount, net: data.net_dialysis_fee },
+                        { name: 'Medication Fee', fee: data.medication_fee, discount: data.med_discount, net: data.net_medication_fee },
+                        { name: 'Laboratory Fee', fee: data.lab_fee, discount: data.lab_discount, net: data.net_lab_fee },
+                        { name: 'Supplies Fee', fee: data.supplies_fee, discount: data.supplies_discount, net: data.net_supplies_fee },
+                        { name: 'Others Fee', fee: data.others_fee, discount: data.other_discount, net: data.net_others_fee },
+                        { name: 'Professional Fee', fee: data.professional_fee, discount: data.pf_discount, net: data.net_pf_fee }
+                    ];
+
+                    fees.forEach(item => {
+                        if (parseFloat(item.fee || 0) > 0) {  // Only show rows with fees
+                            const row = document.createElement('tr');
+                            row.innerHTML = `
+                                <td>${item.name}</td>
+                                <td>₱${parseFloat(item.fee || 0).toFixed(2)}</td>
+                                <td>₱${parseFloat(item.discount || 0).toFixed(2)}</td>
+                                <td>₱${parseFloat(item.net || 0).toFixed(2)}</td>
+                            `;
+                            tbody.appendChild(row);
+                        }
+                    });
+
+                    // Show total fees
+                    const subTotal = parseFloat(data.total_amount || 0);
+                    document.getElementById('hemodialysisGrossAmount').textContent = `₱${subTotal.toFixed(2)}`;
+                    
+                    // Show all discounts
+                    const philHealthPF = parseFloat(data.philhealth_pf || 0);
+                    const philHealthHB = parseFloat(data.philhealth_hb || 0);
+                    const vatExempt = parseFloat(data.vat_exempt_discount_amount || 0);
+                    const seniorDiscount = parseFloat(data.discount_amount || 0);
+                    const pwdDiscount = parseFloat(data.pwd_discount_amount || 0);
+                    
+                    document.getElementById('hemodialysisPhilhealthPF').textContent = `₱${philHealthPF.toFixed(2)}`;
+                    document.getElementById('hemodialysisPhilhealthHB').textContent = `₱${philHealthHB.toFixed(2)}`;
+                    document.getElementById('hemodialysisVatExempt').textContent = `₱${vatExempt.toFixed(2)}`;
+                    document.getElementById('hemodialysisSeniorDiscount').textContent = `₱${seniorDiscount.toFixed(2)}`;
+                    document.getElementById('hemodialysisPWDDiscount').textContent = `₱${pwdDiscount.toFixed(2)}`;
+                    
+                    // Get amount paid from tbl_payment
+                    fetch('get-total-payments.php?patient_name=' + patientName)
+                        .then(response => response.json())
+                        .then(paymentData => {
+                            const amountPaid = parseFloat(paymentData.total_paid || 0);
+                            document.getElementById('hemodialysisAmountPaid').textContent = `₱${amountPaid.toFixed(2)}`;
+                        });
+                    
+                    // Calculate final amount due
+                    const totalDue = subTotal - vatExempt - seniorDiscount - pwdDiscount - philHealthPF - philHealthHB;
+                    document.getElementById('hemodialysisAmountDue').textContent = `₱${totalDue.toFixed(2)}`;
+                    currentTotalDue = totalDue;
+                    
+                    // Show remaining balance and set as amount_to_pay
+                    const remainingBalance = parseFloat(data.remaining_balance || 0);
+                    document.getElementById('hemodialysisRemainingBalance').textContent = `₱${remainingBalance.toFixed(2)}`;
                     updateAmountToPay(remainingBalance);
                 });
         }
