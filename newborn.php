@@ -54,7 +54,8 @@ function sanitize($data) {
                         <th>Time of Birth</th>
                         <th>Birth Weight</th>
                         <th>Birth Height</th>
-                        <th>Gestational Age</th>
+                        <th>Admission Date and Time</th>
+                        <th>Discharge Date and Time</th>
                         <th>Physician</th>
                         <th>Action</th>
                     </tr>
@@ -85,6 +86,10 @@ function sanitize($data) {
                         mysqli_stmt_execute($fetch_query);
                         $result = mysqli_stmt_get_result($fetch_query);
                         while ($row = mysqli_fetch_array($result)) {
+
+                        $admission_date_time = date('F d, Y g:i A', strtotime($row['admission_datetime']));
+                        $discharge_date_time = ($row['discharge_datetime']) ? date('F d, Y g:i A', strtotime($row['discharge_datetime'])) : 'N/A';
+                            
                     ?>
                             <tr>
                                 <td><?php echo htmlspecialchars($row['newborn_id']); ?></td>
@@ -95,7 +100,8 @@ function sanitize($data) {
                                 <td><?php echo htmlspecialchars($row['tob']); ?></td>
                                 <td><?php echo htmlspecialchars($row['birth_weight']); ?></td>
                                 <td><?php echo htmlspecialchars($row['birth_height']); ?></td>
-                                <td><?php echo htmlspecialchars($row['gestational_age']); ?></td>
+                                <td><?php echo $admission_date_time; ?></td>
+                                <td><?php echo $discharge_date_time; ?></td>
                                 <td><?php echo htmlspecialchars($row['physician']); ?></td>
                                 <td class="text-right">
                                     <div class="dropdown dropdown-action">
@@ -113,6 +119,9 @@ function sanitize($data) {
                     } else {
                         $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_newborn WHERE deleted = 0");
                         while ($row = mysqli_fetch_array($fetch_query)) {
+
+                            $admission_date_time = date('F d, Y g:i A', strtotime($row['admission_datetime']));
+                            $discharge_date_time = ($row['discharge_datetime']) ? date('F d, Y g:i A', strtotime($row['discharge_datetime'])) : 'N/A';    
                     ?>
                             <tr>
                                 <td><?php echo htmlspecialchars($row['newborn_id']); ?></td>
@@ -123,7 +132,8 @@ function sanitize($data) {
                                 <td><?php echo htmlspecialchars($row['tob']); ?></td>
                                 <td><?php echo htmlspecialchars($row['birth_weight']); ?></td>
                                 <td><?php echo htmlspecialchars($row['birth_height']); ?></td>
-                                <td><?php echo htmlspecialchars($row['gestational_age']); ?></td>
+                                <td><?php echo $admission_date_time; ?></td>
+                                <td><?php echo $discharge_date_time; ?></td>
                                 <td><?php echo htmlspecialchars($row['physician']); ?></td>
                                 <td class="text-right">
                                     <div class="dropdown dropdown-action">
@@ -209,7 +219,6 @@ function confirmDelete(){
                     <td>${row.tob}</td>
                     <td>${row.birth_weight}</td>
                     <td>${row.birth_height}</td>
-                    <td>${row.gestational_age}</td>
                     <td>${row.physician}</td>
                     <td class="text-right">
                         <div class="dropdown dropdown-action">

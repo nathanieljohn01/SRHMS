@@ -35,15 +35,23 @@ $doctor_name = isset($_SESSION['name']) ? $_SESSION['name'] : null;
             </div>
         </div>
         <div class="table-responsive">
-        <label for="scheduleSearchInput" class="font-weight-bold">Search Doctor:</label>
-            <div class="input-group">
-            <input class="form-control" type="text" id="scheduleSearchInput" onkeyup="filterSchedule()" placeholder="Search Doctor">
-            <div class="input-group-append">
-                    <button class="btn btn-outline-primary" type="button" onclick="clearSearch()">
-                        <i class="fa fa-times"></i>
-                    </button>
+            <div class="sticky-search">
+            <h5 class="font-weight-bold mb-2">Search Doctor:</h5>
+                <div class="input-group mb-3">
+                    <div class="position-relative w-100">
+                        <!-- Search Icon -->
+                        <i class="fa fa-search position-absolute text-secondary" style="top: 50%; left: 12px; transform: translateY(-50%);"></i>
+                        <!-- Input Field -->
+                        <input class="form-control" type="text" id="scheduleSearchInput" onkeyup="filterSchedule()" style="padding-left: 35px; padding-right: 35px;">
+                        <!-- Clear Button -->
+                        <button class="position-absolute border-0 bg-transparent text-secondary" type="button" onclick="clearSearch()" style="top: 50%; right: 10px; transform: translateY(-50%);">
+                            <i class="fa fa-times"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
+        </div>
+        <div class="table-responsive">
             <table class="datatable table table-hover" id="scheduleTable">
                 <thead style="background-color: #CCCCCC;">
                     <tr>

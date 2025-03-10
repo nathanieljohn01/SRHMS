@@ -15,7 +15,6 @@ $sql = "SELECT * FROM tbl_newborn
             LOWER(tob) LIKE LOWER(?) OR
             LOWER(birth_weight) LIKE LOWER(?) OR
             LOWER(birth_height) LIKE LOWER(?) OR
-            LOWER(gestational_age) LIKE LOWER(?) OR
             LOWER(physician) LIKE LOWER(?)
         )
         ORDER BY dob DESC";
@@ -42,7 +41,6 @@ while ($row = mysqli_fetch_assoc($result)) {
         'tob' => htmlspecialchars($row['tob']),
         'birth_weight' => htmlspecialchars($row['birth_weight']),
         'birth_height' => htmlspecialchars($row['birth_height']),
-        'gestational_age' => htmlspecialchars($row['gestational_age']),
         'physician' => htmlspecialchars($row['physician'])
     );
 }
