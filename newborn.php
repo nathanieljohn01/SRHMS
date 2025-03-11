@@ -54,6 +54,7 @@ function sanitize($data) {
                         <th>Time of Birth</th>
                         <th>Birth Weight</th>
                         <th>Birth Height</th>
+                        <th>Room Type</th>
                         <th>Admission Date and Time</th>
                         <th>Discharge Date and Time</th>
                         <th>Physician</th>
@@ -100,6 +101,7 @@ function sanitize($data) {
                                 <td><?php echo htmlspecialchars($row['tob']); ?></td>
                                 <td><?php echo htmlspecialchars($row['birth_weight']); ?></td>
                                 <td><?php echo htmlspecialchars($row['birth_height']); ?></td>
+                                <td><?php echo htmlspecialchars($row['room_type']); ?></td>
                                 <td><?php echo $admission_date_time; ?></td>
                                 <td><?php echo $discharge_date_time; ?></td>
                                 <td><?php echo htmlspecialchars($row['physician']); ?></td>
@@ -132,6 +134,7 @@ function sanitize($data) {
                                 <td><?php echo htmlspecialchars($row['tob']); ?></td>
                                 <td><?php echo htmlspecialchars($row['birth_weight']); ?></td>
                                 <td><?php echo htmlspecialchars($row['birth_height']); ?></td>
+                                <td><?php echo htmlspecialchars($row['room_type']); ?></td>
                                 <td><?php echo $admission_date_time; ?></td>
                                 <td><?php echo $discharge_date_time; ?></td>
                                 <td><?php echo htmlspecialchars($row['physician']); ?></td>
