@@ -73,10 +73,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['selectedMedicines']) &
         }
 
         if (!isset($msg)) {
-            $msg = "Treatment added successfully.";
+            echo "<script>showSuccess('Treatment added successfully.', true);</script>";
+        } else {
+            echo "<script>showError('" . addslashes($msg) . "');</script>";
         }
     } else {
-        $msg = "Error: Invalid medicines data.";
+        echo "<script>showError('Error: Invalid medicines data.');</script>";
     }
 }
 
@@ -138,15 +140,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['patientId'])) {
 
         // Execute the insert query
         if ($insert_query->execute()) {
-            echo "<script>
-                    window.location.replace('hemodialysis.php');
-                  </script>";
+            echo "<script>showSuccess('Patient added successfully.', true);</script>";
         } else {
-            echo "<script>alert('Error: " . $connection->error . "');</script>";
+            echo "<script>showError('Error: " . $connection->error . "');</script>";
         }
         exit();
     } else {
-        echo "<script>alert('Patient not found or marked as deleted.');</script>";
+        echo "<script>showError('Patient not found or marked as deleted.');</script>";
     }
 }
 
@@ -229,6 +229,7 @@ ob_end_flush(); // Flush output buffer
                         }
                         $update_query->bind_param("s", $id);
                         $update_query->execute();
+                        echo "<script>showSuccess('Record deleted successfully.', true);</script>";
                     }
                     $fetch_query = mysqli_query($connection, "
                         SELECT h.*, 
@@ -293,7 +294,7 @@ ob_end_flush(); // Flush output buffer
                                     <div class="dropdown-menu dropdown-menu-right">
                                     <?php 
                                     if ($_SESSION['role'] == 1 | $_SESSION['role'] == 3) {
-                                        echo '<a class="dropdown-item" href="edit-hemo.php?id='.$row['id'].'"><i class="fa fa-pencil m-r-5"></i> Update</a>';
+                                        echo '<a class="dropdown-item" href="edit-hemo.php?id='.$row['id'].'" onclick="return confirmDelete()"><i class="fa fa-pencil m-r-5"></i> Update</a>';
                                         echo '<a class="dropdown-item" href="hemodialysis.php?ids='.$row['id'].'" onclick="return confirmDelete()"><i class="fa fa-trash-o m-r-5"></i> Delete</a>';
                                     }
                                     ?>
@@ -587,6 +588,143 @@ $('.treatment-btn').on('click', function () {
         $("#searchResults").html("").hide(); // Clear and hide the dropdown
     });
 </script>
+
+<script>
+    $(document).ready(function() {
+        // Handle medicine quantity validation
+        $('.medicine-quantity').on('change', function() {
+            const quantity = parseInt($(this).val());
+            const available = parseInt($(this).data('available'));
+            
+            if (quantity <= 0) {
+                showError('Please enter a valid quantity greater than 0.');
+                $(this).val('');
+                return;
+            }
+            
+            if (quantity > available) {
+                showError(`Requested quantity exceeds available stock (${available} available).`);
+                $(this).val('');
+                return;
+            }
+        });
+        
+        // Handle treatment form submission
+        $('#treatmentForm').on('submit', function(e) {
+            e.preventDefault();
+            
+            // Validate medicine selection
+            const selectedMedicines = $('input[name="selected_medicines[]"]:checked').length;
+            if (selectedMedicines === 0) {
+                showError('Please select at least one medicine');
+                return;
+            }
+            
+            // Show loading state
+            showLoading('Submitting treatment...');
+            
+            // Submit the form
+            this.submit();
+        });
+        
+        // Handle delete confirmation
+        $('.delete-btn').on('click', function(e) {
+            e.preventDefault();
+            const id = $(this).data('id');
+            
+            showConfirm(
+                'Delete Record?',
+                'Are you sure you want to delete this record? This action cannot be undone!',
+                () => {
+                    setTimeout(() => {
+                        window.location.href = 'hemodialysis.php?ids=' + id;
+                    }, 500);
+                }
+            );
+        });
+        
+        // Handle AJAX errors globally
+        $(document).ajaxError(function(event, jqXHR, settings, error) {
+            showError('Error fetching data. Please try again.');
+        });
+    });
+
+    // Function to handle record deletion
+    function deleteRecord(id) {
+        showConfirm(
+            'Delete Record?',
+            'Are you sure you want to delete this record? This action cannot be undone!',
+            () => {
+                setTimeout(() => {
+                    window.location.href = 'hemodialysis.php?ids=' + id;
+                }, 500);
+            }
+        );
+        return false;
+    }
+
+    // Update onclick handlers in table
+    $(document).ready(function() {
+        // Update delete links
+        $('a[onclick*="confirm"]').each(function() {
+            const id = $(this).attr('href').split('=')[1];
+            $(this).attr('onclick', `return deleteRecord('${id}')`);
+        });
+    });
+</script>
+
+<script>
+    function showSuccess(message, redirect = false) {
+        Swal.fire({
+            icon: 'success',
+            title: 'Success',
+            text: message,
+            showConfirmButton: false,
+            timer: 2000
+        }).then(() => {
+            if (redirect) {
+                window.location.href = 'hemodialysis.php';
+            }
+        });
+    }
+
+    function showError(message) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: message,
+            showConfirmButton: false,
+            timer: 2000
+        });
+    }
+
+    function showLoading(message) {
+        Swal.fire({
+            icon: 'info',
+            title: 'Loading',
+            text: message,
+            showConfirmButton: false,
+            allowOutsideClick: false,
+            allowEscapeKey: false
+        });
+    }
+
+    function showConfirm(title, message, callback) {
+        Swal.fire({
+            icon: 'warning',
+            title: title,
+            text: message,
+            showCancelButton: true,
+            confirmButtonText: 'Yes',
+            cancelButtonText: 'No'
+        }).then((result) => {
+            if (result.value) {
+                callback();
+            }
+        });
+    }
+</script>
+
 <style>
 .sticky-search {
     position: sticky;

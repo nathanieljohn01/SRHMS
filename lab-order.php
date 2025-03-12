@@ -22,7 +22,7 @@ if (isset($_POST['save-order'])) {
 
     // Validate patient name (could be improved with regex for specific format, if required)
     if (empty($patient_name)) {
-        echo "Patient name cannot be empty!";
+        echo "<script>showError('Patient name cannot be empty!');</script>";
         exit;
     }
 
@@ -39,7 +39,7 @@ if (isset($_POST['save-order'])) {
     mysqli_stmt_close($fetch_patient_stmt);
 
     if (!$patient_id) {
-        echo "Patient not found!";
+        echo "<script>showError('Patient not found!');</script>";
         exit;
     }
 
@@ -84,60 +84,20 @@ if (isset($_POST['save-order'])) {
             // Bind and execute the insert statement
             mysqli_stmt_bind_param($insert_stmt, 'ssssssssdss', $test_id, $patient_id, $patient_name, $patient_type, $gender, $dob, $department, $selected_lab_test, $price, $stat_status, $shift);
             if (mysqli_stmt_execute($insert_stmt)) {
-                echo "
-                    <script src='https://cdn.jsdelivr.net/npm/sweetalert2@11'></script>
-                    <script>
-                        Swal.fire({
-                            title: 'Success!',
-                            text: 'Lab order created successfully!',
-                            icon: 'success',
-                            confirmButtonColor: '#12369e',
-                            confirmButtonText: 'OK'
-                        }).then((result) => {
-                            if (result.isConfirmed) {
-                                window.location.href = 'lab-order-patients.php';
-                            }
-                        });
-                    </script>
-                    <style>
-                        .swal2-confirm {
-                            background-color: #12369e !important;
-                            color: white !important;
-                            border: none !important;
-                        }
-                        .swal2-confirm:hover {
-                            background-color: #05007E !important;
-                        }
-                        .swal2-confirm:focus {
-                            box-shadow: 0 0 0 0.2rem rgba(18, 54, 158, 0.5) !important;
-                        }
-                    </style>
-                ";
+                echo "<script>
+                    showSuccess('Lab order created successfully!', true);
+                </script>";
             } else {
-                echo "
-                    <script src='https://cdn.jsdelivr.net/npm/sweetalert2@11'></script>
-                    <script>
-                        Swal.fire({
-                            title: 'Error!',
-                            text: 'Error saving data: " . mysqli_error($connection) . "',
-                            icon: 'error',
-                            confirmButtonColor: '#12369e',
-                            confirmButtonText: 'OK'
-                        }).then((result) => {
-                            if (result.isConfirmed) {
-                                window.location.href = 'lab-order.php';
-                            }
-                        });
-                    </script>
-                ";
+                echo "<script>
+                    showError('Error saving data: " . addslashes(mysqli_error($connection)) . "');
+                </script>";
             }
 
         }
 
         mysqli_stmt_close($insert_stmt);
-        echo htmlspecialchars($msg, ENT_QUOTES, 'UTF-8'); // Display the appropriate message, ensuring no XSS
     } else {
-        echo "Please select at least one lab test.";
+        echo "<script>showError('Please select at least one lab test.');</script>";
     }
 }
 ?>
@@ -255,12 +215,66 @@ if (isset($_POST['save-order'])) {
 include('footer.php');
 ?>
 
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+function showError(message) {
+    Swal.fire({
+        title: 'Error!',
+        text: message,
+        icon: 'error',
+        confirmButtonColor: '#12369e',
+        confirmButtonText: 'OK'
+    });
+}
+
+function showSuccess(message, redirect) {
+    Swal.fire({
+        title: 'Success!',
+        text: message,
+        icon: 'success',
+        confirmButtonColor: '#12369e',
+        confirmButtonText: 'OK'
+    }).then((result) => {
+        if (result.isConfirmed && redirect) {
+            window.location.href = 'lab-order-patients.php';
+        }
+    });
+}
+
+function showLoading(message) {
+    Swal.fire({
+        title: message,
+        allowOutsideClick: false,
+        showConfirmButton: false,
+        willOpen: () => {
+            Swal.showLoading();
+        }
+    });
+}
+
+function showConfirm(title, message, callback) {
+    Swal.fire({
+        title: title,
+        text: message,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#12369e',
+        confirmButtonText: 'Yes',
+        cancelButtonText: 'No'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            callback();
+        }
+    });
+}
+</script>
+
 <script type="text/javascript">
     function validateForm() {
         var checkboxes = document.querySelectorAll('input[name="lab_test[]"]:checked');
 
         if (checkboxes.length === 0) {
-            alert("Please select at least one from the lab tests.");
+            showError("Please select at least one from the lab tests.");
             return false; 
         }
         return true;

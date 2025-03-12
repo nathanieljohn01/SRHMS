@@ -87,16 +87,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['patientId'])) {
 
         // Execute the query
         if ($connection->query($query) === TRUE) {
-            echo "Record added successfully";
+            echo "<script>showSuccess('Record added successfully', true);</script>";
         } else {
-            echo "Error: " . $query . "<br>" . $connection->error;
+            echo "<script>showError('Error: " . $query . "<br>" . $connection->error . "');</script>";
         }
     
         // Redirect or show a success message
         header('Location: urinalysis.php');
         exit;
     } else {
-        echo "<script>alert('Patient not found. Please check the Patient ID.');</script>";
+        echo "<script>showError('Patient not found. Please check the Patient ID.');</script>";
     }
 }
 
@@ -476,9 +476,161 @@ include('footer.php');
             $("#addPatientBtn").prop("disabled", false); // Enable the Add button
             $("#searchResults").html("").hide(); // Clear and hide the dropdown
         });
-    </script>
+    }
 
-    <style>
+    $(document).ready(function() {
+        // Handle form submission
+        $('#urinalysisForm').on('submit', function(e) {
+            e.preventDefault();
+            
+            // Basic validation
+            const required = ['patient_id', 'color', 'transparency', 'ph', 'specific_gravity'];
+            let isValid = true;
+            let emptyFields = [];
+            
+            required.forEach(field => {
+                if (!$(`#${field}`).val()) {
+                    isValid = false;
+                    emptyFields.push(field.replace('_', ' '));
+                }
+            });
+            
+            if (!isValid) {
+                showError(`Please fill in the following fields: ${emptyFields.join(', ')}`);
+                return;
+            }
+            
+            // Show loading state
+            showLoading('Saving urinalysis results...');
+            
+            // Submit the form
+            this.submit();
+        });
+        
+        // Handle delete confirmation
+        $('.delete-btn').on('click', function(e) {
+            e.preventDefault();
+            const id = $(this).data('id');
+            
+            showConfirm(
+                'Delete Record?',
+                'Are you sure you want to delete this urinalysis record? This action cannot be undone!',
+                () => {
+                    setTimeout(() => {
+                        window.location.href = 'urinalysis.php?ids=' + id;
+                    }, 500);
+                }
+            );
+        });
+        
+        // Handle patient search
+        $('#patientSearch').on('keyup', function() {
+            const query = $(this).val();
+            if (query.length < 2) return;
+            
+            showLoading('Searching for patient...');
+            
+            $.ajax({
+                url: "search_patient.php", // Backend script to fetch patients
+                method: "GET",
+                data: { query: query },
+                success: function (data) {
+                    Swal.close();
+                    try {
+                        const data = JSON.parse(data);
+                        if (data.success) {
+                            // Update patient info fields
+                            $('#patient_name').val(data.name);
+                            $('#patient_age').val(data.age);
+                            $('#patient_gender').val(data.gender);
+                        } else {
+                            showError('Patient not found');
+                        }
+                    } catch (e) {
+                        showError('Error searching for patient');
+                    }
+                },
+                error: function() {
+                    showError('Error searching for patient');
+                }
+            });
+        });
+    });
+
+    // Function to handle record deletion
+    function deleteRecord(id) {
+        showConfirm(
+            'Delete Record?',
+            'Are you sure you want to delete this urinalysis record? This action cannot be undone!',
+            () => {
+                setTimeout(() => {
+                    window.location.href = 'urinalysis.php?ids=' + id;
+                }, 500);
+            }
+        );
+        return false;
+    }
+
+    // Update onclick handlers in table
+    $(document).ready(function() {
+        // Update delete links
+        $('a[onclick*="confirm"]').each(function() {
+            const id = $(this).attr('href').split('=')[1];
+            $(this).attr('onclick', `return deleteRecord('${id}')`);
+        });
+    });
+
+    function showSuccess(message, redirect = false) {
+        Swal.fire({
+            icon: 'success',
+            title: 'Success',
+            text: message,
+            showConfirmButton: false,
+            timer: 2000
+        }).then(() => {
+            if (redirect) {
+                window.location.href = 'urinalysis.php';
+            }
+        });
+    }
+
+    function showError(message) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: message,
+            showConfirmButton: false,
+            timer: 2000
+        });
+    }
+
+    function showLoading(message) {
+        Swal.fire({
+            icon: 'info',
+            title: 'Loading',
+            text: message,
+            showConfirmButton: false,
+            allowOutsideClick: false
+        });
+    }
+
+    function showConfirm(title, message, callback) {
+        Swal.fire({
+            icon: 'question',
+            title: title,
+            text: message,
+            showCancelButton: true,
+            confirmButtonText: 'Yes',
+            cancelButtonText: 'No'
+        }).then((result) => {
+            if (result.value) {
+                callback();
+            }
+        });
+    }
+</script>
+
+<style>
     #patientTableMicroscopic_length {
         display: none;
     }

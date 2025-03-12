@@ -76,16 +76,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['patientId'])) {
 
         // Execute the query
         if ($insert_query->execute()) {
-            echo "Record added successfully";
+            echo "<script>showSuccess('Record added successfully', true);</script>";
         } else {
-            echo "Error: " . $insert_query->error;
+            echo "<script>showError('Error: " . $insert_query->error . "');</script>";
         }
 
         // Redirect or show a success message
         header('Location: electrolytes.php');
         exit;
     } else {
-        echo "<script>alert('Patient not found. Please check the Patient ID.');</script>";
+        echo "<script>showError('Patient not found. Please check the Patient ID.');</script>";
     }
 }
 
@@ -208,13 +208,178 @@ include('footer.php');
 ?>
 
 <script>
+$(document).ready(function() {
+    // Handle form submission
+    $('#electrolytesForm').on('submit', function(e) {
+        e.preventDefault();
+        
+        // Basic validation
+        const required = ['patient_id', 'sodium', 'potassium', 'chloride', 'bicarbonate'];
+        let isValid = true;
+        let emptyFields = [];
+        
+        required.forEach(field => {
+            if (!$(`#${field}`).val()) {
+                isValid = false;
+                emptyFields.push(field.replace('_', ' '));
+            }
+        });
+        
+        if (!isValid) {
+            showError(`Please fill in the following fields: ${emptyFields.join(', ')}`);
+            return;
+        }
+        
+        // Validate numeric fields
+        const numeric = ['sodium', 'potassium', 'chloride', 'bicarbonate'];
+        let invalidFields = [];
+        
+        numeric.forEach(field => {
+            const value = $(`#${field}`).val();
+            if (value && !$.isNumeric(value)) {
+                isValid = false;
+                invalidFields.push(field.replace('_', ' '));
+            }
+        });
+        
+        if (invalidFields.length > 0) {
+            showError(`The following fields must be numeric: ${invalidFields.join(', ')}`);
+            return;
+        }
+        
+        // Show loading state
+        showLoading('Saving electrolytes results...');
+        
+        // Submit the form
+        this.submit();
+    });
+    
+    // Handle delete confirmation
+    $('.delete-btn').on('click', function(e) {
+        e.preventDefault();
+        const id = $(this).data('id');
+        
+        showConfirm(
+            'Delete Record?',
+            'Are you sure you want to delete this electrolytes record? This action cannot be undone!',
+            () => {
+                // Show loading state
+                showLoading('Deleting record...');
+                setTimeout(() => {
+                    window.location.href = 'electrolytes.php?ids=' + id;
+                }, 500);
+            }
+        );
+    });
+    
+    // Handle patient search with better UX
+    $('#patientSearch').on('keyup', function() {
+        const query = $(this).val();
+        if (query.length < 2) return;
+        
+        showLoading('Searching for patient...');
+        
+        $.ajax({
+            url: 'search_patient.php',
+            type: 'POST',
+            data: { query: query },
+            success: function(response) {
+                Swal.close();
+                try {
+                    const data = JSON.parse(response);
+                    if (data.success) {
+                        // Update patient info fields
+                        $('#patient_name').val(data.name);
+                        $('#patient_age').val(data.age);
+                        $('#patient_gender').val(data.gender);
+                        
+                        // Show success message
+                        showSuccess('Patient found!');
+                    } else {
+                        showError('Patient not found');
+                    }
+                } catch (e) {
+                    showError('Error searching for patient');
+                }
+            },
+            error: function() {
+                showError('Error searching for patient');
+            }
+        });
+    });
+    
+    // Add reference range validation
+    const referenceRanges = {
+        sodium: { min: 135, max: 145, unit: 'mEq/L' },
+        potassium: { min: 3.5, max: 5.0, unit: 'mEq/L' },
+        chloride: { min: 98, max: 106, unit: 'mEq/L' },
+        bicarbonate: { min: 22, max: 29, unit: 'mEq/L' }
+    };
+    
+    // Add input handlers for reference range warnings
+    Object.keys(referenceRanges).forEach(field => {
+        $(`#${field}`).on('change', function() {
+            const value = parseFloat($(this).val());
+            const range = referenceRanges[field];
+            
+            if (value < range.min || value > range.max) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Out of Range',
+                    text: `${field} value (${value} ${range.unit}) is outside the normal range (${range.min}-${range.max} ${range.unit}). Do you want to continue?`,
+                    showCancelButton: true,
+                    confirmButtonText: 'Yes',
+                    cancelButtonText: 'No'
+                }).then((result) => {
+                    if (!result.value) {
+                        $(this).val('');
+                        $(this).focus();
+                    }
+                });
+            }
+        });
+    });
+    
+    // Handle AJAX errors globally
+    $(document).ajaxError(function(event, jqXHR, settings, error) {
+        showError('Error fetching data. Please try again.');
+    });
+});
+
+// Function to handle record deletion
+function deleteRecord(id) {
+    showConfirm(
+        'Delete Record?',
+        'Are you sure you want to delete this electrolytes record? This action cannot be undone!',
+        () => {
+            // Show loading state
+            showLoading('Deleting record...');
+            setTimeout(() => {
+                window.location.href = 'electrolytes.php?ids=' + id;
+            }, 500);
+        }
+    );
+    return false;
+}
+
+// Update onclick handlers in table
+$(document).ready(function() {
+    // Update delete links
+    $('a[onclick*="confirm"]').each(function() {
+        const id = $(this).attr('href').split('=')[1];
+        $(this).attr('onclick', `return deleteRecord('${id}')`);
+    });
+});
+
 function confirmDelete() {
     return confirm('Are you sure you want to delete this item?');
 }
+
 function clearSearch() {
     document.getElementById("electrolytesSearchInput").value = '';
     filterElectrolytes();
 }
+
 function filterElectrolytes() {
     var input = document.getElementById("electrolytesSearchInput").value;
     $.ajax({
@@ -230,6 +395,7 @@ function filterElectrolytes() {
         }
     });
 }
+
 function updateElectrolytesTable(data) {
     var tbody = $('#electrolytesTable tbody');
     tbody.empty();
@@ -250,10 +416,56 @@ function updateElectrolytesTable(data) {
         `);
     });
 }
+
+function showSuccess(message, redirect = false) {
+    Swal.fire({
+        icon: 'success',
+        title: 'Success',
+        text: message,
+        showConfirmButton: false,
+        timer: 2000
+    }).then(() => {
+        if (redirect) {
+            window.location.href = 'electrolytes.php';
+        }
+    });
+}
+
+function showError(message) {
+    Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: message,
+        showConfirmButton: false,
+        timer: 2000
+    });
+}
+
+function showLoading(message) {
+    Swal.fire({
+        icon: 'info',
+        title: 'Loading',
+        text: message,
+        showConfirmButton: false,
+        allowOutsideClick: false
+    });
+}
+
+function showConfirm(title, message, callback) {
+    Swal.fire({
+        icon: 'question',
+        title: title,
+        text: message,
+        showCancelButton: true,
+        confirmButtonText: 'Yes',
+        cancelButtonText: 'No'
+    }).then((result) => {
+        if (result.value) {
+            callback();
+        }
+    });
+}
 </script>
-
-
-
 
 <style>
 .sticky-search {
@@ -316,5 +528,4 @@ function updateElectrolytesTable(data) {
     .form-inline .input-group {
         width: 100%;
     }
-    
 </style> 

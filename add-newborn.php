@@ -56,7 +56,8 @@ if (isset($_REQUEST['save-newborn'])) {
         </script>";
     } else {
         // Insert newborn details into the database using prepared statements
-        $insert_query = mysqli_prepare($connection, "INSERT INTO tbl_newborn (newborn_id, first_name, last_name, dob, tob, gender, birth_weight, birth_height, gestational_age, physician) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $insert_query = mysqli_prepare($connection, "INSERT INTO tbl_newborn (newborn_id, first_name, last_name, dob, tob, gender, birth_weight, birth_height, gestational_age, physician, admission_datetime) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
         mysqli_stmt_bind_param($insert_query, 'ssssssssss', $newborn_id, $first_name, $last_name, $dob, $tob, $gender, $birth_weight, $birth_height, $gestational_age, $physician);
     
         // Execute the insert query

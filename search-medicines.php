@@ -38,9 +38,9 @@ if (isset($_GET['query'])) {
             </tr>";
         }
     } else {
-        echo "<tr><td colspan='6'>No medicines found for your search query.</td></tr>";
+        echo "<tr><td colspan='7'>No medicines found for your search query.</td></tr>";
     }
 } else {
-    echo "<tr><td colspan='6'>Invalid query. Please try again.</td></tr>";
+    echo "<tr><td colspan='7'>Invalid query. Please try again.</td></tr>";
 }
 ?>

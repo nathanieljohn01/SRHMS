@@ -52,9 +52,16 @@ include('includes/connection.php');
                     <?php
                     if (isset($_GET['ids'])) {
                         $id = $_GET['ids'];
-                        // Sanitize $id before using it in the query
-                        $id = mysqli_real_escape_string($connection, $id);
-                        $delete_query = mysqli_query($connection, "UPDATE tbl_employee SET deleted = 1 WHERE id='$id'");
+                        $delete_query = mysqli_query($connection, "DELETE FROM tbl_employee WHERE id='$id'");
+                        if ($delete_query) {
+                            echo "<script>
+                                showSuccess('Employee deleted successfully!', true);
+                            </script>";
+                        } else {
+                            echo "<script>
+                                showError('Error deleting employee: " . addslashes(mysqli_error($connection)) . "');
+                            </script>";
+                        }
                     }
                     
                     $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_employee WHERE deleted = 0");
@@ -89,7 +96,7 @@ include('includes/connection.php');
                                 <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><i class="fa fa-ellipsis-v"></i></a>
                                 <div class="dropdown-menu dropdown-menu-right">
                                     <a class="dropdown-item" href="edit-employee.php?id=<?php echo $row['id'];?>"><i class="fa fa-pencil m-r-5"></i> Edit</a>
-                                    <a class="dropdown-item" href="employees.php?ids=<?php echo $row['id'];?>" onclick="return confirmDelete()"><i class="fa fa-trash-o m-r-5"></i> Delete</a>
+                                    <a class="dropdown-item delete-btn" data-id="<?php echo $row['id'];?>" href="#"><i class="fa fa-trash-o m-r-5"></i> Delete</a>
                                 </div>
                             </div>
                         </td>
@@ -103,15 +110,120 @@ include('includes/connection.php');
 
 <?php include('footer.php'); ?>
 
-<script language="JavaScript" type="text/javascript">
-function confirmDelete() {
-    return confirm('Are you sure you want to delete this Employee?');
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@10"></script>
+<script>
+$(document).ready(function() {
+    // Initialize DataTable
+    var table = $('#employeeTable').DataTable({
+        // ... (keep existing DataTable options)
+        drawCallback: function() {
+            // Update delete buttons after table redraw
+            initializeDeleteButtons();
+        }
+    });
+    
+    // Initialize delete buttons
+    function initializeDeleteButtons() {
+        $('.delete-btn').off('click').on('click', function(e) {
+            e.preventDefault();
+            const id = $(this).data('id');
+            
+            showConfirm(
+                'Delete Employee?',
+                'Are you sure you want to delete this employee? This action cannot be undone!',
+                () => {
+                    setTimeout(() => {
+                        window.location.href = 'employees.php?ids=' + id;
+                    }, 500);
+                }
+            );
+        });
+    }
+    
+    // Handle search functionality
+    $('#employeeSearchInput').on('keyup', function() {
+        showLoading('Searching...');
+        filterEmployees();
+        Swal.close();
+    });
+    
+    // Handle AJAX errors globally
+    $(document).ajaxError(function(event, jqXHR, settings, error) {
+        showError('Error fetching data. Please try again.');
+    });
+});
+
+// Function to handle employee deletion
+function deleteEmployee(id) {
+    showConfirm(
+        'Delete Employee?',
+        'Are you sure you want to delete this employee? This action cannot be undone!',
+        () => {
+            setTimeout(() => {
+                window.location.href = 'employees.php?ids=' + id;
+            }, 500);
+        }
+    );
+    return false;
 }
 
-function clearSearch() {
-    document.getElementById("employeeSearchInput").value = '';
-    filterEmployees();
-} 
+// Update onclick handlers in table
+$(document).ready(function() {
+    // Update delete links
+    $('a[onclick*="confirm"]').each(function() {
+        const id = $(this).attr('href').split('=')[1];
+        $(this).attr('onclick', `return deleteEmployee('${id}')`);
+    });
+});
+
+function showSuccess(message, reload) {
+    Swal.fire({
+        icon: 'success',
+        title: 'Success',
+        text: message,
+        showConfirmButton: false,
+        timer: 2000
+    }).then(() => {
+        if (reload) {
+            window.location.reload();
+        }
+    });
+}
+
+function showError(message) {
+    Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: message,
+        showConfirmButton: false,
+        timer: 2000
+    });
+}
+
+function showConfirm(title, message, callback) {
+    Swal.fire({
+        icon: 'warning',
+        title: title,
+        text: message,
+        showCancelButton: true,
+        confirmButtonText: 'Yes',
+        cancelButtonText: 'No'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            callback();
+        }
+    });
+}
+
+function showLoading(message) {
+    Swal.fire({
+        icon: 'info',
+        title: message,
+        showConfirmButton: false,
+        allowOutsideClick: false
+    });
+}
+
 function filterEmployees() {
     var input = document.getElementById("employeeSearchInput").value;
     
@@ -153,7 +265,7 @@ function updateEmployeeTable(data) {
                             <a class="dropdown-item" href="edit-employee.php?id=${record.id}">
                                 <i class="fa fa-pencil m-r-5"></i> Edit
                             </a>
-                            <a class="dropdown-item" href="employees.php?ids=${record.id}" onclick="return confirmDelete()">
+                            <a class="dropdown-item delete-btn" data-id="${record.id}" href="#">
                                 <i class="fa fa-trash-o m-r-5"></i> Delete
                             </a>
                         </div>
@@ -162,6 +274,11 @@ function updateEmployeeTable(data) {
             </tr>
         `);
     });
+}
+
+function clearSearch() {
+    document.getElementById("employeeSearchInput").value = '';
+    filterEmployees();
 }
 </script>
 

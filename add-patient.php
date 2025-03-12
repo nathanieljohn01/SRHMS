@@ -18,100 +18,96 @@ $row = mysqli_fetch_row($fetch_query);
 $pt_id = $row[0] == 0 ? 1 : $row[0] + 1;
 
 // Handle form submission
-if (isset($_REQUEST['save-patient'])) {
-    // Sanitize all inputs
-    $patient_id = 'PT-' . $pt_id;
-    $first_name = sanitize_input($connection, $_REQUEST['first_name']);
-    $last_name = sanitize_input($connection, $_REQUEST['last_name']);
-    $email = sanitize_input($connection, $_REQUEST['email']);
-    $dob = sanitize_input($connection, $_REQUEST['dob']);
-    $gender = sanitize_input($connection, $_REQUEST['gender']);
-    $civil_status = sanitize_input($connection, $_REQUEST['civil_status']);
-    $patient_type = sanitize_input($connection, $_REQUEST['patient_type']);
-    $contact_number = sanitize_input($connection, $_REQUEST['contact_number']);
-    $address = sanitize_input($connection, $_REQUEST['address']);
-    $date_time = sanitize_input($connection, $_REQUEST['date_time']);
-    $status = sanitize_input($connection, $_REQUEST['status']);
-    $message = sanitize_input($connection, $_REQUEST['message']);
-    $weight = sanitize_input($connection, $_REQUEST['weight']);
-    $height = sanitize_input($connection, $_REQUEST['height']);
-    $temperature = sanitize_input($connection, $_REQUEST['temperature']);
-    $blood_pressure = sanitize_input($connection, $_REQUEST['blood_pressure']);
-    $menstruation = sanitize_input($connection, $_REQUEST['menstruation']);
-    $last_menstrual_period = sanitize_input($connection, $_REQUEST['last_menstrual_period']);
-
-    // Handle gender-specific fields
-    if ($gender == 'Male') {
-        $menstruation = 'None';
-        $last_menstrual_period = '';
-    }
-
-    // If "None" or "Menopause" is selected for menstruation, clear the last menstrual period
-    if ($menstruation == 'None' || $menstruation == 'Menopause') {
-        $last_menstrual_period = ''; // Clear the last menstrual period field
-    }
-
-    // Check if the patient with the same first and last name already exists
-    $check_query = mysqli_prepare($connection, "SELECT * FROM tbl_patient WHERE first_name = ? AND last_name = ?");
-    mysqli_stmt_bind_param($check_query, 'ss', $first_name, $last_name);
-    mysqli_stmt_execute($check_query);
-    $result = mysqli_stmt_get_result($check_query);
-
-    if (mysqli_num_rows($result) > 0) {
-        $msg = "Patient with the same name already exists.";
-    } else {
-        // Insert patient record using prepared statement
-        $insert_query = mysqli_prepare($connection, "INSERT INTO tbl_patient (patient_id, first_name, last_name, email, dob, gender, civil_status, patient_type, contact_number, address, status, message, weight, height, temperature, blood_pressure, menstruation, last_menstrual_period, date_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
-        mysqli_stmt_bind_param($insert_query, 'ssssssssssssssssss', $patient_id, $first_name, $last_name, $email, $dob, $gender, $civil_status, $patient_type, $contact_number, $address, $status, $message, $weight, $height, $temperature, $blood_pressure, $menstruation, $last_menstrual_period);
-
-        if (mysqli_stmt_execute($insert_query)) {
-            $msg = "Patient added successfully";
-        } else {
-            $msg = "Error inserting the patient record!";
-        }
-
-        // Close the insert statement
-        mysqli_stmt_close($insert_query);
-    }
-
-    // Close the check query statement
-    mysqli_stmt_close($check_query);
-
-    // Display SweetAlert message
-    echo "
-    <script src='https://cdn.jsdelivr.net/npm/sweetalert2@11'></script>
-    <script>
-        Swal.fire({
-            title: '" . (strpos($msg, 'successfully') !== false ? 'Success!' : 'Error!') . "',
-            text: '$msg',
-            icon: '" . (strpos($msg, 'successfully') !== false ? 'success' : 'error') . "',
-            confirmButtonColor: '#12369e',
-            confirmButtonText: 'OK'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                window.location.href = 'patients.php';  // You can change the redirection URL here if needed
+if (isset($_POST['submit'])) {
+    try {
+        // Show loading state first
+        echo "<script>showLoading('Saving patient information...');</script>";
+        
+        // Validate required fields
+        $required_fields = ['first_name', 'last_name', 'dob', 'gender', 'contact_number', 'address'];
+        foreach ($required_fields as $field) {
+            if (empty($_POST[$field])) {
+                throw new Exception("Please fill in all required fields");
             }
-        });
-    </script>
-    <style>
-        /* Custom SweetAlert Button Color */
-        .swal2-confirm {
-            background-color: #12369e !important;
-            color: white !important;
-            border: none !important;
+        }
+        
+        // Validate contact number format
+        if (!preg_match("/^[0-9]{11}$/", $_POST['contact_number'])) {
+            throw new Exception("Contact number must be 11 digits");
+        }
+        
+        // Sanitize all inputs
+        $patient_id = 'PT-' . $pt_id;
+        $first_name = sanitize_input($connection, $_POST['first_name']);
+        $last_name = sanitize_input($connection, $_POST['last_name']);
+        $email = sanitize_input($connection, $_POST['email']);
+        $dob = sanitize_input($connection, $_POST['dob']);
+        $gender = sanitize_input($connection, $_POST['gender']);
+        $civil_status = sanitize_input($connection, $_POST['civil_status']);
+        $patient_type = sanitize_input($connection, $_POST['patient_type']);
+        $contact_number = sanitize_input($connection, $_POST['contact_number']);
+        $address = sanitize_input($connection, $_POST['address']);
+        $date_time = sanitize_input($connection, $_POST['date_time']);
+        $status = sanitize_input($connection, $_POST['status']);
+        $message = sanitize_input($connection, $_POST['message']);
+        $weight = sanitize_input($connection, $_POST['weight']);
+        $height = sanitize_input($connection, $_POST['height']);
+        $temperature = sanitize_input($connection, $_POST['temperature']);
+        $blood_pressure = sanitize_input($connection, $_POST['blood_pressure']);
+        $menstruation = sanitize_input($connection, $_POST['menstruation']);
+        $last_menstrual_period = sanitize_input($connection, $_POST['last_menstrual_period']);
+
+        // Handle gender-specific fields
+        if ($gender == 'Male') {
+            $menstruation = 'None';
+            $last_menstrual_period = '';
         }
 
-        /* Hover color for the confirm button */
-        .swal2-confirm:hover {
-            background-color: #05007E !important;
+        // If "None" or "Menopause" is selected for menstruation, clear the last menstrual period
+        if ($menstruation == 'None' || $menstruation == 'Menopause') {
+            $last_menstrual_period = ''; // Clear the last menstrual period field
         }
 
-        /* Adjust button focus styles (optional) */
-        .swal2-confirm:focus {
-            box-shadow: 0 0 0 0.2rem rgba(18, 54, 158, 0.5) !important;
+        // Check if the patient with the same first and last name already exists
+        $check_query = mysqli_prepare($connection, "SELECT * FROM tbl_patient WHERE first_name = ? AND last_name = ?");
+        mysqli_stmt_bind_param($check_query, 'ss', $first_name, $last_name);
+        mysqli_stmt_execute($check_query);
+        $result = mysqli_stmt_get_result($check_query);
+
+        if (mysqli_num_rows($result) > 0) {
+            throw new Exception("Patient with the same name already exists.");
+        } else {
+            // Insert patient record using prepared statement
+            $insert_query = mysqli_prepare($connection, "INSERT INTO tbl_patient (patient_id, first_name, last_name, email, dob, gender, civil_status, patient_type, contact_number, address, status, message, weight, height, temperature, blood_pressure, menstruation, last_menstrual_period, date_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+            mysqli_stmt_bind_param($insert_query, 'ssssssssssssssssss', $patient_id, $first_name, $last_name, $email, $dob, $gender, $civil_status, $patient_type, $contact_number, $address, $status, $message, $weight, $height, $temperature, $blood_pressure, $menstruation, $last_menstrual_period);
+
+            if (mysqli_stmt_execute($insert_query)) {
+                echo "<script>
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Success',
+                        text: 'Patient added successfully!',
+                        showConfirmButton: true,
+                        confirmButtonText: 'OK'
+                    }).then((result) => {
+                        window.location.href = 'patients.php';
+                    });
+                </script>";
+            } else {
+                throw new Exception("Error inserting patient data");
+            }
+
+            // Close the insert statement
+            mysqli_stmt_close($insert_query);
         }
-    </style>
-    ";
+
+        // Close the check query statement
+        mysqli_stmt_close($check_query);
+    } catch (Exception $e) {
+        echo "<script>
+            showError('" . addslashes($e->getMessage()) . "');
+        </script>";
+    }
 }
 ?>
 
@@ -127,7 +123,7 @@ if (isset($_REQUEST['save-patient'])) {
         </div>
         <div class="row">
             <div class="col-lg-8 offset-lg-2">
-                <form method="post">
+                <form id="addPatientForm" method="post">
                     <div class="row">
                         <div class="col-sm-6">
                             <div class="form-group">
@@ -157,7 +153,7 @@ if (isset($_REQUEST['save-patient'])) {
                             <div class="form-group">
                                 <label>Date of Birth</label>
                                 <div class="cal-icon">
-                                    <input type="text" class="form-control datetimepicker" name="dob">
+                                    <input type="text" class="form-control datetimepicker" name="dob" required>
                                 </div>
                             </div>
                         </div>
@@ -205,7 +201,7 @@ if (isset($_REQUEST['save-patient'])) {
                         <div class="col-sm-6">
                             <div class="form-group">
                                 <label>Address</label>
-                                <input class="form-control" type="text" name="address">
+                                <input class="form-control" type="text" name="address" required>
                             </div>
                         </div>
                         <div class="col-sm-6">
@@ -275,7 +271,7 @@ if (isset($_REQUEST['save-patient'])) {
                             </div>
                         </div>
                         <div class="col-12 mt-3 text-center">
-                            <button class="btn btn-primary submit-btn" name="save-patient">Save</button>
+                            <button class="btn btn-primary submit-btn" name="submit">Save</button>
                         </div>
                     </div>
                 </form>
@@ -291,6 +287,70 @@ include('footer.php');
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script type="text/javascript">
 $(document).ready(function() {
+    // Handle form submission
+    $('#addPatientForm').on('submit', function(e) {
+        e.preventDefault();
+        
+        // Basic validation
+        const required = ['first_name', 'last_name', 'dob', 'gender', 'contact_number', 'address'];
+        let isValid = true;
+        let emptyFields = [];
+        
+        required.forEach(field => {
+            if (!$(`#${field}`).val()) {
+                isValid = false;
+                emptyFields.push(field.replace('_', ' '));
+            }
+        });
+        
+        if (!isValid) {
+            showError(`Please fill in the following fields: ${emptyFields.join(', ')}`);
+            return;
+        }
+        
+        // Validate contact number
+        const contact = $('#contact_number').val();
+        if (!/^[0-9]{11}$/.test(contact)) {
+            showError('Contact number must be 11 digits');
+            return;
+        }
+        
+        // Validate date of birth
+        const dob = new Date($('#dob').val());
+        const today = new Date();
+        if (dob > today) {
+            showError('Date of birth cannot be in the future');
+            return;
+        }
+        
+        // Show loading state
+        showLoading('Saving patient information...');
+        
+        // Submit the form
+        this.submit();
+    });
+    
+    // Initialize datepicker with better UX
+    $('.datetimepicker').datetimepicker({
+        format: 'YYYY-MM-DD',
+        maxDate: new Date(),
+        icons: {
+            up: "fa fa-chevron-up",
+            down: "fa fa-chevron-down",
+            next: 'fa fa-chevron-right',
+            previous: 'fa fa-chevron-left'
+        }
+    });
+    
+    // Auto-format contact number
+    $('#contact_number').on('input', function() {
+        let value = $(this).val().replace(/\D/g, '');
+        if (value.length > 11) {
+            value = value.substr(0, 11);
+        }
+        $(this).val(value);
+    });
+    
     // Hide or show menstruation-related fields based on gender selection
     $('input[name="gender"]').on('change', function() {
         if ($(this).val() == 'Male') {
@@ -313,6 +373,42 @@ $(document).ready(function() {
     });
 });
 
+// SweetAlert2 helper functions
+function showSuccess(message, redirect = false) {
+    Swal.fire({
+        icon: 'success',
+        title: 'Success',
+        text: message,
+        showConfirmButton: false,
+        timer: 2000
+    }).then(() => {
+        if (redirect) {
+            window.location.href = 'patients.php';
+        }
+    });
+}
+
+function showError(message) {
+    Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: message,
+        showConfirmButton: false,
+        timer: 2000
+    });
+}
+
+function showLoading(message) {
+    Swal.fire({
+        title: message,
+        text: 'Please wait...',
+        allowOutsideClick: false,
+        showConfirmButton: false,
+        willOpen: () => {
+            Swal.showLoading();
+        }
+    });
+}
 </script>
 
 <style>

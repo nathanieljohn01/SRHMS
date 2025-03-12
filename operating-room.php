@@ -7,6 +7,7 @@ if(empty($_SESSION['name']))
 include('header.php');
 include('includes/connection.php');
 ?>
+
 <div class="page-wrapper">
     <div class="content">
         <div class="row">
@@ -55,9 +56,23 @@ include('includes/connection.php');
                 </thead>
                 <tbody>
                     <?php
-                    if(isset($_GET['id'])){
-                        $id = mysqli_real_escape_string($connection, $_GET['id']);
-                        $update_query = mysqli_query($connection, "UPDATE tbl_operating_room SET deleted = 1 WHERE id='$id'");
+                    if(isset($_GET['ids'])){
+                        try {
+                            $id = mysqli_real_escape_string($connection, $_GET['ids']);
+                            $delete_query = mysqli_query($connection, "DELETE FROM tbl_operating_room WHERE id='$id'");
+                            
+                            if ($delete_query) {
+                                echo "<script>
+                                    showSuccess('Operating room record deleted successfully!', true);
+                                </script>";
+                            } else {
+                                throw new Exception(mysqli_error($connection));
+                            }
+                        } catch (Exception $e) {
+                            echo "<script>
+                                showError('Error deleting record: " . addslashes($e->getMessage()) . "');
+                            </script>";
+                        }
                     }
                     $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_operating_room WHERE deleted = 0");
                     while($row = mysqli_fetch_array($fetch_query))
@@ -79,7 +94,7 @@ include('includes/connection.php');
                                     <?php 
                                     if ($_SESSION['role'] == 1 || $_SESSION['role'] == 3) {
                                         echo '<a class="dropdown-item" href="edit-operating-room.php?id='.$row['id'].'"><i class="fa fa-tasks m-r-5"></i> Update Progress</a>';
-                                        echo '<a class="dropdown-item" href="operating-room.php?id='.$row['id'].'" onclick="return confirmDelete()"><i class="fa fa-trash-o m-r-5"></i> Delete</a>';
+                                        echo '<a class="dropdown-item delete-btn" data-id="'.$row['id'].'" href="#"><i class="fa fa-trash-o m-r-5"></i> Delete</a>';
                                     }
                                     ?>
                                     </div>
@@ -133,7 +148,7 @@ function confirmDelete(){
                     <a class="dropdown-item" href="edit-operating-room.php?id=${row.id}">
                         <i class="fa fa-tasks m-r-5"></i> Update Progress
                     </a>
-                    <a class="dropdown-item" href="operating-room.php?id=${row.id}" onclick="return confirmDelete()">
+                    <a class="dropdown-item delete-btn" data-id="${row.id}" href="#">
                         <i class="fa fa-trash-o m-r-5"></i> Delete
                     </a>
                 `;
@@ -163,8 +178,141 @@ function confirmDelete(){
             `);
         });
     }
+</script>
 
+<script>
+$(document).ready(function() {
+    // Handle form submission
+    $('#operatingRoomForm').on('submit', function(e) {
+        e.preventDefault();
+        
+        // Basic validation
+        const required = ['patient_id', 'surgery_type', 'surgery_date', 'surgeon'];
+        let isValid = true;
+        
+        required.forEach(field => {
+            if (!$(`#${field}`).val()) {
+                showError(`Please fill in ${field.replace('_', ' ')}`);
+                isValid = false;
+            }
+        });
+        
+        if (!isValid) return;
+        
+        // Show loading state
+        showLoading('Saving record...');
+        
+        // Submit the form
+        this.submit();
+    });
+    
+    // Handle delete confirmation
+    $('.delete-btn').on('click', function(e) {
+        e.preventDefault();
+        const id = $(this).data('id');
+        
+        showConfirm(
+            'Delete Record?',
+            'Are you sure you want to delete this operating room record? This action cannot be undone!',
+            () => {
+                setTimeout(() => {
+                    window.location.href = 'operating-room.php?ids=' + id;
+                }, 500);
+            }
+        );
+    });
+    
+    // Initialize datepicker with better UX
+    $('.datetimepicker').datetimepicker({
+        format: 'YYYY-MM-DD HH:mm',
+        icons: {
+            up: "fa fa-chevron-up",
+            down: "fa fa-chevron-down",
+            next: 'fa fa-chevron-right',
+            previous: 'fa fa-chevron-left'
+        },
+        minDate: moment()
+    });
+    
+    // Handle AJAX errors globally
+    $(document).ajaxError(function(event, jqXHR, settings, error) {
+        showError('Error fetching data. Please try again.');
+    });
+});
 
+// Function to handle record deletion
+function deleteRecord(id) {
+    showConfirm(
+        'Delete Record?',
+        'Are you sure you want to delete this operating room record? This action cannot be undone!',
+        () => {
+            setTimeout(() => {
+                window.location.href = 'operating-room.php?ids=' + id;
+            }, 500);
+        }
+    );
+    return false;
+}
+
+// Update onclick handlers in table
+$(document).ready(function() {
+    // Update delete links
+    $('a[onclick*="confirm"]').each(function() {
+        const id = $(this).attr('href').split('=')[1];
+        $(this).attr('onclick', `return deleteRecord('${id}')`);
+    });
+});
+</script>
+
+<script>
+function showSuccess(message, redirect) {
+    Swal.fire({
+        icon: 'success',
+        title: 'Success',
+        text: message,
+        showConfirmButton: false,
+        timer: 2000
+    }).then(() => {
+        if (redirect) {
+            window.location.href = 'operating-room.php';
+        }
+    });
+}
+
+function showError(message) {
+    Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: message,
+        showConfirmButton: false,
+        timer: 2000
+    });
+}
+
+function showConfirm(title, message, callback) {
+    Swal.fire({
+        icon: 'warning',
+        title: title,
+        text: message,
+        showCancelButton: true,
+        confirmButtonText: 'Yes',
+        cancelButtonText: 'No'
+    }).then((result) => {
+        if (result.value) {
+            callback();
+        }
+    });
+}
+
+function showLoading(message) {
+    Swal.fire({
+        icon: 'info',
+        title: 'Loading',
+        text: message,
+        showConfirmButton: false,
+        allowOutsideClick: false
+    });
+}
 </script>
 
 <style>

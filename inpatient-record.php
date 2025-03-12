@@ -103,7 +103,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['patientId'])) {
     $check_result = $check_query->get_result();
 
     if ($check_result->num_rows > 0) {
-        $msg = "This patient already has an active record without discharge date.";
+        echo "<script>
+            Swal.fire({
+                title: 'Warning!',
+                text: 'This patient already has an active record without a discharge date.',
+                icon: 'warning',
+                confirmButtonColor: '#12369e',
+                confirmButtonText: 'OK'
+            });
+        </script>";
     } else {
         // Proceed with existing patient insertion logic
         $patient_query = $connection->prepare("SELECT * FROM tbl_inpatient WHERE id = ? AND discharge_date IS NULL");
@@ -111,7 +119,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['patientId'])) {
         $patient_query->execute();
         $patient_result = $patient_query->get_result();
         $patient = $patient_result->fetch_assoc();
-
 
         if ($patient) {
             $inpatient_id = $patient['inpatient_id'];
@@ -133,10 +140,28 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['patientId'])) {
             $insert_query->bind_param("ssssssssss", $inpatient_id, $patient_id, $name, $gender, $dob, $doctor_incharge, $admission_date, $room_type, $room_number, $bed_number);
             $insert_query->execute();
 
-            header('Location: inpatient-record.php');
+            echo "<script>
+                Swal.fire({
+                    title: 'Success!',
+                    text: 'Patient record added successfully!',
+                    icon: 'success',
+                    confirmButtonColor: '#12369e',
+                    confirmButtonText: 'OK'
+                }).then(() => {
+                    window.location.href = 'inpatient-record.php';
+                });
+            </script>";
             exit;
         } else {
-            $msg = "Patient not found. Please check the Patient ID.";
+            echo "<script>
+                Swal.fire({
+                    title: 'Error!',
+                    text: 'Patient not found. Please check the Patient ID.',
+                    icon: 'error',
+                    confirmButtonColor: '#12369e',
+                    confirmButtonText: 'OK'
+                });
+            </script>";
         }
     }
 }
@@ -482,6 +507,27 @@ include('footer.php');
 function confirmDelete(){
     return confirm('Are you sure want to delete this Patient?');
 }
+</script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+document.querySelector('form').addEventListener('submit', function(event) {
+    event.preventDefault(); // Prevent form from submitting immediately
+
+    Swal.fire({
+        title: 'Processing...',
+        text: 'Inserting inpatient record...',
+        allowOutsideClick: false,
+        showConfirmButton: false,
+        willOpen: () => {
+            Swal.showLoading();
+        }
+    });
+
+    // Submit the form after showing the loading message
+    setTimeout(() => {
+        event.target.submit();
+    }, 1000); // Adjust the timeout as needed
+});
 </script>
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>

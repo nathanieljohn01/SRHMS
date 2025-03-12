@@ -119,7 +119,7 @@ $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_medicines WHERE dele
                                         <?php 
                                         if ($_SESSION['role'] == 1) {
                                             echo '<a class="dropdown-item" href="edit-medicines.php?id='.$row['id'].'"><i class="fa fa-pencil m-r-5"></i> Edit</a>';
-                                            echo '<a class="dropdown-item" href="medicines.php?ids='.$row['id'].'" onclick="return confirmDelete()"><i class="fa fa-trash-o m-r-5"></i> Delete</a>';
+                                            echo '<a class="dropdown-item" href="#" onclick="return confirmDelete(\''.$row['id'].'\')"><i class="fa fa-trash-o m-r-5"></i> Delete</a>';
                                         }
                                         ?>
                                     </div>
@@ -140,9 +140,38 @@ include('footer.php');
 ?>
 
 <script language="JavaScript" type="text/javascript">
-    function confirmDelete() {
-        return confirm('Are you sure you want to delete this item?');
+    // Function to confirm delete with SweetAlert2
+    function confirmDelete(id) {
+        showConfirm(
+            'Delete Medicine?',
+            'Are you sure you want to delete this medicine? This action cannot be undone!',
+            () => {
+                setTimeout(() => {
+                    window.location.href = 'medicines.php?ids=' + id;
+                }, 500);
+            }
+        );
     }
+
+    // Update onclick handlers in table
+    $(document).ready(function() {
+        // Update delete links
+        $('a[onclick*="confirm"]').each(function() {
+            const href = $(this).attr('href');
+            const id = href.split('=')[1];
+            $(this).attr('onclick', `return confirmDelete('${id}')`);
+        });
+        
+        // Handle search error
+        $('.search-error').each(function() {
+            showError($(this).text());
+        });
+        
+        // Handle success messages
+        $('.success-message').each(function() {
+            showSuccess($(this).text(), true);
+        });
+    });
 
     function clearSearch() {
         document.getElementById("medicineSearchInput").value = '';
@@ -195,7 +224,7 @@ include('footer.php');
                                 <a class="dropdown-item" href="edit-medicines.php?id=${row.id}">
                                     <i class="fa fa-pencil m-r-5"></i> Edit
                                 </a>
-                                <a class="dropdown-item" href="medicines.php?ids=${row.id}" onclick="return confirmDelete()">
+                                <a class="dropdown-item" href="#" onclick="return confirmDelete('${row.id}')">
                                     <i class="fa fa-trash-o m-r-5"></i> Delete
                                 </a>
                             </div>
@@ -206,29 +235,36 @@ include('footer.php');
         });
     }
 
-function calculateDaysToExpire(expirationDate) {
-    const expiry = new Date(expirationDate);
-    const today = new Date();
-    const diffTime = expiry - today;
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-}
-
-function formatDate(dateString) {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-}
-
-function formatExpiryBadge(days) {
-    if (days <= 30 && days > 0) {
-        return `<span class="badge badge-danger" style="font-size: 12px;">${days} Days</span>`;
-    } else if (days <= 0) {
-        return '<span class="badge badge-danger" style="font-size: 12px; background-color: #e74c3c; color: #fff;">Expired</span>';
+    function calculateDaysToExpire(expirationDate) {
+        const expiry = new Date(expirationDate);
+        const today = new Date();
+        const diffTime = expiry - today;
+        return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     }
-    return `<span>${days} Days</span>`;
-}
 
+    function formatDate(dateString) {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    }
 
+    function formatExpiryBadge(days) {
+        if (days <= 30 && days > 0) {
+            return `<span class="badge badge-danger" style="font-size: 12px;">${days} Days</span>`;
+        } else if (days <= 0) {
+            return '<span class="badge badge-danger" style="font-size: 12px; background-color: #e74c3c; color: #fff;">Expired</span>';
+        }
+        return `<span>${days} Days</span>`;
+    }
 </script>
+
+<?php if (isset($error_message)): ?>
+    <script>showError('<?php echo addslashes($error_message); ?>');</script>
+<?php endif; ?>
+
+<?php if (isset($success_message)): ?>
+    <script>showSuccess('<?php echo addslashes($success_message); ?>', true);</script>
+<?php endif; ?>
+
 <style>
 .btn-outline-primary {
     background-color:rgb(252, 252, 252);
@@ -290,3 +326,185 @@ function formatExpiryBadge(days) {
     background-color: #a6131b !important;
 }
 </style>
+
+<script>
+$(document).ready(function() {
+    // Handle form submission
+    $('#medicineForm').on('submit', function(e) {
+        e.preventDefault();
+        
+        // Basic validation
+        const required = ['medicine_name', 'category', 'quantity', 'unit'];
+        let isValid = true;
+        let emptyFields = [];
+        
+        required.forEach(field => {
+            if (!$(`#${field}`).val()) {
+                isValid = false;
+                emptyFields.push(field.replace('_', ' '));
+            }
+        });
+        
+        if (!isValid) {
+            showError(`Please fill in the following fields: ${emptyFields.join(', ')}`);
+            return;
+        }
+        
+        // Validate quantity
+        const quantity = $('#quantity').val();
+        if (!$.isNumeric(quantity) || quantity < 0) {
+            showError('Quantity must be a positive number');
+            return;
+        }
+        
+        // Show loading state
+        showLoading('Saving medicine details...');
+        
+        // Submit the form
+        this.submit();
+    });
+    
+    // Handle stock update form
+    $('#stockUpdateForm').on('submit', function(e) {
+        e.preventDefault();
+        
+        // Validate quantity
+        const quantity = $('#update_quantity').val();
+        if (!$.isNumeric(quantity) || quantity < 0) {
+            showError('Quantity must be a positive number');
+            return;
+        }
+        
+        // Show loading state
+        showLoading('Updating stock...');
+        
+        // Submit the form
+        this.submit();
+    });
+    
+    // Handle delete confirmation
+    $('.delete-btn').on('click', function(e) {
+        e.preventDefault();
+        const id = $(this).data('id');
+        
+        showConfirm(
+            'Delete Medicine?',
+            'Are you sure you want to delete this medicine? This action cannot be undone!',
+            () => {
+                // Show loading state
+                showLoading('Deleting medicine...');
+                setTimeout(() => {
+                    window.location.href = 'medicines.php?ids=' + id;
+                }, 500);
+            }
+        );
+    });
+    
+    // Handle low stock warning
+    $('.quantity-field').each(function() {
+        const quantity = parseInt($(this).text());
+        const threshold = 10; // Set your threshold here
+        
+        if (quantity <= threshold) {
+            const medicineName = $(this).closest('tr').find('.medicine-name').text();
+            Swal.fire({
+                icon: 'warning',
+                title: 'Low Stock Alert',
+                text: `${medicineName} is running low on stock (${quantity} remaining)`,
+                showConfirmButton: true
+            });
+        }
+    });
+    
+    // Handle medicine search
+    $('#medicineSearch').on('keyup', function() {
+        const query = $(this).val().toLowerCase();
+        $('#medicineTable tbody tr').filter(function() {
+            $(this).toggle($(this).text().toLowerCase().indexOf(query) > -1);
+        });
+    });
+    
+    // Handle AJAX errors globally
+    $(document).ajaxError(function(event, jqXHR, settings, error) {
+        showError('Error fetching data. Please try again.');
+    });
+});
+
+// Function to handle medicine deletion
+function deleteMedicine(id) {
+    showConfirm(
+        'Delete Medicine?',
+        'Are you sure you want to delete this medicine? This action cannot be undone!',
+        () => {
+            // Show loading state
+            showLoading('Deleting medicine...');
+            setTimeout(() => {
+                window.location.href = 'medicines.php?ids=' + id;
+            }, 500);
+        }
+    );
+    return false;
+}
+
+// Update onclick handlers in table
+$(document).ready(function() {
+    // Update delete links
+    $('a[onclick*="confirm"]').each(function() {
+        const id = $(this).attr('href').split('=')[1];
+        $(this).attr('onclick', `return deleteMedicine('${id}')`);
+    });
+});
+
+// SweetAlert2 helper functions
+function showSuccess(message, redirect = false) {
+    Swal.fire({
+        icon: 'success',
+        title: 'Success',
+        text: message,
+        showConfirmButton: false,
+        timer: 2000
+    }).then(() => {
+        if (redirect) {
+            window.location.reload();
+        }
+    });
+}
+
+function showError(message) {
+    Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: message,
+        showConfirmButton: false,
+        timer: 2000
+    });
+}
+
+function showLoading(message) {
+    Swal.fire({
+        title: message,
+        text: 'Please wait...',
+        allowOutsideClick: false,
+        showConfirmButton: false,
+        willOpen: () => {
+            Swal.showLoading();
+        }
+    });
+}
+
+function showConfirm(title, message, callback) {
+    Swal.fire({
+        icon: 'warning',
+        title: title,
+        text: message,
+        showCancelButton: true,
+        confirmButtonText: 'Yes',
+        cancelButtonText: 'No',
+        reverseButtons: true
+    }).then((result) => {
+        if (result.value) {
+            callback();
+        }
+    });
+}
+</script>

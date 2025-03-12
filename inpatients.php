@@ -22,7 +22,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['patientId'])) {
 
     // Prepare and bind the query
     $patient_query = $connection->prepare("SELECT * FROM tbl_patient WHERE id = ?");
-    $patient_query->bind_param("s", $patientId);  // "s" stands for string
+    $patient_query->bind_param("s", $patientId); // "s" stands for string
     
     // Execute the query
     $patient_query->execute();
@@ -35,38 +35,37 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['patientId'])) {
         $name = $patient['first_name'] . ' ' . $patient['last_name'];
         $gender = $patient['gender'];
         $dob = $patient['dob'];
-
-
-        // Fetch the last inpatient_id and increment it
+    
+        // Fetch last inpatient_id and increment it
         $last_inpatient_query = $connection->prepare("SELECT inpatient_id FROM tbl_inpatient ORDER BY id DESC LIMIT 1");
         $last_inpatient_query->execute();
         $last_inpatient_result = $last_inpatient_query->get_result();
         $last_inpatient = $last_inpatient_result->fetch_array(MYSQLI_ASSOC);
-
+    
         // Generate new inpatient_id
         if ($last_inpatient) {
-            $last_id_number = (int) substr($last_inpatient['inpatient_id'], 4); // Remove "IPT-" and convert to int
+            $last_id_number = (int) substr($last_inpatient['inpatient_id'], 4);
             $new_inpatient_id = 'IPT-' . ($last_id_number + 1);
         } else {
-            $new_inpatient_id = 'IPT-1';  // Starting value if no outpatient_id exists
+            $new_inpatient_id = 'IPT-1';
         }
-
-        // Insert the patient into tbl_inpatient with room_number and bed_number as NULL
+    
+        // Insert into tbl_inpatient
         $insert_query = $connection->prepare("
-        INSERT INTO tbl_inpatient (inpatient_id, patient_id, patient_name, gender, dob, admission_date, room_number, bed_number) 
-        VALUES (?, ?, ?, ?, ?, NOW(), NULL, NULL)
+            INSERT INTO tbl_inpatient (inpatient_id, patient_id, patient_name, gender, dob, admission_date, room_number, bed_number) 
+            VALUES (?, ?, ?, ?, ?, NOW(), NULL, NULL)
         ");
         $insert_query->bind_param("sssss", $new_inpatient_id, $patient_id, $name, $gender, $dob);
         $insert_query->execute();
-
-        // Redirect or show a success message
-        header('Location: inpatients.php');
+    
+        // Redirect to inpatients.php instead of showing success message via PHP
+        header("Location: inpatients.php?success=1");
         exit;
-    } else {
-        echo "<script>alert('Patient not found. Please check the Patient ID.');</script>";
     }
-
+    
+    $patient_query->close();
 }
+
 ob_end_flush(); // Flush output buffer
 ?>
 <div class="page-wrapper">
@@ -141,6 +140,9 @@ ob_end_flush(); // Flush output buffer
                         // Sanitize the input to avoid SQL injection
                         $id = intval($_GET['ids']);  // Ensuring it's an integer
                         $update_query = mysqli_prepare($connection, "UPDATE tbl_inpatient SET deleted = 1 WHERE id = ?");
+                        $update_query->bind_param("i", $id);
+                        $update_query->execute();
+                        echo "<script>showSuccess('Inpatient record deleted successfully!', true);</script>";
                     }
                     $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_inpatient");
                     while ($row = mysqli_fetch_array($fetch_query)) {
@@ -184,7 +186,7 @@ ob_end_flush(); // Flush output buffer
                                         <?php endif; ?>
 
                                         <?php if ($_SESSION['role'] == 1): ?>
-                                            <a class="dropdown-item" href="inpatients.php?ids=<?php echo $row['id']; ?>" onclick="return confirmDelete()"><i class="fa fa-trash-o m-r-5"></i> Delete</a>
+                                            <a class="dropdown-item" href="inpatients.php?ids=<?php echo $row['id']; ?>" onclick="return confirmDelete(<?php echo $row['id']; ?>)"><i class="fa fa-trash-o m-r-5"></i> Delete</a>
                                         <?php endif; ?>
                                     </div>
                                 </div>
@@ -201,12 +203,44 @@ ob_end_flush(); // Flush output buffer
 include('footer.php');
 ?>
 <script language="JavaScript" type="text/javascript">
-function confirmDelete(){
-    return confirm('Are you sure want to delete this Patient?');
+function confirmDelete(id){
+    return showConfirm(
+        'Delete Patient?',
+        'Are you sure you want to delete this patient? This action cannot be undone!',
+        () => {
+            setTimeout(() => {
+                window.location.href = 'inpatients.php?ids=' + id;
+            }, 500);
+        }
+    );
 }
 
-function confirmDischarge() {
-    return confirm('Are you sure you want to discharge this Patient?');
+function confirmDischarge(id) {
+    Swal.fire({
+        title: 'Are you sure?',
+        text: "You are about to discharge this inpatient. This action cannot be undone!",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#12369e',
+        cancelButtonColor: '#f62d51',
+        confirmButtonText: 'Yes, discharge!'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            Swal.fire({
+                title: 'Processing...',
+                text: 'Discharging inpatient...',
+                allowOutsideClick: false,
+                showConfirmButton: false,
+                willOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            setTimeout(() => {
+                window.location.href = 'discharge.php?id=' + id;
+            }, 500); // Adjust timing as needed
+        }
+    });
 }
 </script>
 
@@ -254,7 +288,7 @@ function confirmDischarge() {
             }
             
             if (role == 1) {
-                actionButtons += `<a class="dropdown-item" href="inpatients.php?ids=${row.id}" onclick="return confirmDelete()">
+                actionButtons += `<a class="dropdown-item" href="inpatients.php?ids=${row.id}" onclick="return confirmDelete(${row.id})">
                     <i class="fa fa-trash-o m-r-5"></i> Delete</a>`;
             }
 
@@ -319,38 +353,108 @@ function confirmDischarge() {
 </script>
 
 <script>
-function confirmDischarge(id) {
+function showError(message) {
     Swal.fire({
-        title: 'Are you sure?',
-        text: "You are about to discharge this patient. This action cannot be undone!",
+        title: 'Error!',
+        text: message,
+        icon: 'error',
+        confirmButtonColor: '#12369e'
+    });
+}
+
+function showConfirm(title, message, callback) {
+    Swal.fire({
+        title: title,
+        text: message,
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#12369e',
         cancelButtonColor: '#f62d51',
-        confirmButtonText: 'Yes, discharge!'
+        confirmButtonText: 'Yes'
     }).then((result) => {
         if (result.isConfirmed) {
-            // Show success message with checkmark icon
-            Swal.fire({
-                title: 'Discharged!',
-                text: 'The patient has been successfully discharged.',
-                icon: 'success',
-                confirmButtonColor: '#12369e'
-            }).then(() => {
-                // Redirect to discharge.php with the patient ID
-                window.location.href = `discharge.php?id=${id}`;
-            });
+            callback();
+        }
+    });
+}
+
+function showSuccess(message, redirect = false) {
+    Swal.fire({
+        icon: 'success',
+        title: 'Success',
+        text: message,
+        showConfirmButton: false,
+        timer: 2000
+    }).then(() => {
+        if (redirect) {
+            window.location.reload();
+        }
+    });
+}
+
+function showLoading(message) {
+    Swal.fire({
+        title: message,
+        text: 'Please wait...',
+        allowOutsideClick: false,
+        showConfirmButton: false,
+        willOpen: () => {
+            Swal.showLoading();
         }
     });
 }
 </script>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+// Function to show a success message
+// Function to show SweetAlert messages
+function showSuccess(message) {
+    Swal.fire({
+        title: 'Success!',
+        text: message,
+        icon: 'success',
+        confirmButtonText: 'OK',
+        confirmButtonColor: '#12369e'
+    }).then(() => {
+        window.location.href = 'inpatients.php'; // Redirect after closing alert
+    });
+}
+
+// Check if success query parameter exists
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.has('success')) {
+    showSuccess('Patient admitted successfully!');
+}
+
+// Prevent form submission and show loading alert
+document.querySelector('form').addEventListener('submit', function(event) {
+    event.preventDefault();
+
+    Swal.fire({
+        title: 'Processing...',
+        text: 'Admitting patient...',
+        allowOutsideClick: false,
+        showConfirmButton: false,
+        didOpen: () => {
+            Swal.showLoading();
+        }
+    });
+
+    setTimeout(() => {
+        event.target.submit();
+    }, 1000);
+});
+
+</script>
+
 
 <!-- SweetAlert2 CSS -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
 
 <!-- SweetAlert2 JS -->
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
 
 <style>
 .btn-outline-primary {
@@ -375,41 +479,41 @@ border: 1px solid rgb(228, 228, 228);
     border: 1px solid rgb(228, 228, 228);
     color: gray;
 }  
-    .btn-primary {
-            background: #12369e;
-            border: none;
-        }
-        .btn-primary:hover {
-            background: #05007E;
-        }
+.btn-primary {
+    background: #12369e;
+    border: none;
+}
+.btn-primary:hover {
+    background: #05007E;
+}
 
-        #searchResults {
-        max-height: 200px;
-        overflow-y: auto;
-        border: 1px solid #ddd;
-        border-radius: 5px;
-        display: none;
-        background: #fff;
-        position: absolute;
-        z-index: 1000;
-        width: 50%;
-    }
-    #searchResults li {
-        padding: 8px 12px;
-        cursor: pointer;
-        list-style: none;
-        border-bottom: 1px solid #ddd;
-    }
-    #searchResults li:hover {
-        background-color: #12369e;
-        color: white;
-    }
-    .form-inline .input-group {
-        width: 100%;
-    }
-    .search-icon-bg {
+#searchResults {
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    display: none;
+    background: #fff;
+    position: absolute;
+    z-index: 1000;
+    width: 50%;
+}
+#searchResults li {
+    padding: 8px 12px;
+    cursor: pointer;
+    list-style: none;
+    border-bottom: 1px solid #ddd;
+}
+#searchResults li:hover {
+    background-color: #12369e;
+    color: white;
+}
+.form-inline .input-group {
+    width: 100%;
+}
+.search-icon-bg {
     background-color: #fff; 
     border: none; 
     color: #6c757d; 
-    }
+}
 </style>

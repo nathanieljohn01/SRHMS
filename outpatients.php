@@ -18,75 +18,76 @@ $doctor_name = isset($_SESSION['name']) ? $_SESSION['name'] : null;
 
 // Update diagnosis in the database
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['diagnosis']) && isset($_POST['patientId'])) {
-    // Sanitize inputs
     $diagnosis = sanitize($connection, $_POST['diagnosis']);
     $patientId = sanitize($connection, $_POST['patientId']);
 
-    // Prepare and bind the query
     $update_query = $connection->prepare("UPDATE tbl_outpatient SET diagnosis=? WHERE patient_id=?");
     $update_query->bind_param("ss", $diagnosis, $patientId);
 
-    // Execute the query
     if ($update_query->execute()) {
-        echo '<script>alert("Diagnosis added successfully.");</script>';
+        echo "<script>showSuccess('Diagnosis added successfully.', true);</script>";
     } else {
-        echo '<script>alert("Error adding diagnosis.");</script>';
+        echo "<script>showError('Error adding diagnosis.');</script>";
     }
-
     $update_query->close();
 }
 
 // Fetch patient details from tbl_patient based on patient_id
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['patientId'])) {
-    // Sanitize the patient ID input
     $patientId = sanitize($connection, $_POST['patientId']);
-
-    // Prepare and bind the query
     $patient_query = $connection->prepare("SELECT * FROM tbl_patient WHERE id = ?");
     $patient_query->bind_param("s", $patientId);
-
-    // Execute the query
     $patient_query->execute();
     $patient_result = $patient_query->get_result();
     $patient = $patient_result->fetch_array(MYSQLI_ASSOC);
 
     if ($patient) {
-        // Retrieve patient details
         $patient_id = $patient['patient_id'];
         $name = $patient['first_name'] . ' ' . $patient['last_name'];
         $gender = $patient['gender'];
         $dob = $patient['dob'];
-        $doctor_incharge = ""; // Optional: Set manually later or through a form field
+        $doctor_incharge = "";
 
-        // Fetch the last outpatient_id and increment it
         $last_outpatient_query = $connection->prepare("SELECT outpatient_id FROM tbl_outpatient ORDER BY id DESC LIMIT 1");
         $last_outpatient_query->execute();
         $last_outpatient_result = $last_outpatient_query->get_result();
         $last_outpatient = $last_outpatient_result->fetch_array(MYSQLI_ASSOC);
 
-        // Generate new outpatient_id
         if ($last_outpatient) {
-            $last_id_number = (int) substr($last_outpatient['outpatient_id'], 4); // Remove "OPT-" and convert to int
+            $last_id_number = (int) substr($last_outpatient['outpatient_id'], 4);
             $new_outpatient_id = 'OPT-' . ($last_id_number + 1);
         } else {
-            $new_outpatient_id = 'OPT-1'; // Starting value if no outpatient_id exists
+            $new_outpatient_id = 'OPT-1';
         }
 
-        // Insert the patient into tbl_outpatient
-        $insert_query = $connection->prepare("
-            INSERT INTO tbl_outpatient (outpatient_id, patient_id, patient_name, gender, dob, doctor_incharge, date_time) 
-            VALUES (?, ?, ?, ?, ?, ?, NOW())
-        ");
+        $insert_query = $connection->prepare("INSERT INTO tbl_outpatient (outpatient_id, patient_id, patient_name, gender, dob, doctor_incharge, date_time) VALUES (?, ?, ?, ?, ?, ?, NOW())");
         $insert_query->bind_param("ssssss", $new_outpatient_id, $patient_id, $name, $gender, $dob, $doctor_incharge);
         $insert_query->execute();
 
-        // Redirect or show a success message
-        header('Location: outpatients.php');
+        echo "<script>
+            Swal.fire({
+                title: 'Success!',
+                text: 'Outpatient record inserted successfully.',
+                icon: 'success',
+                confirmButtonText: 'OK',
+                confirmButtonColor: '#12369e'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    window.location.href = 'outpatients.php';
+                }
+            });
+        </script>";
         exit;
     } else {
-        echo "<script>alert('Patient not found. Please check the Patient ID.');</script>";
+        echo "<script>
+            Swal.fire({
+                title: 'Error!',
+                text: 'Patient not found. Please check the Patient ID.',
+                icon: 'error',
+                confirmButtonText: 'OK'
+            });
+        </script>";
     }
-
     $patient_query->close();
 }
 
@@ -95,31 +96,40 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['outpatientIdDoctor']) 
     $outpatientId = sanitize($connection, $_POST['outpatientIdDoctor']);
     $doctorId = sanitize($connection, $_POST['doctorId']);
 
-    // Fetch the doctor's name
     $doctor_query = $connection->prepare("SELECT first_name, last_name FROM tbl_employee WHERE id = ?");
     $doctor_query->bind_param("s", $doctorId);
-
-    // Execute the query
     $doctor_query->execute();
     $doctor_result = $doctor_query->get_result();
     $doctor = $doctor_result->fetch_array(MYSQLI_ASSOC);
     $doctor_name = $doctor['first_name'] . ' ' . $doctor['last_name'];
 
-    // Update the outpatient record with the doctor's name
     $update_query = $connection->prepare("UPDATE tbl_outpatient SET doctor_incharge = ? WHERE outpatient_id = ?");
     $update_query->bind_param("ss", $doctor_name, $outpatientId);
 
     if ($update_query->execute()) {
-        echo '<script>alert("Doctor assigned successfully.");</script>';
+        echo "<script>showSuccess('Doctor assigned successfully.', true);</script>";
     } else {
-        echo '<script>alert("Error assigning doctor.");</script>';
+        echo "<script>showError('Error assigning doctor.');</script>";
     }
 
     $doctor_query->close();
     $update_query->close();
 }
 
-ob_end_flush(); // Flush output buffer
+if (isset($_GET['ids'])) {
+    $id = intval($_GET['ids']);
+    $update_query = $connection->prepare("UPDATE tbl_outpatient SET deleted = 1 WHERE id = ?");
+    $update_query->bind_param("i", $id);
+    if ($update_query->execute()) {
+        echo "<script>showSuccess('Outpatient record deleted successfully!', true);</script>";
+        header('Location: outpatients.php');
+        exit;
+    } else {
+        echo "<script>showError('Error deleting outpatient record.');</script>";
+    }
+}
+
+ob_end_flush();
 ?>
 
 <div class="page-wrapper">
@@ -190,7 +200,6 @@ ob_end_flush(); // Flush output buffer
                 </thead>
                 <tbody>
                     <?php
-                        // Filter outpatients by doctor_incharge if role is 2 (doctor)
                         if ($role == 2) {
                             $fetch_query = $connection->prepare("SELECT * FROM tbl_outpatient WHERE deleted = 0 AND doctor_incharge = ?");
                             $fetch_query->bind_param("s", $doctor_name);
@@ -215,7 +224,13 @@ ob_end_flush(); // Flush output buffer
                             <td><?php echo $year; ?></td>
                             <td><?php echo $row['dob']; ?></td>
                             <td><?php echo $row['gender']; ?></td>
-                            <td><?php echo $row['doctor_incharge']; ?></td>
+                            <td>
+                                <?php if (empty($row['doctor_incharge'])) { ?>
+                                    <button class="btn btn-primary btn-sm select-doctor-btn" data-toggle="modal" data-target="#doctorModal" data-id="<?php echo htmlspecialchars($row['outpatient_id']); ?>">Select Doctor</button>
+                                <?php } else { ?>
+                                    <?php echo htmlspecialchars($row['doctor_incharge']); ?>
+                                <?php } ?>
+                            </td>
                             <td>
                                 <form action="generate-result.php" method="get">
                                     <input type="hidden" name="patient_id" value="<?php echo $row['patient_id']; ?>">
@@ -580,3 +595,216 @@ border: 1px solid rgb(228, 228, 228);
     color: #6c757d; 
     }
 </style>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+$(document).ready(function() {
+    // Handle form submission
+    $('#outpatientForm').on('submit', function(e) {
+        e.preventDefault();
+        
+        // Basic validation
+        const required = ['patient_id', 'complaint', 'diagnosis', 'treatment'];
+        let isValid = true;
+        let emptyFields = [];
+        
+        required.forEach(field => {
+            if (!$(`#${field}`).val()) {
+                isValid = false;
+                emptyFields.push(field.replace('_', ' '));
+            }
+        });
+        
+        if (!isValid) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: `Please fill in the following fields: ${emptyFields.join(', ')}`,
+                showConfirmButton: false,
+                timer: 2000
+            });
+            return;
+        }
+        
+        // Show loading state
+        Swal.fire({
+            title: 'Saving outpatient record...',
+            text: 'Please wait...',
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            willOpen: () => {
+                Swal.showLoading();
+            }
+        });
+        
+        // Submit the form
+        this.submit();
+    });
+    
+    // Handle delete confirmation
+    $('.delete-btn').on('click', function(e) {
+        e.preventDefault();
+        const id = $(this).data('id');
+        
+        Swal.fire({
+            icon: 'warning',
+            title: 'Delete Record?',
+            text: 'Are you sure you want to delete this outpatient record? This action cannot be undone!',
+            showCancelButton: true,
+            confirmButtonText: 'Yes',
+            cancelButtonText: 'No',
+            reverseButtons: true
+        }).then((result) => {
+            if (result.value) {
+                // Show loading state
+                Swal.fire({
+                    title: 'Deleting record...',
+                    text: 'Please wait...',
+                    allowOutsideClick: false,
+                    showConfirmButton: false,
+                    willOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+                setTimeout(() => {
+                    window.location.href = 'outpatients.php?ids=' + id;
+                }, 500);
+            }
+        });
+    });
+    
+    // Handle patient search with better UX
+    $('#patientSearch').on('keyup', function() {
+        const query = $(this).val();
+        if (query.length < 2) {
+            $('#searchResults').html('').hide();
+            return;
+        }
+        
+        Swal.fire({
+            title: 'Searching for patient...',
+            text: 'Please wait...',
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            willOpen: () => {
+                Swal.showLoading();
+            }
+        });
+        
+        $.ajax({
+            url: 'search_patient.php',
+            type: 'POST',
+            data: { query: query },
+            success: function(response) {
+                Swal.close();
+                try {
+                    const data = JSON.parse(response);
+                    if (data.success) {
+                        // Update patient info fields
+                        $('#patient_name').val(data.name);
+                        $('#patient_age').val(data.age);
+                        $('#patient_gender').val(data.gender);
+                        $('#searchResults').html('').hide();
+                        
+                        // Show success message
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Success',
+                            text: 'Patient found!',
+                            showConfirmButton: false,
+                            timer: 2000
+                        });
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'Patient not found',
+                            showConfirmButton: false,
+                            timer: 2000
+                        });
+                        $('#searchResults').html('').hide();
+                    }
+                } catch (e) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Error searching for patient',
+                        showConfirmButton: false,
+                        timer: 2000
+                    });
+                    $('#searchResults').html('').hide();
+                }
+            },
+            error: function() {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Error searching for patient',
+                    showConfirmButton: false,
+                    timer: 2000
+                });
+                $('#searchResults').html('').hide();
+            }
+        });
+    });
+    
+    // Initialize datepicker with better UX
+    $('.datepicker').datetimepicker({
+        format: 'YYYY-MM-DD',
+        icons: {
+            up: "fa fa-chevron-up",
+            down: "fa fa-chevron-down",
+            next: 'fa fa-chevron-right',
+            previous: 'fa fa-chevron-left'
+        }
+    });
+    
+    // Handle AJAX errors globally
+    $(document).ajaxError(function(event, jqXHR, settings, error) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'Error fetching data. Please try again.',
+            showConfirmButton: false,
+            timer: 2000
+        });
+    });
+});
+
+// Update onclick handlers in table
+$(document).ready(function() {
+    // Update delete links
+    $('a[onclick*="confirm"]').each(function() {
+        const id = $(this).attr('href').split('=')[1];
+        $(this).attr('onclick', `return deleteRecord('${id}')`);
+    });
+    
+    // Handle table filtering
+    $('#outpatientSearch').on('keyup', function() {
+        const query = $(this).val().toLowerCase();
+        $('#outpatientTable tbody tr').filter(function() {
+            $(this).toggle($(this).text().toLowerCase().indexOf(query) > -1);
+        });
+    });
+});
+
+document.querySelector('form').addEventListener('submit', function(event) {
+    event.preventDefault(); // Prevent the form from submitting immediately
+
+    Swal.fire({
+        title: 'Processing...',
+        text: 'Inserting outpatient record...',
+        allowOutsideClick: false,
+        showConfirmButton: false,
+        willOpen: () => {
+            Swal.showLoading();
+        }
+    });
+
+    // Submit the form after showing the loading message
+    setTimeout(() => {
+        event.target.submit();
+    }, 1000); // Adjust the timeout as needed
+});
+</script>

@@ -48,20 +48,24 @@ include('includes/connection.php');
                     <?php
                     // Handling record deletion with prepared statements to prevent SQL injection
                     if (isset($_GET['ids'])) {
-                        $id = $_GET['ids'];
-
-                        // Ensure the ID is a valid integer to prevent malicious input
-                        if (filter_var($id, FILTER_VALIDATE_INT)) {
-                            $delete_query = mysqli_prepare($connection, "UPDATE tbl_deceased SET deleted = 1 WHERE deceased_id = ?");
-                            mysqli_stmt_bind_param($delete_query, 'i', $id); // 'i' denotes integer type
-                            if (mysqli_stmt_execute($delete_query)) {
-                                // Successfully deleted
+                        try {
+                            // Show loading state first
+                            echo "<script>showLoading('Processing request...');</script>";
+                            
+                            $id = mysqli_real_escape_string($connection, $_GET['ids']);
+                            $delete_query = mysqli_query($connection, "UPDATE tbl_deceased SET deleted = 1 WHERE deceased_id = '$id'");
+                            
+                            if ($delete_query) {
+                                echo "<script>
+                                    showSuccess('Deceased record deleted successfully!', true);
+                                </script>";
                             } else {
-                                echo "Error deleting record.";
+                                throw new Exception(mysqli_error($connection));
                             }
-                            mysqli_stmt_close($delete_query);
-                        } else {
-                            echo "Invalid ID.";
+                        } catch (Exception $e) {
+                            echo "<script>
+                                showError('Error deleting record: " . addslashes($e->getMessage()) . "');
+                            </script>";
                         }
                     }
 
@@ -86,7 +90,7 @@ include('includes/connection.php');
                                     <?php 
                                     if ($_SESSION['role'] == 1 || $_SESSION['role'] == 3) {
                                         echo '<a class="dropdown-item" href="edit-deceased.php?id='. htmlspecialchars($row['deceased_id']) .'"><i class="fa fa-pencil m-r-5"></i> Edit</a>';
-                                        echo '<a class="dropdown-item" href="deceased.php?ids='. htmlspecialchars($row['deceased_id']) .'" onclick="return confirmDelete()"><i class="fa fa-trash-o m-r-5"></i> Delete</a>';
+                                        echo '<a class="dropdown-item delete-btn" data-id="'. htmlspecialchars($row['deceased_id']) .'" href="#"><i class="fa fa-trash-o m-r-5"></i> Delete</a>';
                                     }
                                     ?>
                                     </div>
@@ -175,13 +179,115 @@ function confirmDelete(){
                 <a class="dropdown-item" href="edit-deceased.php?id=${deceasedId}">
                     <i class="fa fa-pencil m-r-5"></i> Edit
                 </a>
-                <a class="dropdown-item" href="deceased.php?ids=${deceasedId}" onclick="return confirmDelete()">
+                <a class="dropdown-item delete-btn" data-id="${deceasedId}" href="#">
                     <i class="fa fa-trash-o m-r-5"></i> Delete
                 </a>
             `;
         }
         
         return buttons;
+    }
+</script>
+
+<script>
+$(document).ready(function() {
+    // Handle delete confirmation
+    $('.delete-btn').on('click', function(e) {
+        e.preventDefault();
+        const id = $(this).data('id');
+        
+        showConfirm(
+            'Delete Record?',
+            'Are you sure you want to delete this deceased record? This action cannot be undone!',
+            () => {
+                // Show loading state
+                showLoading('Deleting record...');
+                setTimeout(() => {
+                    window.location.href = 'deceased.php?ids=' + id;
+                }, 500);
+            }
+        );
+    });
+});
+
+// Function to handle record deletion
+function deleteRecord(id) {
+    showConfirm(
+        'Delete Record?',
+        'Are you sure you want to delete this deceased record? This action cannot be undone!',
+        () => {
+            // Show loading state
+            showLoading('Deleting record...');
+            setTimeout(() => {
+                window.location.href = 'deceased.php?ids=' + id;
+            }, 500);
+        }
+    );
+    return false;
+}
+
+// Update onclick handlers in table
+$(document).ready(function() {
+    // Update delete links
+    $('a[onclick*="confirm"]').each(function() {
+        const id = $(this).attr('href').split('=')[1];
+        $(this).attr('onclick', `return deleteRecord('${id}')`);
+    });
+});
+</script>
+
+<script>
+    function showLoading(message) {
+        Swal.fire({
+            title: message,
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            onRender: () => {
+                Swal.showLoading();
+            }
+        });
+    }
+
+    function showSuccess(message, redirect) {
+        Swal.fire({
+            title: 'Success',
+            text: message,
+            icon: 'success',
+            allowOutsideClick: false,
+            showConfirmButton: true,
+            confirmButtonText: 'OK'
+        }).then((result) => {
+            if (redirect) {
+                window.location.href = 'deceased.php';
+            }
+        });
+    }
+
+    function showError(message) {
+        Swal.fire({
+            title: 'Error',
+            text: message,
+            icon: 'error',
+            allowOutsideClick: false,
+            showConfirmButton: true,
+            confirmButtonText: 'OK'
+        });
+    }
+
+    function showConfirm(title, message, callback) {
+        Swal.fire({
+            title: title,
+            text: message,
+            icon: 'warning',
+            allowOutsideClick: false,
+            showCancelButton: true,
+            confirmButtonText: 'Yes',
+            cancelButtonText: 'No'
+        }).then((result) => {
+            if (result.value) {
+                callback();
+            }
+        });
     }
 </script>
 
