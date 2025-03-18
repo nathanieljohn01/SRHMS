@@ -37,7 +37,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['patientId'])) {
             $name = sanitize($connection, $patient['patient_name']);
             $gender = sanitize($connection, $patient['gender']);
             $dob = sanitize($connection, $patient['dob']);
-
+        
             // Check if the patient is already in tbl_transfer
             $check_transfer_query = $connection->prepare("SELECT * FROM tbl_transfer WHERE inpatient_id = ?");
             if (!$check_transfer_query) {
@@ -46,42 +46,94 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['patientId'])) {
                 $check_transfer_query->bind_param("s", $inpatient_id);
                 $check_transfer_query->execute();
                 $transfer_result = $check_transfer_query->get_result();
-
+        
                 if ($transfer_result->num_rows > 0) {
-                    // Patient already exists in tbl_transfer
                     $msg = "Patient already exists in the transfer records.";
+                    $status = "warning"; // Yellow icon
                 } else {
                     // Insert the patient into tbl_transfer
                     $insert_query = $connection->prepare("
                         INSERT INTO tbl_transfer (inpatient_id, patient_id, patient_name, gender, dob) 
                         VALUES (?, ?, ?, ?, ?)
                     ");
+                    
                     if (!$insert_query) {
                         $msg = "Error in prepared statement: " . $connection->error;
+                        $status = "error"; // Red icon
                     } else {
                         $insert_query->bind_param('sssss', $inpatient_id, $patient_id, $name, $gender, $dob);
+                        
                         if ($insert_query->execute()) {
-                            $msg = "Patient transferred successfully.";
+                            echo "<script>
+                                Swal.fire({
+                                    title: 'Processing...',
+                                    text: 'Transferring patient...',
+                                    allowOutsideClick: false,
+                                    showConfirmButton: false,
+                                    willOpen: () => {
+                                        Swal.showLoading();
+                                    }
+                                });
+        
+                                setTimeout(() => {
+                                    Swal.fire({
+                                        title: 'Success!',
+                                        text: 'Patient transferred successfully.',
+                                        icon: 'success',
+                                        confirmButtonColor: '#12369e'
+                                    }).then(() => {
+                                        window.location.href = 'bed-transfer.php';
+                                    });
+                                }, 1000);
+                            </script>";
                         } else {
-                            $msg = "Error transferring patient: " . $connection->error;
+                            echo "<script>
+                                Swal.fire({
+                                    title: 'Processing...',
+                                    text: 'Transferring patient...',
+                                    allowOutsideClick: false,
+                                    showConfirmButton: false,
+                                    willOpen: () => {
+                                        Swal.showLoading();
+                                    }
+                                });
+        
+                                setTimeout(() => {
+                                    Swal.fire({
+                                        title: 'Error!',
+                                        text: 'Failed to transfer patient. Please try again.',
+                                        icon: 'error',
+                                        confirmButtonColor: '#d33'
+                                    });
+                                }, 1000);
+                            </script>";
                         }
                     }
                 }
             }
         } else {
-            $msg = "Patient not found. Please check the Patient ID.";
+            echo "<script>
+                Swal.fire({
+                    title: 'Processing...',
+                    text: 'Checking patient details...',
+                    allowOutsideClick: false,
+                    showConfirmButton: false,
+                    willOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+        
+                setTimeout(() => {
+                    Swal.fire({
+                        title: 'Patient Not Found!',
+                        text: 'Please check the Patient ID and try again.',
+                        icon: 'warning',
+                        confirmButtonColor: '#12369e'
+                    });
+                }, 1000);
+            </script>";
         }
-    }
-
-    // Display the message
-    if (isset($msg)) {
-        echo "<script>";
-        echo "swal({ text: '" . addslashes($msg) . "', icon: '" . (strpos($msg, "successfully") !== false ? 'success' : 'error') . "' });";
-        if (strpos($msg, "successfully") !== false) {
-            echo "setTimeout(function() { window.location.href = 'bed-transfer.php'; }, 2000);"; // Redirect if successful
-        }
-        echo "</script>";
-    }
+    }       
 }
 
 ob_end_flush(); // Flush output buffer
@@ -160,7 +212,7 @@ ob_end_flush(); // Flush output buffer
                         $update_query->bind_param("s", $id);
                         $update_query->execute();
                     }
-                    $fetch_query = mysqli_query($connection, "select * from tbl_transfer");
+                    $fetch_query = mysqli_query($connection, "select * from tbl_transfer where deleted = 0 order by id desc");
                     while($row = mysqli_fetch_array($fetch_query))
                     {
                         $dob = $row['dob'];
@@ -193,7 +245,7 @@ ob_end_flush(); // Flush output buffer
                                     ?>
                                     <?php 
                                     if ($_SESSION['role'] == 1) {
-                                        echo '<a class="dropdown-item" href="bed-transfer.php?ids='.$row['id'].'" onclick="return confirmDelete()"><i class="fa fa-trash-o m-r-5"></i> Delete</a>';
+                                        echo '<a class="dropdown-item" href="#" onclick="return confirmDelete(\''.$row['id'].'\')"><i class="fa fa-trash-o m-r-5"></i> Delete</a>';
                                     }
                                     ?>
                                    </div>
@@ -211,12 +263,20 @@ ob_end_flush(); // Flush output buffer
 include('footer.php');
 ?>
 <script language="JavaScript" type="text/javascript">
-function confirmDelete(){
-    return confirm('Are you sure want to delete this Patient?');
-}
-
-function confirmDischarge() {
-    return confirm('Are you sure you want to discharge this Patient?');
+function confirmDelete(id) {
+    return Swal.fire({
+        title: 'Delete Patient Record?',
+        text: 'Are you sure you want to delete this Patient record? This action cannot be undone!',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#12369e',
+        confirmButtonText: 'Yes, delete it!'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            window.location.href = 'bed-transfer.php?ids=' + id;  
+        }
+    });
 }
 </script>
 
@@ -314,16 +374,52 @@ function confirmDischarge() {
         $("#addPatientBtn").prop("disabled", false); // Enable the Add button
         $("#searchResults").html("").hide(); // Clear and hide the dropdown
     });
+
+    $('.dropdown-toggle').on('click', function (e) {
+        var $el = $(this).next('.dropdown-menu');
+        var isVisible = $el.is(':visible');
+        
+        // Hide all dropdowns
+        $('.dropdown-menu').slideUp('400');
+        
+        // If this wasn't already visible, slide it down
+        if (!isVisible) {
+            $el.stop(true, true).slideDown('400');
+        }
+        
+        // Close the dropdown if clicked outside of it
+        $(document).on('click', function (e) {
+            if (!$(e.target).closest('.dropdown').length) {
+                $('.dropdown-menu').slideUp('400');
+            }
+        });
+    });
 </script>
 <style>
+.dropdown-item {
+    padding: 7px 15px;
+    color: #333;
+}
+
+.dropdown-item:hover {
+    background-color: #f8f9fa;
+    color: #12369e;
+}
+
+.dropdown-item i {
+    margin-right: 8px;
+    color: #777;
+}
+
+.dropdown-item:hover i {
+    color: #12369e;
+}
 .sticky-search {
     position: sticky;
     left: 0;
     z-index: 100;
     width: 100%;
 }
-
-  
 .btn-outline-primary {
     background-color:rgb(252, 252, 252);
     color: gray;

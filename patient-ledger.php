@@ -351,4 +351,5 @@ $(document).ready(function() {
         padding: 4px 8px;
     }
 }
+
 </style>

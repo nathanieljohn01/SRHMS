@@ -60,10 +60,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['patientId'])) {
         $electrolytes_id = $new_id;
 
         // Sanitize user inputs and set NULL if empty
-        $sodium = !empty($_POST['sodium']) ? sanitize($connection, $_POST['sodium']) : NULL;
-        $potassium = !empty($_POST['potassium']) ? sanitize($connection, $_POST['potassium']) : NULL;
-        $chloride = !empty($_POST['chloride']) ? sanitize($connection, $_POST['chloride']) : NULL;
-        $calcium = !empty($_POST['calcium']) ? sanitize($connection, $_POST['calcium']) : NULL;
+        $sodium  = sanitize($connection, $_POST['sodium'] ?? NULL);
+        $potassium = sanitize($connection, $_POST['potassium'] ?? NULL);
+        $chloride = sanitize($connection, $_POST['chloride'] ?? NULL);
+        $calcium = sanitize($connection, $_POST['calcium'] ?? NULL);
 
         // Prepare the query to insert with NULL values for empty fields
         $insert_query = $connection->prepare("INSERT INTO tbl_electrolytes (electrolytes_id, patient_id, patient_name, gender, dob, sodium, potassium, chloride, calcium, date_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
@@ -76,17 +76,49 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['patientId'])) {
 
         // Execute the query
         if ($insert_query->execute()) {
-            echo "<script>showSuccess('Record added successfully', true);</script>";
-        } else {
-            echo "<script>showError('Error: " . $insert_query->error . "');</script>";
-        }
+            echo "<script>
+                Swal.fire({
+                    title: 'Processing...',
+                    text: 'Saving Electrolytes record...',
+                    allowOutsideClick: false, 
+                    showConfirmButton: false,
+                    willOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
 
-        // Redirect or show a success message
-        header('Location: electrolytes.php');
-        exit;
-    } else {
-        echo "<script>showError('Patient not found. Please check the Patient ID.');</script>";
-    }
+                setTimeout(() => {
+                    Swal.fire({
+                        title: 'Success!',
+                        text: 'Electrolytes record added successfully.',
+                        icon: 'success',
+                        confirmButtonColor: '#12369e'
+                    }).then(() => {
+                        window.location.href = 'electrolytes.php';
+                    });
+                }, 1000);
+            </script>";
+        } else {
+            echo "<script>
+                Swal.fire({
+                    title: 'Error!', 
+                    text: 'Failed to add Electrolytes record. Please try again.',
+                    icon: 'error',
+                    confirmButtonColor: '#d33'
+                });
+            </script>";
+        }
+        } else {
+            echo "<script>
+                Swal.fire({
+                    title: 'Error!',
+                    text: 'Patient not found. Please try again.',
+                    icon: 'error',
+                    confirmButtonColor: '#12369e',
+                    confirmButtonText: 'OK'
+                });
+            </script>";
+        }
 }
 
 ob_end_flush(); // Flush output buffer
@@ -155,6 +187,14 @@ ob_end_flush(); // Flush output buffer
                 </thead>
                 <tbody>
                     <?php
+                    if (isset($_GET['electrolytes_id'])) {
+                        $electrolytes_id = sanitize($connection, $_GET['electrolytes_id']);
+                        $update_query = $connection->prepare("UPDATE tbl_electrolytes SET deleted = 1 WHERE electrolytes_id = ?");
+                        $update_query->bind_param("s", $electrolytes_id);
+                        $update_query->execute();
+                        echo "<script>showSuccess('Record deleted successfully', true);</script>";
+                    }
+                    
                     $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_electrolytes WHERE deleted = 0 ORDER BY date_time ASC");
                     while ($row = mysqli_fetch_array($fetch_query)) {
                         $dob = $row['dob'];
@@ -186,10 +226,10 @@ ob_end_flush(); // Flush output buffer
                                         </form>
                                         <?php endif; ?>
                                         <?php if ($editable): ?>
-                                            <a class="dropdown-item" href="edit-electrolytes.php?id=<?php echo $row['electrolytes_id']; ?>"><i class="fa fa-pencil m-r-5"></i> Edit</a>
-                                            <a class="dropdown-item" href="electrolytes.php?id=<?php echo $row['electrolytes_id']; ?>" onclick="return confirmDelete()"><i class="fa fa-trash-o m-r-5"></i> Delete</a>
+                                            <a class="dropdown-item" href="edit-electrolytes.php?id=<?php echo $row['electrolytes_id']; ?>"><i class="fa fa-pencil m-r-5"></i> Insert and Edit</a>
+                                            <a class="dropdown-item" href="#" onclick="return confirmDelete('<?php echo $row['electrolytes_id']; ?>')"><i class="fa fa-trash-o m-r-5"></i> Delete</a>
                                         <?php else: ?>
-                                            <a class="dropdown-item disabled" href="#"><i class="fa fa-pencil m-r-5"></i> Edit</a>
+                                            <a class="dropdown-item disabled" href="#"><i class="fa fa-pencil m-r-5"></i> Insert and Edit</a>
                                             <a class="dropdown-item disabled" href="#"><i class="fa fa-trash-o m-r-5"></i> Delete</a>
                                         <?php endif; ?>
                                     </div>
@@ -206,179 +246,87 @@ ob_end_flush(); // Flush output buffer
 <?php
 include('footer.php');
 ?>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+document.querySelector('form').addEventListener('submit', function(event) {
+    event.preventDefault(); // Prevent form from submitting immediately
+
+    Swal.fire({
+        title: 'Processing...',
+        text: 'Inserting laboratory results...',
+        allowOutsideClick: false,
+        showConfirmButton: false,
+        willOpen: () => {
+            Swal.showLoading();
+        }
+    });
+    
+    // Submit the form after showing the loading message
+    setTimeout(() => {
+        event.target.submit();
+    }, 1000); // Adjust the timeout as needed
+});
+</script>
 
 <script>
-$(document).ready(function() {
-    // Handle form submission
-    $('#electrolytesForm').on('submit', function(e) {
-        e.preventDefault();
-        
-        // Basic validation
-        const required = ['patient_id', 'sodium', 'potassium', 'chloride', 'bicarbonate'];
-        let isValid = true;
-        let emptyFields = [];
-        
-        required.forEach(field => {
-            if (!$(`#${field}`).val()) {
-                isValid = false;
-                emptyFields.push(field.replace('_', ' '));
-            }
-        });
-        
-        if (!isValid) {
-            showError(`Please fill in the following fields: ${emptyFields.join(', ')}`);
-            return;
+function searchPatients() {
+    var input = document.getElementById("patientSearchInput").value;
+    if (input.length < 2) {
+        document.getElementById("searchResults").style.display = "none";
+        document.getElementById("searchResults").innerHTML = "";
+        return;
+    }
+    $.ajax({
+        url: "search-electrolytes.php",
+        method: "GET",
+        data: { query: input },
+        success: function (data) {
+            var results = document.getElementById("searchResults");
+            results.innerHTML = data;
+            results.style.display = "block";
         }
-        
-        // Validate numeric fields
-        const numeric = ['sodium', 'potassium', 'chloride', 'bicarbonate'];
-        let invalidFields = [];
-        
-        numeric.forEach(field => {
-            const value = $(`#${field}`).val();
-            if (value && !$.isNumeric(value)) {
-                isValid = false;
-                invalidFields.push(field.replace('_', ' '));
-            }
-        });
-        
-        if (invalidFields.length > 0) {
-            showError(`The following fields must be numeric: ${invalidFields.join(', ')}`);
-            return;
-        }
-        
-        // Show loading state
-        showLoading('Saving electrolytes results...');
-        
-        // Submit the form
-        this.submit();
     });
-    
-    // Handle delete confirmation
-    $('.delete-btn').on('click', function(e) {
-        e.preventDefault();
-        const id = $(this).data('id');
-        
-        showConfirm(
-            'Delete Record?',
-            'Are you sure you want to delete this electrolytes record? This action cannot be undone!',
-            () => {
-                // Show loading state
-                showLoading('Deleting record...');
-                setTimeout(() => {
-                    window.location.href = 'electrolytes.php?ids=' + id;
-                }, 500);
-            }
-        );
-    });
-    
-    // Handle patient search with better UX
-    $('#patientSearch').on('keyup', function() {
-        const query = $(this).val();
-        if (query.length < 2) return;
-        
-        showLoading('Searching for patient...');
-        
-        $.ajax({
-            url: 'search_patient.php',
-            type: 'POST',
-            data: { query: query },
-            success: function(response) {
-                Swal.close();
-                try {
-                    const data = JSON.parse(response);
-                    if (data.success) {
-                        // Update patient info fields
-                        $('#patient_name').val(data.name);
-                        $('#patient_age').val(data.age);
-                        $('#patient_gender').val(data.gender);
-                        
-                        // Show success message
-                        showSuccess('Patient found!');
-                    } else {
-                        showError('Patient not found');
-                    }
-                } catch (e) {
-                    showError('Error searching for patient');
-                }
-            },
-            error: function() {
-                showError('Error searching for patient');
-            }
-        });
-    });
-    
-    // Add reference range validation
-    const referenceRanges = {
-        sodium: { min: 135, max: 145, unit: 'mEq/L' },
-        potassium: { min: 3.5, max: 5.0, unit: 'mEq/L' },
-        chloride: { min: 98, max: 106, unit: 'mEq/L' },
-        bicarbonate: { min: 22, max: 29, unit: 'mEq/L' }
-    };
-    
-    // Add input handlers for reference range warnings
-    Object.keys(referenceRanges).forEach(field => {
-        $(`#${field}`).on('change', function() {
-            const value = parseFloat($(this).val());
-            const range = referenceRanges[field];
-            
-            if (value < range.min || value > range.max) {
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Out of Range',
-                    text: `${field} value (${value} ${range.unit}) is outside the normal range (${range.min}-${range.max} ${range.unit}). Do you want to continue?`,
-                    showCancelButton: true,
-                    confirmButtonText: 'Yes',
-                    cancelButtonText: 'No'
-                }).then((result) => {
-                    if (!result.value) {
-                        $(this).val('');
-                        $(this).focus();
-                    }
-                });
-            }
-        });
-    });
-    
-    // Handle AJAX errors globally
-    $(document).ajaxError(function(event, jqXHR, settings, error) {
-        showError('Error fetching data. Please try again.');
-    });
+}
+
+$(document).on("click", ".search-result", function () {
+    var patientId = $(this).data("id");
+    var patientName = $(this).text();
+
+    $("#patientId").val(patientId);
+    $("#patientSearchInput").val(patientName);
+    $("#addPatientBtn").prop("disabled", false);
+    $("#searchResults").html("").hide();
 });
 
 // Function to handle record deletion
-function deleteRecord(id) {
-    showConfirm(
-        'Delete Record?',
-        'Are you sure you want to delete this electrolytes record? This action cannot be undone!',
-        () => {
-            // Show loading state
-            showLoading('Deleting record...');
-            setTimeout(() => {
-                window.location.href = 'electrolytes.php?ids=' + id;
-            }, 500);
+function confirmDelete(electrolytes_id) {
+    return Swal.fire({
+        title: 'Delete Electrolytes Record?',
+        text: 'Are you sure you want to delete this Electrolytes record? This action cannot be undone!',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#12369e',
+        confirmButtonText: 'Yes, delete it!'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            window.location.href = 'electrolytes.php?electrolytes_id=' + electrolytes_id;
         }
-    );
-    return false;
-}
-
-// Update onclick handlers in table
-$(document).ready(function() {
-    // Update delete links
-    $('a[onclick*="confirm"]').each(function() {
-        const id = $(this).attr('href').split('=')[1];
-        $(this).attr('onclick', `return deleteRecord('${id}')`);
     });
-});
-
-function confirmDelete() {
-    return confirm('Are you sure you want to delete this item?');
 }
 
 function clearSearch() {
     document.getElementById("electrolytesSearchInput").value = '';
     filterElectrolytes();
 }
+
+let canPrint, userRole, editable;
+
+$(document).ready(function() {
+    canPrint = <?php echo $can_print ? 'true' : 'false' ?>;
+    userRole = <?php echo $_SESSION['role']; ?>;
+    editable = <?php echo $editable ? 'true' : 'false' ?>;
+});
 
 function filterElectrolytes() {
     var input = document.getElementById("electrolytesSearchInput").value;
@@ -412,59 +360,80 @@ function updateElectrolytesTable(data) {
                 <td>${record.potassium}</td>
                 <td>${record.chloride}</td>
                 <td>${record.calcium}</td>
+                <td class="text-right">
+                    <div class="dropdown dropdown-action">
+                        <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
+                            <i class="fa fa-ellipsis-v"></i>
+                        </a>
+                        <div class="dropdown-menu dropdown-menu-right">
+                            ${getActionButtons(record.electrolytes_id)}
+                        </div>
+                    </div>
+                </td>
             </tr>
         `);
     });
 }
 
-function showSuccess(message, redirect = false) {
-    Swal.fire({
-        icon: 'success',
-        title: 'Success',
-        text: message,
-        showConfirmButton: false,
-        timer: 2000
-    }).then(() => {
-        if (redirect) {
-            window.location.href = 'electrolytes.php';
+function getActionButtons(electrolytesId) {
+    let buttons = '';
+    
+    if (canPrint) {
+        buttons += `
+            <form action="generate-electrolytes.php" method="get">
+                <input type="hidden" name="id" value="${electrolytesId}">
+                <div class="form-group">
+                    <input type="text" class="form-control" id="filename" name="filename" placeholder="Enter File Name" aria-label="Enter File Name" aria-describedby="basic-addon2">
+                </div>
+                <button class="btn btn-primary btn-sm custom-btn" type="submit">
+                    <i class="fa fa-file-pdf-o m-r-5"></i> Generate Result
+                </button>
+            </form>
+        `;
+    }
+    
+    if (userRole === 1) {
+        buttons += `
+            <a class="dropdown-item" href="edit-electrolytes.php?id=${electrolytesId}">
+                <i class="fa fa-pencil m-r-5"></i> Insert and Edit
+            </a>
+            <a class="dropdown-item" href="electrolytes.php?ids=${electrolytesId}" onclick="return confirmDelete()">
+                <i class="fa fa-trash-o m-r-5"></i> Delete
+            </a>
+        `;
+    } else {
+        buttons += `
+            <a class="dropdown-item disabled" href="#">
+                <i class="fa fa-pencil m-r-5"></i> Edit
+            </a>
+            <a class="dropdown-item disabled" href="#">
+                <i class="fa fa-trash-o m-r-5"></i> Delete
+            </a>
+        `;
+    }
+    
+    return buttons;
+}
+
+$('.dropdown-toggle').on('click', function (e) {
+        var $el = $(this).next('.dropdown-menu');
+        var isVisible = $el.is(':visible');
+        
+        // Hide all dropdowns
+        $('.dropdown-menu').slideUp('400');
+        
+        // If this wasn't already visible, slide it down
+        if (!isVisible) {
+            $el.stop(true, true).slideDown('400');
         }
+        
+        // Close the dropdown if clicked outside of it
+        $(document).on('click', function (e) {
+            if (!$(e.target).closest('.dropdown').length) {
+                $('.dropdown-menu').slideUp('400');
+            }
+        });
     });
-}
-
-function showError(message) {
-    Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: message,
-        showConfirmButton: false,
-        timer: 2000
-    });
-}
-
-function showLoading(message) {
-    Swal.fire({
-        icon: 'info',
-        title: 'Loading',
-        text: message,
-        showConfirmButton: false,
-        allowOutsideClick: false
-    });
-}
-
-function showConfirm(title, message, callback) {
-    Swal.fire({
-        icon: 'question',
-        title: title,
-        text: message,
-        showCancelButton: true,
-        confirmButtonText: 'Yes',
-        cancelButtonText: 'No'
-    }).then((result) => {
-        if (result.value) {
-            callback();
-        }
-    });
-}
 </script>
 
 <style>
@@ -528,4 +497,29 @@ function showConfirm(title, message, callback) {
     .form-inline .input-group {
         width: 100%;
     }
+    .dropdown-menu {
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 3px;
+    transform-origin: top right;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+.dropdown-item {
+    padding: 7px 15px;
+    color: #333;
+}
+
+.dropdown-item:hover {
+    background-color: #f8f9fa;
+    color: #12369e;
+}
+
+.dropdown-item i {
+    margin-right: 8px;
+    color: #777;
+}
+
+.dropdown-item:hover i {
+    color: #12369e;
+}
 </style> 

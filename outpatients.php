@@ -465,6 +465,26 @@ var doctor_name = <?php echo json_encode($_SESSION['name']); ?>;
         $("#addPatientBtn").prop("disabled", false); // Enable the Add button
         $("#searchResults").html("").hide(); // Clear and hide the dropdown
     });
+        
+    $('.dropdown-toggle').on('click', function (e) {
+    var $el = $(this).next('.dropdown-menu');
+    var isVisible = $el.is(':visible');
+    
+    // Hide all dropdowns
+    $('.dropdown-menu').slideUp('400');
+    
+    // If this wasn't already visible, slide it down
+    if (!isVisible) {
+        $el.stop(true, true).slideDown('400');
+    }
+    
+    // Close the dropdown if clicked outside of it
+    $(document).on('click', function (e) {
+        if (!$(e.target).closest('.dropdown').length) {
+            $('.dropdown-menu').slideUp('400');
+        }
+    });
+});
 </script>
 
 <script>
@@ -594,217 +614,32 @@ border: 1px solid rgb(228, 228, 228);
     border: none; 
     color: #6c757d; 
     }
+    .dropdown-menu {
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 3px;
+    transform-origin: top right;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+.dropdown-item {
+    padding: 7px 15px;
+    color: #333;
+}
+
+.dropdown-item:hover {
+    background-color: #f8f9fa;
+    color: #12369e;
+}
+
+.dropdown-item i {
+    margin-right: 8px;
+    color: #777;
+}
+
+.dropdown-item:hover i {
+    color: #12369e;
+}
+
 </style>
 
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-<script>
-$(document).ready(function() {
-    // Handle form submission
-    $('#outpatientForm').on('submit', function(e) {
-        e.preventDefault();
-        
-        // Basic validation
-        const required = ['patient_id', 'complaint', 'diagnosis', 'treatment'];
-        let isValid = true;
-        let emptyFields = [];
-        
-        required.forEach(field => {
-            if (!$(`#${field}`).val()) {
-                isValid = false;
-                emptyFields.push(field.replace('_', ' '));
-            }
-        });
-        
-        if (!isValid) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: `Please fill in the following fields: ${emptyFields.join(', ')}`,
-                showConfirmButton: false,
-                timer: 2000
-            });
-            return;
-        }
-        
-        // Show loading state
-        Swal.fire({
-            title: 'Saving outpatient record...',
-            text: 'Please wait...',
-            allowOutsideClick: false,
-            showConfirmButton: false,
-            willOpen: () => {
-                Swal.showLoading();
-            }
-        });
-        
-        // Submit the form
-        this.submit();
-    });
-    
-    // Handle delete confirmation
-    $('.delete-btn').on('click', function(e) {
-        e.preventDefault();
-        const id = $(this).data('id');
-        
-        Swal.fire({
-            icon: 'warning',
-            title: 'Delete Record?',
-            text: 'Are you sure you want to delete this outpatient record? This action cannot be undone!',
-            showCancelButton: true,
-            confirmButtonText: 'Yes',
-            cancelButtonText: 'No',
-            reverseButtons: true
-        }).then((result) => {
-            if (result.value) {
-                // Show loading state
-                Swal.fire({
-                    title: 'Deleting record...',
-                    text: 'Please wait...',
-                    allowOutsideClick: false,
-                    showConfirmButton: false,
-                    willOpen: () => {
-                        Swal.showLoading();
-                    }
-                });
-                setTimeout(() => {
-                    window.location.href = 'outpatients.php?ids=' + id;
-                }, 500);
-            }
-        });
-    });
-    
-    // Handle patient search with better UX
-    $('#patientSearch').on('keyup', function() {
-        const query = $(this).val();
-        if (query.length < 2) {
-            $('#searchResults').html('').hide();
-            return;
-        }
-        
-        Swal.fire({
-            title: 'Searching for patient...',
-            text: 'Please wait...',
-            allowOutsideClick: false,
-            showConfirmButton: false,
-            willOpen: () => {
-                Swal.showLoading();
-            }
-        });
-        
-        $.ajax({
-            url: 'search_patient.php',
-            type: 'POST',
-            data: { query: query },
-            success: function(response) {
-                Swal.close();
-                try {
-                    const data = JSON.parse(response);
-                    if (data.success) {
-                        // Update patient info fields
-                        $('#patient_name').val(data.name);
-                        $('#patient_age').val(data.age);
-                        $('#patient_gender').val(data.gender);
-                        $('#searchResults').html('').hide();
-                        
-                        // Show success message
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Success',
-                            text: 'Patient found!',
-                            showConfirmButton: false,
-                            timer: 2000
-                        });
-                    } else {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error',
-                            text: 'Patient not found',
-                            showConfirmButton: false,
-                            timer: 2000
-                        });
-                        $('#searchResults').html('').hide();
-                    }
-                } catch (e) {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error',
-                        text: 'Error searching for patient',
-                        showConfirmButton: false,
-                        timer: 2000
-                    });
-                    $('#searchResults').html('').hide();
-                }
-            },
-            error: function() {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: 'Error searching for patient',
-                    showConfirmButton: false,
-                    timer: 2000
-                });
-                $('#searchResults').html('').hide();
-            }
-        });
-    });
-    
-    // Initialize datepicker with better UX
-    $('.datepicker').datetimepicker({
-        format: 'YYYY-MM-DD',
-        icons: {
-            up: "fa fa-chevron-up",
-            down: "fa fa-chevron-down",
-            next: 'fa fa-chevron-right',
-            previous: 'fa fa-chevron-left'
-        }
-    });
-    
-    // Handle AJAX errors globally
-    $(document).ajaxError(function(event, jqXHR, settings, error) {
-        Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: 'Error fetching data. Please try again.',
-            showConfirmButton: false,
-            timer: 2000
-        });
-    });
-});
-
-// Update onclick handlers in table
-$(document).ready(function() {
-    // Update delete links
-    $('a[onclick*="confirm"]').each(function() {
-        const id = $(this).attr('href').split('=')[1];
-        $(this).attr('onclick', `return deleteRecord('${id}')`);
-    });
-    
-    // Handle table filtering
-    $('#outpatientSearch').on('keyup', function() {
-        const query = $(this).val().toLowerCase();
-        $('#outpatientTable tbody tr').filter(function() {
-            $(this).toggle($(this).text().toLowerCase().indexOf(query) > -1);
-        });
-    });
-});
-
-document.querySelector('form').addEventListener('submit', function(event) {
-    event.preventDefault(); // Prevent the form from submitting immediately
-
-    Swal.fire({
-        title: 'Processing...',
-        text: 'Inserting outpatient record...',
-        allowOutsideClick: false,
-        showConfirmButton: false,
-        willOpen: () => {
-            Swal.showLoading();
-        }
-    });
-
-    // Submit the form after showing the loading message
-    setTimeout(() => {
-        event.target.submit();
-    }, 1000); // Adjust the timeout as needed
-});
-</script>

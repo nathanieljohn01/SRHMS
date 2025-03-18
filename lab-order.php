@@ -50,17 +50,19 @@ if (isset($_POST['save-order'])) {
     $shift = isset($_POST['shift']) ? htmlspecialchars(trim($_POST['shift']), ENT_QUOTES, 'UTF-8') : 'Regular';
 
     if (isset($_POST['lab_test']) && !empty($_POST['lab_test'])) {
+        $success = true;
+        
         // Prepare the insert statement for tbl_laborder
         $insert_stmt = mysqli_prepare($connection, "
             INSERT INTO tbl_laborder 
             (test_id, patient_id, patient_name, patient_type, gender, dob, lab_department, lab_test, price, status, requested_date, stat, shift) 
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'In-Progress', NOW(), ?, ?)
         ");
-
+    
         foreach ($_POST['lab_test'] as $selected_lab_test) {
             // Sanitize lab test name
             $selected_lab_test = htmlspecialchars(trim($selected_lab_test), ENT_QUOTES, 'UTF-8');
-
+    
             // Fetch lab test details
             $fetch_lab_test_stmt = mysqli_prepare($connection, "
                 SELECT lab_department, lab_test_price 
@@ -72,32 +74,67 @@ if (isset($_POST['save-order'])) {
             $lab_test_result = mysqli_stmt_get_result($fetch_lab_test_stmt);
             $lab_test_data = mysqli_fetch_assoc($lab_test_result);
             mysqli_stmt_close($fetch_lab_test_stmt);
-
+    
             if (!$lab_test_data) {
-                continue; // Skip if no lab test data found
+                continue;
             }
-
+    
             // Extract department and price
             $department = htmlspecialchars(trim($lab_test_data['lab_department']), ENT_QUOTES, 'UTF-8');
-            $price = (float)$lab_test_data['lab_test_price']; // Ensure price is treated as a decimal
-
+            $price = (float)$lab_test_data['lab_test_price'];
+    
             // Bind and execute the insert statement
             mysqli_stmt_bind_param($insert_stmt, 'ssssssssdss', $test_id, $patient_id, $patient_name, $patient_type, $gender, $dob, $department, $selected_lab_test, $price, $stat_status, $shift);
-            if (mysqli_stmt_execute($insert_stmt)) {
-                echo "<script>
-                    showSuccess('Lab order created successfully!', true);
-                </script>";
-            } else {
-                echo "<script>
-                    showError('Error saving data: " . addslashes(mysqli_error($connection)) . "');
-                </script>";
+            if (!mysqli_stmt_execute($insert_stmt)) {
+                $success = false;
+                break;
             }
-
         }
-
+    
         mysqli_stmt_close($insert_stmt);
+    
+        if ($success) {
+            echo "
+            <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Success!',
+                        text: 'Lab order created successfully!',
+                        confirmButtonColor: '#12369e'
+                    }).then(() => {
+                        window.location.href = 'lab-order-patients.php';
+                    });
+                });
+            </script>";
+        } else {
+            echo "
+            <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Error saving data: " . addslashes(mysqli_error($connection)) . "',
+                        confirmButtonColor: '#12369e'
+                    });
+                });
+            </script>";
+        }
     } else {
-        echo "<script>showError('Please select at least one lab test.');</script>";
+        echo "
+        <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Validation Error',
+                    text: 'Please select at least one lab test.',
+                    confirmButtonColor: '#12369e'
+                });
+            });
+        </script>";
     }
 }
 ?>
@@ -188,7 +225,13 @@ if (isset($_POST['save-order'])) {
                             </thead>
                             <tbody>
                                 <?php
-                                $fetch_tests_query = mysqli_query($connection, "SELECT lab_department, lab_test, code, lab_test_price FROM tbl_labtest WHERE status = 'Available'");
+                                    $fetch_tests_query = mysqli_query($connection, "
+                                    SELECT lab_department, lab_test, code, lab_test_price 
+                                    FROM tbl_labtest 
+                                    WHERE status = 'Available'
+                                    ORDER BY lab_department, lab_test
+                                ");
+                                
                                 while ($test_row = mysqli_fetch_array($fetch_tests_query)) {
                                 ?>
                                     <tr>
@@ -199,6 +242,7 @@ if (isset($_POST['save-order'])) {
                                         <td><input type="checkbox" name="lab_test[]" value="<?php echo $test_row['lab_test']; ?>"></td>
                                     </tr>
                                 <?php } ?>
+                        
                             </tbody>
                         </table>
                     </div>
@@ -216,59 +260,6 @@ include('footer.php');
 ?>
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script>
-function showError(message) {
-    Swal.fire({
-        title: 'Error!',
-        text: message,
-        icon: 'error',
-        confirmButtonColor: '#12369e',
-        confirmButtonText: 'OK'
-    });
-}
-
-function showSuccess(message, redirect) {
-    Swal.fire({
-        title: 'Success!',
-        text: message,
-        icon: 'success',
-        confirmButtonColor: '#12369e',
-        confirmButtonText: 'OK'
-    }).then((result) => {
-        if (result.isConfirmed && redirect) {
-            window.location.href = 'lab-order-patients.php';
-        }
-    });
-}
-
-function showLoading(message) {
-    Swal.fire({
-        title: message,
-        allowOutsideClick: false,
-        showConfirmButton: false,
-        willOpen: () => {
-            Swal.showLoading();
-        }
-    });
-}
-
-function showConfirm(title, message, callback) {
-    Swal.fire({
-        title: title,
-        text: message,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#12369e',
-        confirmButtonText: 'Yes',
-        cancelButtonText: 'No'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            callback();
-        }
-    });
-}
-</script>
-
 <script type="text/javascript">
     function validateForm() {
         var checkboxes = document.querySelectorAll('input[name="lab_test[]"]:checked');

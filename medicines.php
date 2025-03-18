@@ -10,7 +10,7 @@ include('includes/connection.php');
 
 // Sanitize GET parameters
 if (isset($_GET['ids'])) {
-    $id = filter_var($_GET['ids'], FILTER_SANITIZE_NUMBER_INT);
+    $id = intval($_GET['ids']); 
     if ($id) {
         $update_query = mysqli_prepare($connection, "UPDATE tbl_medicines SET deleted = 1 WHERE id = ?");
         mysqli_stmt_bind_param($update_query, "i", $id);
@@ -138,40 +138,23 @@ $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_medicines WHERE dele
 <?php
 include('footer.php');
 ?>
-
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script language="JavaScript" type="text/javascript">
-    // Function to confirm delete with SweetAlert2
     function confirmDelete(id) {
-        showConfirm(
-            'Delete Medicine?',
-            'Are you sure you want to delete this medicine? This action cannot be undone!',
-            () => {
-                setTimeout(() => {
-                    window.location.href = 'medicines.php?ids=' + id;
-                }, 500);
+        return Swal.fire({
+            title: 'Delete Medicine Record?',
+            text: 'Are you sure you want to delete this Medicine record? This action cannot be undone!',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#12369e',
+            confirmButtonText: 'Yes, delete it!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                window.location.href = 'medicines.php?ids=' + id;  
             }
-        );
+        });
     }
-
-    // Update onclick handlers in table
-    $(document).ready(function() {
-        // Update delete links
-        $('a[onclick*="confirm"]').each(function() {
-            const href = $(this).attr('href');
-            const id = href.split('=')[1];
-            $(this).attr('onclick', `return confirmDelete('${id}')`);
-        });
-        
-        // Handle search error
-        $('.search-error').each(function() {
-            showError($(this).text());
-        });
-        
-        // Handle success messages
-        $('.success-message').each(function() {
-            showSuccess($(this).text(), true);
-        });
-    });
 
     function clearSearch() {
         document.getElementById("medicineSearchInput").value = '';
@@ -257,14 +240,6 @@ include('footer.php');
     }
 </script>
 
-<?php if (isset($error_message)): ?>
-    <script>showError('<?php echo addslashes($error_message); ?>');</script>
-<?php endif; ?>
-
-<?php if (isset($success_message)): ?>
-    <script>showSuccess('<?php echo addslashes($success_message); ?>', true);</script>
-<?php endif; ?>
-
 <style>
 .btn-outline-primary {
     background-color:rgb(252, 252, 252);
@@ -326,185 +301,3 @@ include('footer.php');
     background-color: #a6131b !important;
 }
 </style>
-
-<script>
-$(document).ready(function() {
-    // Handle form submission
-    $('#medicineForm').on('submit', function(e) {
-        e.preventDefault();
-        
-        // Basic validation
-        const required = ['medicine_name', 'category', 'quantity', 'unit'];
-        let isValid = true;
-        let emptyFields = [];
-        
-        required.forEach(field => {
-            if (!$(`#${field}`).val()) {
-                isValid = false;
-                emptyFields.push(field.replace('_', ' '));
-            }
-        });
-        
-        if (!isValid) {
-            showError(`Please fill in the following fields: ${emptyFields.join(', ')}`);
-            return;
-        }
-        
-        // Validate quantity
-        const quantity = $('#quantity').val();
-        if (!$.isNumeric(quantity) || quantity < 0) {
-            showError('Quantity must be a positive number');
-            return;
-        }
-        
-        // Show loading state
-        showLoading('Saving medicine details...');
-        
-        // Submit the form
-        this.submit();
-    });
-    
-    // Handle stock update form
-    $('#stockUpdateForm').on('submit', function(e) {
-        e.preventDefault();
-        
-        // Validate quantity
-        const quantity = $('#update_quantity').val();
-        if (!$.isNumeric(quantity) || quantity < 0) {
-            showError('Quantity must be a positive number');
-            return;
-        }
-        
-        // Show loading state
-        showLoading('Updating stock...');
-        
-        // Submit the form
-        this.submit();
-    });
-    
-    // Handle delete confirmation
-    $('.delete-btn').on('click', function(e) {
-        e.preventDefault();
-        const id = $(this).data('id');
-        
-        showConfirm(
-            'Delete Medicine?',
-            'Are you sure you want to delete this medicine? This action cannot be undone!',
-            () => {
-                // Show loading state
-                showLoading('Deleting medicine...');
-                setTimeout(() => {
-                    window.location.href = 'medicines.php?ids=' + id;
-                }, 500);
-            }
-        );
-    });
-    
-    // Handle low stock warning
-    $('.quantity-field').each(function() {
-        const quantity = parseInt($(this).text());
-        const threshold = 10; // Set your threshold here
-        
-        if (quantity <= threshold) {
-            const medicineName = $(this).closest('tr').find('.medicine-name').text();
-            Swal.fire({
-                icon: 'warning',
-                title: 'Low Stock Alert',
-                text: `${medicineName} is running low on stock (${quantity} remaining)`,
-                showConfirmButton: true
-            });
-        }
-    });
-    
-    // Handle medicine search
-    $('#medicineSearch').on('keyup', function() {
-        const query = $(this).val().toLowerCase();
-        $('#medicineTable tbody tr').filter(function() {
-            $(this).toggle($(this).text().toLowerCase().indexOf(query) > -1);
-        });
-    });
-    
-    // Handle AJAX errors globally
-    $(document).ajaxError(function(event, jqXHR, settings, error) {
-        showError('Error fetching data. Please try again.');
-    });
-});
-
-// Function to handle medicine deletion
-function deleteMedicine(id) {
-    showConfirm(
-        'Delete Medicine?',
-        'Are you sure you want to delete this medicine? This action cannot be undone!',
-        () => {
-            // Show loading state
-            showLoading('Deleting medicine...');
-            setTimeout(() => {
-                window.location.href = 'medicines.php?ids=' + id;
-            }, 500);
-        }
-    );
-    return false;
-}
-
-// Update onclick handlers in table
-$(document).ready(function() {
-    // Update delete links
-    $('a[onclick*="confirm"]').each(function() {
-        const id = $(this).attr('href').split('=')[1];
-        $(this).attr('onclick', `return deleteMedicine('${id}')`);
-    });
-});
-
-// SweetAlert2 helper functions
-function showSuccess(message, redirect = false) {
-    Swal.fire({
-        icon: 'success',
-        title: 'Success',
-        text: message,
-        showConfirmButton: false,
-        timer: 2000
-    }).then(() => {
-        if (redirect) {
-            window.location.reload();
-        }
-    });
-}
-
-function showError(message) {
-    Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: message,
-        showConfirmButton: false,
-        timer: 2000
-    });
-}
-
-function showLoading(message) {
-    Swal.fire({
-        title: message,
-        text: 'Please wait...',
-        allowOutsideClick: false,
-        showConfirmButton: false,
-        willOpen: () => {
-            Swal.showLoading();
-        }
-    });
-}
-
-function showConfirm(title, message, callback) {
-    Swal.fire({
-        icon: 'warning',
-        title: title,
-        text: message,
-        showCancelButton: true,
-        confirmButtonText: 'Yes',
-        cancelButtonText: 'No',
-        reverseButtons: true
-    }).then((result) => {
-        if (result.value) {
-            callback();
-        }
-    });
-}
-</script>

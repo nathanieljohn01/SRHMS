@@ -587,145 +587,47 @@ $('.treatment-btn').on('click', function () {
         $("#addPatientBtn").prop("disabled", false); // Enable the Add button
         $("#searchResults").html("").hide(); // Clear and hide the dropdown
     });
-</script>
 
-<script>
-    $(document).ready(function() {
-        // Handle medicine quantity validation
-        $('.medicine-quantity').on('change', function() {
-            const quantity = parseInt($(this).val());
-            const available = parseInt($(this).data('available'));
-            
-            if (quantity <= 0) {
-                showError('Please enter a valid quantity greater than 0.');
-                $(this).val('');
-                return;
-            }
-            
-            if (quantity > available) {
-                showError(`Requested quantity exceeds available stock (${available} available).`);
-                $(this).val('');
-                return;
-            }
-        });
+    $('.dropdown-toggle').on('click', function (e) {
+        var $el = $(this).next('.dropdown-menu');
+        var isVisible = $el.is(':visible');
         
-        // Handle treatment form submission
-        $('#treatmentForm').on('submit', function(e) {
-            e.preventDefault();
-            
-            // Validate medicine selection
-            const selectedMedicines = $('input[name="selected_medicines[]"]:checked').length;
-            if (selectedMedicines === 0) {
-                showError('Please select at least one medicine');
-                return;
+        // Hide all dropdowns
+        $('.dropdown-menu').slideUp('400');
+        
+        // If this wasn't already visible, slide it down
+        if (!isVisible) {
+            $el.stop(true, true).slideDown('400');
+        }
+        
+        // Close the dropdown if clicked outside of it
+        $(document).on('click', function (e) {
+            if (!$(e.target).closest('.dropdown').length) {
+                $('.dropdown-menu').slideUp('400');
             }
-            
-            // Show loading state
-            showLoading('Submitting treatment...');
-            
-            // Submit the form
-            this.submit();
-        });
-        
-        // Handle delete confirmation
-        $('.delete-btn').on('click', function(e) {
-            e.preventDefault();
-            const id = $(this).data('id');
-            
-            showConfirm(
-                'Delete Record?',
-                'Are you sure you want to delete this record? This action cannot be undone!',
-                () => {
-                    setTimeout(() => {
-                        window.location.href = 'hemodialysis.php?ids=' + id;
-                    }, 500);
-                }
-            );
-        });
-        
-        // Handle AJAX errors globally
-        $(document).ajaxError(function(event, jqXHR, settings, error) {
-            showError('Error fetching data. Please try again.');
         });
     });
-
-    // Function to handle record deletion
-    function deleteRecord(id) {
-        showConfirm(
-            'Delete Record?',
-            'Are you sure you want to delete this record? This action cannot be undone!',
-            () => {
-                setTimeout(() => {
-                    window.location.href = 'hemodialysis.php?ids=' + id;
-                }, 500);
-            }
-        );
-        return false;
-    }
-
-    // Update onclick handlers in table
-    $(document).ready(function() {
-        // Update delete links
-        $('a[onclick*="confirm"]').each(function() {
-            const id = $(this).attr('href').split('=')[1];
-            $(this).attr('onclick', `return deleteRecord('${id}')`);
-        });
-    });
-</script>
-
-<script>
-    function showSuccess(message, redirect = false) {
-        Swal.fire({
-            icon: 'success',
-            title: 'Success',
-            text: message,
-            showConfirmButton: false,
-            timer: 2000
-        }).then(() => {
-            if (redirect) {
-                window.location.href = 'hemodialysis.php';
-            }
-        });
-    }
-
-    function showError(message) {
-        Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: message,
-            showConfirmButton: false,
-            timer: 2000
-        });
-    }
-
-    function showLoading(message) {
-        Swal.fire({
-            icon: 'info',
-            title: 'Loading',
-            text: message,
-            showConfirmButton: false,
-            allowOutsideClick: false,
-            allowEscapeKey: false
-        });
-    }
-
-    function showConfirm(title, message, callback) {
-        Swal.fire({
-            icon: 'warning',
-            title: title,
-            text: message,
-            showCancelButton: true,
-            confirmButtonText: 'Yes',
-            cancelButtonText: 'No'
-        }).then((result) => {
-            if (result.value) {
-                callback();
-            }
-        });
-    }
 </script>
 
 <style>
+.dropdown-item {
+    padding: 7px 15px;
+    color: #333;
+}
+
+.dropdown-item:hover {
+    background-color: #f8f9fa;
+    color: #12369e;
+}
+
+.dropdown-item i {
+    margin-right: 8px;
+    color: #777;
+}
+
+.dropdown-item:hover i {
+    color: #12369e;
+}  
 .sticky-search {
     position: sticky;
     left: 0;

@@ -104,6 +104,23 @@ if ($patientType === 'hemodialysis') {
                 </thead>
                 <tbody>
                     <?php
+                    if(isset($_GET['ids'])) {
+                        $id = intval($_GET['ids']);
+                        $type = $_GET['type'] ?? ''; // Add type parameter
+                        
+                        if($type == 'inpatient') {
+                            $stmt = $connection->prepare("UPDATE tbl_billing_inpatient SET deleted = 1 WHERE id = ?");
+                            $stmt->bind_param("i", $id);
+                            $stmt->execute();
+                            $stmt->close();
+                        } 
+                        else if($type == 'hemodialysis') {
+                            $stmt = $connection->prepare("UPDATE tbl_billing_hemodialysis SET deleted = 1 WHERE id = ?");
+                            $stmt->bind_param("i", $id);
+                            $stmt->execute(); 
+                            $stmt->close();
+                        }
+                    }
                      $patient_query = mysqli_query($connection, $query);
                      while ($row = mysqli_fetch_array($patient_query)) {
                         $dob = $row['dob'];
@@ -129,7 +146,7 @@ if ($patientType === 'hemodialysis') {
                                     <?php
                                     if ($_SESSION['role'] == 1) {
                                         echo '<a class="dropdown-item" href="edit-billing.php?id='.$row['id'].'"><i class="fa fa-pencil m-r-5"></i> Edit</a>';
-                                        echo '<a class="dropdown-item" href="billing.php?ids='.$row['id'].'" onclick="return confirmDelete()"><i class="fa fa-trash-o m-r-5"></i> Delete</a>';
+                                        echo '<a class="dropdown-item" href="#" onclick="return confirmDelete(\''.$row['id'].'\', \''.$patientType.'\')"><i class="fa fa-trash-o m-r-5"></i> Delete</a>';
                                     }
                                     ?>
                                 </div>
@@ -256,8 +273,21 @@ if ($patientType === 'hemodialysis') {
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script language="JavaScript" type="text/javascript">
-function confirmDelete(){
-    return confirm('Are you sure want to delete this Patient?');
+function confirmDelete(id, type) {
+    return Swal.fire({
+        title: 'Delete Billing Record?',
+        text: 'Are you sure you want to delete this billing record? This action cannot be undone!',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#12369e',
+        confirmButtonText: 'Yes, delete it!',
+        cancelButtonText: 'Cancel'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            window.location.href = `billing.php?ids=${id}&type=${type}`;
+        }
+    });
 }
 
 function showTable(patientType) {
@@ -402,20 +432,19 @@ function updateBillingTables(data) {
     });
 }
 
-function getActionButtons(billingId) {
+function getActionButtons(billingId, type) {
     if (userRole === 1) {
         return `
             <a class="dropdown-item" href="edit-billing.php?id=${billingId}">
                 <i class="fa fa-pencil m-r-5"></i> Edit
             </a>
-            <a class="dropdown-item" href="billing.php?ids=${billingId}" onclick="return confirmDelete()">
+            <a class="dropdown-item" href="#" onclick="return confirmDelete('${billingId}', '${type}')">
                 <i class="fa fa-trash-o m-r-5"></i> Delete
             </a>
         `;
     }
     return '';
 }
-
 </script>
 
 <style>
@@ -455,16 +484,37 @@ function getActionButtons(billingId) {
 .btn-primary:hover {
     background: #05007E;
 }
-.dropdown-menu {
-    position: absolute;
-    top: 0;
-    right: 0;
-    z-index: 9999;
-    min-width: 150px; 
+.dropdown-action .action-icon {
+    color: #777;
+    font-size: 18px;
+    display: inline-block;
+    padding: 0 10px;
 }
 
-.dropdown-toggle:focus {
-    outline: none; /* Optional: removes the focus outline */
+.dropdown-menu {
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 3px;
+    transform-origin: top right;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+.dropdown-item {
+    padding: 7px 15px;
+    color: #333;
+}
+
+.dropdown-item:hover {
+    background-color: #f8f9fa;
+    color: #12369e;
+}
+
+.dropdown-item i {
+    margin-right: 8px;
+    color: #777;
+}
+
+.dropdown-item:hover i {
+    color: #12369e;
 }
 
 .action-icon {

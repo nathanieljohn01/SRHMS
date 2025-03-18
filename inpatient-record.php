@@ -184,16 +184,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['inpatientIdDoctor']) &
     $msg = $update_query->execute() ? "Doctor assigned successfully." : "Error assigning doctor.";
 }
 
-// Display the Message
-if ($msg !== null) {
-    echo '<script>';
-    echo 'swal({ text: "' . $msg . '", icon: "' . (strpos($msg, "successfully") !== false ? 'success' : 'error') . '" });';
-    if (strpos($msg, "successfully") !== false) {
-        echo 'setTimeout(function() { window.location.href = "inpatient-record.php"; }, 2000);';
-    }
-    echo '</script>';
-}
-
 ob_end_flush();
 ?>
 
@@ -364,7 +354,7 @@ ob_end_flush();
                                         <?php } ?>
                                         <?php if ($_SESSION['role'] == 1) { ?>
                                             <a class="dropdown-item" href="edit-inpatient-record.php?id=<?php echo htmlspecialchars($row['id']); ?>"><i class="fa fa-pencil m-r-5"></i> Edit</a>
-                                            <a class="dropdown-item" href="inpatient-record.php?ids=<?php echo htmlspecialchars($row['id']); ?>" onclick="return confirmDelete()"><i class="fa fa-trash-o m-r-5"></i> Delete</a>
+                                            <a class="dropdown-item" href="#" onclick="return confirmDelete('<?php echo $row['id']; ?>')"><i class="fa fa-trash-o m-r-5"></i> Delete</a>
                                         <?php } ?>
                                     </div>
                                 </div>
@@ -504,9 +494,22 @@ ob_end_flush();
 include('footer.php');
 ?>
 <script>
-function confirmDelete(){
-    return confirm('Are you sure want to delete this Patient?');
+function confirmDelete(id) {
+    return Swal.fire({
+        title: 'Delete Patient Record?',
+        text: 'Are you sure you want to delete this Patient record? This action cannot be undone!',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#12369e',
+        confirmButtonText: 'Yes, delete it!'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            window.location.href = 'inpatient-record.php?ids=' + id;
+        }
+    });
 }
+
 </script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
@@ -685,11 +688,15 @@ $('.treatment-btn').on('click', function () {
                     <i class="fa fa-stethoscope m-r-5"></i> Diagnosis</button>`;
             }
             if (role == 1) {
-                actionButtons += `<a class="dropdown-item" href="edit-inpatient-record.php?id=${row.id}">
-                    <i class="fa fa-pencil m-r-5"></i> Edit</a>
-                    <a class="dropdown-item" href="inpatient-record.php?ids=${row.id}" onclick="return confirmDelete()">
-                    <i class="fa fa-trash-o m-r-5"></i> Delete</a>`;
+                actionButtons += `
+                    <a class="dropdown-item" href="edit-inpatient-record.php?id=${row.id}">
+                        <i class="fa fa-pencil m-r-5"></i> Edit
+                    </a>
+                    <a class="dropdown-item" href="#" onclick="return confirmDelete('${row.id}')">
+                        <i class="fa fa-trash-o m-r-5"></i> Delete
+                    </a>`;
             }
+
 
             tbody.append(`<tr>
                 <td>${row.patient_id}</td>
@@ -796,9 +803,47 @@ $('#doctorForm').submit(function(e) {
         }
     });
 });
+
+$('.dropdown-toggle').on('click', function (e) {
+        var $el = $(this).next('.dropdown-menu');
+        var isVisible = $el.is(':visible');
+        
+        // Hide all dropdowns
+        $('.dropdown-menu').slideUp('400');
+        
+        // If this wasn't already visible, slide it down
+        if (!isVisible) {
+            $el.stop(true, true).slideDown('400');
+        }
+        
+        // Close the dropdown if clicked outside of it
+        $(document).on('click', function (e) {
+            if (!$(e.target).closest('.dropdown').length) {
+                $('.dropdown-menu').slideUp('400');
+            }
+        });
+    });
 </script>
 
 <style>
+.dropdown-item {
+    padding: 7px 15px;
+    color: #333;
+}
+
+.dropdown-item:hover {
+    background-color: #f8f9fa;
+    color: #12369e;
+}
+
+.dropdown-item i {
+    margin-right: 8px;
+    color: #777;
+}
+
+.dropdown-item:hover i {
+    color: #12369e;
+}  
 .sticky-search {
     position: sticky;
     left: 0;

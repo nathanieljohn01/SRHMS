@@ -61,14 +61,47 @@ if (isset($_GET['patient_id'])) {
     if (isset($_POST['update_status'])) {
         $selected_action = $_POST['selected_action'];
         $laborder_id = $_POST['laborder_id'];
-
+    
+        echo "
+        <script src='https://cdn.jsdelivr.net/npm/sweetalert2@11'></script>
+        <link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css'/>
+        <script>
+            Swal.fire({
+                title: 'Processing...',
+                text: 'Updating lab test status...',
+                allowOutsideClick: false,
+                showConfirmButton: false,
+                willOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+        </script>";
+    
         if ($selected_action == 'Cancelled' && isset($_POST['cancel_reason'])) {
             $cancel_reason = $_POST['cancel_reason'];
             $status = "Cancelled - Remarks: " . mysqli_real_escape_string($connection, $cancel_reason);
         } else {
             $status = $selected_action;
         }
-
+    
+        $update_stmt = mysqli_prepare($connection, "UPDATE tbl_laborder SET status = ?, update_date = NOW() WHERE id = ?");
+        mysqli_stmt_bind_param($update_stmt, 'si', $status, $laborder_id);
+        
+        if (mysqli_stmt_execute($update_stmt)) {
+            mysqli_stmt_close($update_stmt);
+            echo "
+            <script>
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Success!',
+                    text: 'Lab test status updated successfully!',
+                    confirmButtonColor: '#12369e',
+                }).then((result) => {
+                    window.location = 'patient-labtest-records.php?patient_id=" . $_GET['patient_id'] . "';
+                });
+            </script>";
+            exit();
+        }
         // Update the lab test status using a prepared statement
         $update_stmt = mysqli_prepare($connection, "UPDATE tbl_laborder SET status = ?, update_date = NOW() WHERE id = ?");
         mysqli_stmt_bind_param($update_stmt, 'si', $status, $laborder_id);
@@ -249,6 +282,27 @@ $(document).ready(function() {
     $('#labTestTable').DataTable();
 });
 
+$(document).ready(function() {
+    // When clicking a dropdown button
+    $('.action-dropdown .btn-link').on('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        // Close all other dropdowns first
+        $('.action-dropdown .dropdown-menu').not($(this).next()).removeClass('show');
+        
+        // Toggle current dropdown
+        $(this).next('.dropdown-menu').toggleClass('show');
+    });
+
+    // Close dropdown when clicking outside
+    $(document).on('click', function(e) {
+        if (!$(e.target).closest('.action-dropdown').length) {
+            $('.dropdown-menu').removeClass('show');
+        }
+    });
+});
+
 </script>
 <style>
 .btn-outline-primary {
@@ -345,8 +399,8 @@ a.status-red {
     justify-content: right;
 }
 .action-dropdown .dropdown-menu {
-    right: auto;
-    left: 0;
+    position: absolute;
+    left: -50px; /* This moves the box to the left */
     min-width: 120px;
     margin-top: 0;
     border-radius: 4px;

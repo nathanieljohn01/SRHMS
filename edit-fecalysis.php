@@ -119,58 +119,62 @@ if (isset($_POST['edit-fecalysis'])) {
                     <div class="form-group row">
                         <div class="col-sm-6">
                             <label for="fecalysis_id">Fecalysis ID</label>
-                            <input class="form-control" type="text" name="fecalysis_id" id="fecalysis_id" value="<?php echo htmlspecialchars($fecalysis_data['fecalysis_id']); ?>" readonly>
+                            <input class="form-control" type="text" name="fecalysis_id" value="<?php echo htmlspecialchars($fecalysis_data['fecalysis_id']); ?>" readonly>
                         </div>
                         <div class="col-sm-6">
                             <label for="patient_name">Patient Name</label>
-                            <input class="form-control" type="text" name="patient_name" id="patient_name" value="<?php echo htmlspecialchars($fecalysis_data['patient_name']); ?>" required>
+                            <input class="form-control" type="text" name="patient_name" value="<?php echo htmlspecialchars($fecalysis_data['patient_name']); ?>" readonly>
                         </div>
                     </div>
                     <div class="form-group">
                         <label for="date_time">Date and Time</label>
-                        <input type="datetime-local" class="form-control" name="date_time" id="date_time" value="<?php echo date('Y-m-d\TH:i', strtotime($fecalysis_data['date_time'])); ?>">
+                        <input type="datetime-local" class="form-control" name="date_time" value="<?php echo date('Y-m-d\TH:i', strtotime($fecalysis_data['date_time'])); ?>">
                     </div>
-                    <h4 style="font-size: 18px;">Macroscopic</h4>
                     <div class="form-group">
                         <label for="color">Color</label>
-                        <input class="form-control" type="text" name="color" id="color" value="<?php echo htmlspecialchars($fecalysis_data['color']); ?>">
+                        <input class="form-control" type="text" name="color" value="<?php echo htmlspecialchars($fecalysis_data['color']); ?>">
                     </div>
                     <div class="form-group">
                         <label for="consistency">Consistency</label>
-                        <input class="form-control" type="text" name="consistency" id="consistency" value="<?php echo htmlspecialchars($fecalysis_data['consistency']); ?>">
+                        <input class="form-control" type="text" name="consistency" value="<?php echo htmlspecialchars($fecalysis_data['consistency']); ?>">
                     </div>
                     <div class="form-group">
-                        <label for="mucus">Mucus</label>
-                        <input class="form-control" type="text" name="mucus" id="mucus" value="<?php echo htmlspecialchars($fecalysis_data['mucus']); ?>">
+                        <label for="occult_blood">Occult Blood</label>
+                        <select class="form-control" name="occult_blood">
+                            <option value="Select" <?php echo ($fecalysis_data['occult_blood'] == 'Select') ? 'selected' : ''; ?>readonly>Select</option>
+                            <option value="Negative" <?php echo ($fecalysis_data['occult_blood'] == 'Negative') ? 'selected' : ''; ?>>Negative</option>
+                            <option value="Positive" <?php echo ($fecalysis_data['occult_blood'] == 'Positive') ? 'selected' : ''; ?>>Positive</option>
+                        </select>
                     </div>
                     <div class="form-group">
-                        <label for="blood">Blood</label>
-                        <input class="form-control" type="text" name="blood" id="blood" value="<?php echo htmlspecialchars($fecalysis_data['blood']); ?>">
-                    </div>
-                    <h4 style="font-size: 18px;">Microscopic</h4>
-                    <div class="form-group">
-                        <label for="pus_cells">Pus Cells</label>
-                        <input class="form-control" type="text" name="pus_cells" id="pus_cells" value="<?php echo htmlspecialchars($fecalysis_data['pus_cells']); ?>">
-                    </div>
-                    <div class="form-group">
-                        <label for="red_blood_cells">Red Blood Cells</label>
-                        <input class="form-control" type="text" name="red_blood_cells" id="red_blood_cells" value="<?php echo htmlspecialchars($fecalysis_data['red_blood_cells']); ?>">
-                    </div>
-                    <div class="form-group">
-                        <label for="bacteria">Bacteria</label>
-                        <input class="form-control" type="text" name="bacteria" id="bacteria" value="<?php echo htmlspecialchars($fecalysis_data['bacteria']); ?>">
+                        <label for="ova_or_parasite">Ova/Parasite</label>
+                        <input class="form-control" type="text" name="ova_or_parasite" value="<?php echo htmlspecialchars($fecalysis_data['ova_or_parasite']); ?>">
                     </div>
                     <div class="form-group">
                         <label for="yeast_cells">Yeast Cells</label>
-                        <input class="form-control" type="text" name="yeast_cells" id="yeast_cells" value="<?php echo htmlspecialchars($fecalysis_data['yeast_cells']); ?>">
+                        <input class="form-control" type="number" name="yeast_cells" min="0" step="1" value="<?php echo htmlspecialchars($fecalysis_data['yeast_cells']); ?>">
                     </div>
                     <div class="form-group">
                         <label for="fat_globules">Fat Globules</label>
-                        <input class="form-control" type="text" name="fat_globules" id="fat_globules" value="<?php echo htmlspecialchars($fecalysis_data['fat_globules']); ?>">
+                        <input class="form-control" type="number" name="fat_globules" min="0" step="1" value="<?php echo htmlspecialchars($fecalysis_data['fat_globules']); ?>">
                     </div>
                     <div class="form-group">
-                        <label for="parasites">Parasites</label>
-                        <input class="form-control" type="text" name="parasites" id="parasites" value="<?php echo htmlspecialchars($fecalysis_data['parasites']); ?>">
+                        <label for="pus_cells">Pus Cells (HPF)</label>
+                        <input class="form-control" type="text" name="pus_cells" value="<?php echo htmlspecialchars($fecalysis_data['pus_cells']); ?>">
+                    </div>
+                    <div class="form-group">
+                        <label for="rbc">RBC (HPF)</label>
+                        <input class="form-control" type="text" name="rbc" value="<?php echo htmlspecialchars($fecalysis_data['rbc']); ?>">
+                    </div>
+                    <div class="form-group">
+                        <label for="bacteria">Bacteria</label>
+                        <select class="form-control" name="bacteria">
+                            <option value="Select" <?php echo ($fecalysis_data['bacteria'] == 'Select') ? 'selected' : ''; ?>readonly>Select</option> 
+                            <option value="None" <?php echo ($fecalysis_data['bacteria'] == 'None') ? 'selected' : ''; ?>>None</option>
+                            <option value="Few" <?php echo ($fecalysis_data['bacteria'] == 'Few') ? 'selected' : ''; ?>>Few</option>
+                            <option value="Moderate" <?php echo ($fecalysis_data['bacteria'] == 'Moderate') ? 'selected' : ''; ?>>Moderate</option>
+                            <option value="Many" <?php echo ($fecalysis_data['bacteria'] == 'Many') ? 'selected' : ''; ?>>Many</option>
+                        </select>
                     </div>
                     <div class="text-center mt-4">
                         <button class="btn btn-primary submit-btn" name="edit-fecalysis">Update Result</button>
@@ -180,7 +184,6 @@ if (isset($_POST['edit-fecalysis'])) {
         </div>
     </div>
 </div>
-
 
 <?php
 include('footer.php');

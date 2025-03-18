@@ -172,6 +172,26 @@ include('footer.php');
             `);
         });
     }
+
+    $('.dropdown-toggle').on('click', function (e) {
+    var $el = $(this).next('.dropdown-menu');
+    var isVisible = $el.is(':visible');
+    
+    // Hide all dropdowns
+    $('.dropdown-menu').slideUp('400');
+    
+    // If this wasn't already visible, slide it down
+    if (!isVisible) {
+        $el.stop(true, true).slideDown('400');
+    }
+    
+    // Close the dropdown if clicked outside of it
+    $(document).on('click', function (e) {
+        if (!$(e.target).closest('.dropdown').length) {
+            $('.dropdown-menu').slideUp('400');
+        }
+    });
+});
 </script>
 
 <style>
@@ -203,5 +223,23 @@ include('footer.php');
 }
 .btn-primary:hover {
     background: #05007E;
+}
+.dropdown-item {
+    padding: 7px 15px;
+    color: #333;
+}
+
+.dropdown-item:hover {
+    background-color: #f8f9fa;
+    color: #12369e;
+}
+
+.dropdown-item i {
+    margin-right: 8px;
+    color: #777;
+}
+
+.dropdown-item:hover i {
+    color: #12369e;
 }
 </style>

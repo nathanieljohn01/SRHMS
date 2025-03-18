@@ -177,10 +177,10 @@ ob_end_flush(); // Flush output buffer
                 </thead>
                 <tbody>
                     <?php
-                    if(isset($_GET['ids'])){
-                        $id = sanitize($connection, $_GET['ids']);
+                    if(isset($_GET['urinalysis_id'])){
+                        $urinalysis_id= sanitize($connection, $_GET['urinalysis_id']);
                         $update_query = $connection->prepare("UPDATE tbl_urinalysis SET deleted = 1 WHERE urinalysis_id = ?");
-                        $update_query->bind_param("s", $id);
+                        $update_query->bind_param("s", $urinalysis_id);
                         $update_query->execute();
                     }
                     $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_urinalysis WHERE deleted = 0 ORDER BY date_time ASC");
@@ -221,7 +221,7 @@ ob_end_flush(); // Flush output buffer
                                     <?php endif; ?>
                                     <?php if ($editable): ?>
                                         <a class="dropdown-item" href="edit-urinalysis.php?id=<?php echo $row['urinalysis_id']; ?>"><i class="fa fa-pencil m-r-5"></i> Insert and Edit</a>
-                                        <a class="dropdown-item" href="urinalysis.php?id=<?php echo $row['urinalysis_id']; ?>" onclick="return confirmDelete()"><i class="fa fa-trash-o m-r-5"></i> Delete</a>
+                                        <a class="dropdown-item" href="#" onclick="return confirmDelete('<?php echo $row['urinalysis_id']; ?>')"><i class="fa fa-trash-o m-r-5"></i> Delete </a>
                                     <?php else: ?>
                                         <a class="dropdown-item disabled" href="#"><i class="fa fa-pencil m-r-5"></i> Edit</a>
                                         <a class="dropdown-item disabled" href="#"><i class="fa fa-trash-o m-r-5"></i> Delete</a>
@@ -297,9 +297,22 @@ include('footer.php');
 ?>
 
 <script language="JavaScript" type="text/javascript">
-    function confirmDelete() {
-        return confirm('Are you sure you want to delete this item?');
-    }
+   function confirmDelete(urinalysis_id) {
+    return Swal.fire({
+        title: 'Delete Urinalysis Record?',
+        text: 'Are you sure you want to delete this Urinalysis record? This action cannot be undone!',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#12369e',
+        confirmButtonText: 'Yes, delete it!'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            window.location.href = 'urinalysis.php?urinalysis_id=' + urinalysis_id;  
+        }
+    });
+}
+
 </script>
 
 <script>
@@ -410,7 +423,7 @@ include('footer.php');
     function getActionButtons(urinalysisId) {
         let buttons = '';
         
-        if (canPrint) {  // Changed from can_print to canPrint
+        if (canPrint) {  
             buttons += `
                 <form action="generate-urinalysis.php" method="get">
                     <input type="hidden" name="id" value="${urinalysisId}">
@@ -476,158 +489,26 @@ include('footer.php');
             $("#addPatientBtn").prop("disabled", false); // Enable the Add button
             $("#searchResults").html("").hide(); // Clear and hide the dropdown
         });
-    }
 
-    $(document).ready(function() {
-        // Handle form submission
-        $('#urinalysisForm').on('submit', function(e) {
-            e.preventDefault();
-            
-            // Basic validation
-            const required = ['patient_id', 'color', 'transparency', 'ph', 'specific_gravity'];
-            let isValid = true;
-            let emptyFields = [];
-            
-            required.forEach(field => {
-                if (!$(`#${field}`).val()) {
-                    isValid = false;
-                    emptyFields.push(field.replace('_', ' '));
-                }
-            });
-            
-            if (!isValid) {
-                showError(`Please fill in the following fields: ${emptyFields.join(', ')}`);
-                return;
+        $('.dropdown-toggle').on('click', function (e) {
+        var $el = $(this).next('.dropdown-menu');
+        var isVisible = $el.is(':visible');
+        
+        // Hide all dropdowns
+        $('.dropdown-menu').slideUp('400');
+        
+        // If this wasn't already visible, slide it down
+        if (!isVisible) {
+            $el.stop(true, true).slideDown('400');
+        }
+        
+        // Close the dropdown if clicked outside of it
+        $(document).on('click', function (e) {
+            if (!$(e.target).closest('.dropdown').length) {
+                $('.dropdown-menu').slideUp('400');
             }
-            
-            // Show loading state
-            showLoading('Saving urinalysis results...');
-            
-            // Submit the form
-            this.submit();
-        });
-        
-        // Handle delete confirmation
-        $('.delete-btn').on('click', function(e) {
-            e.preventDefault();
-            const id = $(this).data('id');
-            
-            showConfirm(
-                'Delete Record?',
-                'Are you sure you want to delete this urinalysis record? This action cannot be undone!',
-                () => {
-                    setTimeout(() => {
-                        window.location.href = 'urinalysis.php?ids=' + id;
-                    }, 500);
-                }
-            );
-        });
-        
-        // Handle patient search
-        $('#patientSearch').on('keyup', function() {
-            const query = $(this).val();
-            if (query.length < 2) return;
-            
-            showLoading('Searching for patient...');
-            
-            $.ajax({
-                url: "search_patient.php", // Backend script to fetch patients
-                method: "GET",
-                data: { query: query },
-                success: function (data) {
-                    Swal.close();
-                    try {
-                        const data = JSON.parse(data);
-                        if (data.success) {
-                            // Update patient info fields
-                            $('#patient_name').val(data.name);
-                            $('#patient_age').val(data.age);
-                            $('#patient_gender').val(data.gender);
-                        } else {
-                            showError('Patient not found');
-                        }
-                    } catch (e) {
-                        showError('Error searching for patient');
-                    }
-                },
-                error: function() {
-                    showError('Error searching for patient');
-                }
-            });
         });
     });
-
-    // Function to handle record deletion
-    function deleteRecord(id) {
-        showConfirm(
-            'Delete Record?',
-            'Are you sure you want to delete this urinalysis record? This action cannot be undone!',
-            () => {
-                setTimeout(() => {
-                    window.location.href = 'urinalysis.php?ids=' + id;
-                }, 500);
-            }
-        );
-        return false;
-    }
-
-    // Update onclick handlers in table
-    $(document).ready(function() {
-        // Update delete links
-        $('a[onclick*="confirm"]').each(function() {
-            const id = $(this).attr('href').split('=')[1];
-            $(this).attr('onclick', `return deleteRecord('${id}')`);
-        });
-    });
-
-    function showSuccess(message, redirect = false) {
-        Swal.fire({
-            icon: 'success',
-            title: 'Success',
-            text: message,
-            showConfirmButton: false,
-            timer: 2000
-        }).then(() => {
-            if (redirect) {
-                window.location.href = 'urinalysis.php';
-            }
-        });
-    }
-
-    function showError(message) {
-        Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: message,
-            showConfirmButton: false,
-            timer: 2000
-        });
-    }
-
-    function showLoading(message) {
-        Swal.fire({
-            icon: 'info',
-            title: 'Loading',
-            text: message,
-            showConfirmButton: false,
-            allowOutsideClick: false
-        });
-    }
-
-    function showConfirm(title, message, callback) {
-        Swal.fire({
-            icon: 'question',
-            title: title,
-            text: message,
-            showCancelButton: true,
-            confirmButtonText: 'Yes',
-            cancelButtonText: 'No'
-        }).then((result) => {
-            if (result.value) {
-                callback();
-            }
-        });
-    }
 </script>
 
 <style>
@@ -638,7 +519,6 @@ include('footer.php');
     #patientTableMacroscopic_paginate .paginate_button {
         display: none;
     }
-
 </style>
 
 <style>
@@ -704,4 +584,22 @@ include('footer.php');
     border: none; 
     color: #6c757d; 
     }
+    .dropdown-item {
+    padding: 7px 15px;
+    color: #333;
+}
+
+.dropdown-item:hover {
+    background-color: #f8f9fa;
+    color: #12369e;
+}
+
+.dropdown-item i {
+    margin-right: 8px;
+    color: #777;
+}
+
+.dropdown-item:hover i {
+    color: #12369e;
+}
 </style>

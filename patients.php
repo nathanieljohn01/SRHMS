@@ -91,7 +91,7 @@ include('includes/connection.php');
                                     <?php 
                                     if ($_SESSION['role'] == 1) {
                                         echo '<a class="dropdown-item" href="edit-patient.php?id='.$row['id'].'"><i class="fa fa-pencil m-r-5"></i> Edit</a>';
-                                        echo '<a class="dropdown-item" href="patients.php?ids=' . $row['id'] . '" onclick="return confirmDelete()"><i class="fa fa-trash-o m-r-5"></i> Delete</a>';
+                                        echo '<a class="dropdown-item" href="#" onclick="return confirmDelete(\''.$row['id'].'\')"><i class="fa fa-trash-o m-r-5"></i> Delete</a>';
                                     }
                                     ?>
                                     </div>
@@ -147,9 +147,22 @@ include('includes/connection.php');
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <script>
-function confirmDelete(){
-    return confirm('Are you sure want to delete this Patient?');
+function confirmDelete(id) {
+    return Swal.fire({
+        title: 'Delete Patient Record?',
+        text: 'Are you sure you want to delete this Patient record? This action cannot be undone!',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#12369e',
+        confirmButtonText: 'Yes, delete it!'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            window.location.href = 'patients.php?ids=' + id;  
+        }
+    });
 }
+
 function clearSearch() {
     document.getElementById("patientSearchInput").value = '';
     filterPatients();
@@ -295,18 +308,33 @@ $('.dropdown-toggle').on('click', function (e) {
 }
 /* CSS for preventing dropdown scroll issue */
 .dropdown-menu {
-    position: absolute;
-    top: 0;
-    right: 0;
-    z-index: 9999;
-    min-width: 150px; /* Adjust according to your preference */
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 3px;
+    transform-origin: top right;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
 }
 
-.dropdown-toggle:focus {
-    outline: none; /* Optional: removes the focus outline */
+.dropdown-item {
+    padding: 7px 15px;
+    color: #333;
+}
+
+.dropdown-item:hover {
+    background-color: #f8f9fa;
+    color: #12369e;
+}
+
+.dropdown-item i {
+    margin-right: 8px;
+    color: #777;
+}
+
+.dropdown-item:hover i {
+    color: #12369e;
 }
 
 .action-icon {
     cursor: pointer;
 }
+
 </style>

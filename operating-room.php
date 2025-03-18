@@ -178,141 +178,26 @@ function confirmDelete(){
             `);
         });
     }
-</script>
 
-<script>
-$(document).ready(function() {
-    // Handle form submission
-    $('#operatingRoomForm').on('submit', function(e) {
-        e.preventDefault();
-        
-        // Basic validation
-        const required = ['patient_id', 'surgery_type', 'surgery_date', 'surgeon'];
-        let isValid = true;
-        
-        required.forEach(field => {
-            if (!$(`#${field}`).val()) {
-                showError(`Please fill in ${field.replace('_', ' ')}`);
-                isValid = false;
-            }
-        });
-        
-        if (!isValid) return;
-        
-        // Show loading state
-        showLoading('Saving record...');
-        
-        // Submit the form
-        this.submit();
-    });
+    $('.dropdown-toggle').on('click', function (e) {
+    var $el = $(this).next('.dropdown-menu');
+    var isVisible = $el.is(':visible');
     
-    // Handle delete confirmation
-    $('.delete-btn').on('click', function(e) {
-        e.preventDefault();
-        const id = $(this).data('id');
-        
-        showConfirm(
-            'Delete Record?',
-            'Are you sure you want to delete this operating room record? This action cannot be undone!',
-            () => {
-                setTimeout(() => {
-                    window.location.href = 'operating-room.php?ids=' + id;
-                }, 500);
-            }
-        );
-    });
+    // Hide all dropdowns
+    $('.dropdown-menu').slideUp('400');
     
-    // Initialize datepicker with better UX
-    $('.datetimepicker').datetimepicker({
-        format: 'YYYY-MM-DD HH:mm',
-        icons: {
-            up: "fa fa-chevron-up",
-            down: "fa fa-chevron-down",
-            next: 'fa fa-chevron-right',
-            previous: 'fa fa-chevron-left'
-        },
-        minDate: moment()
-    });
+    // If this wasn't already visible, slide it down
+    if (!isVisible) {
+        $el.stop(true, true).slideDown('400');
+    }
     
-    // Handle AJAX errors globally
-    $(document).ajaxError(function(event, jqXHR, settings, error) {
-        showError('Error fetching data. Please try again.');
+    // Close the dropdown if clicked outside of it
+    $(document).on('click', function (e) {
+        if (!$(e.target).closest('.dropdown').length) {
+            $('.dropdown-menu').slideUp('400');
+        }
     });
 });
-
-// Function to handle record deletion
-function deleteRecord(id) {
-    showConfirm(
-        'Delete Record?',
-        'Are you sure you want to delete this operating room record? This action cannot be undone!',
-        () => {
-            setTimeout(() => {
-                window.location.href = 'operating-room.php?ids=' + id;
-            }, 500);
-        }
-    );
-    return false;
-}
-
-// Update onclick handlers in table
-$(document).ready(function() {
-    // Update delete links
-    $('a[onclick*="confirm"]').each(function() {
-        const id = $(this).attr('href').split('=')[1];
-        $(this).attr('onclick', `return deleteRecord('${id}')`);
-    });
-});
-</script>
-
-<script>
-function showSuccess(message, redirect) {
-    Swal.fire({
-        icon: 'success',
-        title: 'Success',
-        text: message,
-        showConfirmButton: false,
-        timer: 2000
-    }).then(() => {
-        if (redirect) {
-            window.location.href = 'operating-room.php';
-        }
-    });
-}
-
-function showError(message) {
-    Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: message,
-        showConfirmButton: false,
-        timer: 2000
-    });
-}
-
-function showConfirm(title, message, callback) {
-    Swal.fire({
-        icon: 'warning',
-        title: title,
-        text: message,
-        showCancelButton: true,
-        confirmButtonText: 'Yes',
-        cancelButtonText: 'No'
-    }).then((result) => {
-        if (result.value) {
-            callback();
-        }
-    });
-}
-
-function showLoading(message) {
-    Swal.fire({
-        icon: 'info',
-        title: 'Loading',
-        text: message,
-        showConfirmButton: false,
-        allowOutsideClick: false
-    });
-}
 </script>
 
 <style>
@@ -345,4 +230,22 @@ function showLoading(message) {
     .btn-primary:hover {
         background: #05007E;
     }
+    .dropdown-item {
+    padding: 7px 15px;
+    color: #333;
+}
+
+.dropdown-item:hover {
+    background-color: #f8f9fa;
+    color: #12369e;
+}
+
+.dropdown-item i {
+    margin-right: 8px;
+    color: #777;
+}
+
+.dropdown-item:hover i {
+    color: #12369e;
+}
 </style>

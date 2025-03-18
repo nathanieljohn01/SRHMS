@@ -36,23 +36,23 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['patientId'])) {
         $name = $patient['patient_name'];
         $gender = $patient['gender'];
         $dob = $patient['dob'];
-
+    
         // Fetch the last fecalysis ID and generate a new one
         $last_fecalysis_query = $connection->prepare("SELECT fecalysis_id FROM tbl_fecalysis ORDER BY fecalysis_id DESC LIMIT 1");
         $last_fecalysis_query->execute();
         $last_fecalysis_result = $last_fecalysis_query->get_result();
         $last_fecalysis = $last_fecalysis_result->fetch_array(MYSQLI_ASSOC);
-
+    
         if ($last_fecalysis) {
             $last_id_number = (int) substr($last_fecalysis['fecalysis_id'], 3);  // Extract the number after "FC-"
             $new_fecalysis_id = 'FC-' . ($last_id_number + 1);
         } else {
             $new_fecalysis_id = 'FC-1';  // Starting value if no previous fecalysis ID exists
         }
-
+    
         // Assign the generated ID to $fecalysis_id
         $fecalysis_id = $new_fecalysis_id;
-
+    
         // Sanitize other inputs with default values if empty
         $color = sanitize($connection, $_POST['color'] ?? NULL);
         $consistency = sanitize($connection, $_POST['consistency'] ?? NULL);
@@ -63,28 +63,65 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['patientId'])) {
         $pus_cells = sanitize($connection, $_POST['pus_cells'] ?? NULL);
         $rbc = sanitize($connection, $_POST['rbc'] ?? NULL);
         $bacteria = sanitize($connection, $_POST['bacteria'] ?? NULL);
-
+    
         // Insert query for fecalysis
         $query = "
             INSERT INTO tbl_fecalysis (fecalysis_id, patient_id, patient_name, gender, dob, color, consistency, occult_blood, ova_or_parasite, yeast_cells, fat_globules, pus_cells, rbc, bacteria, date_time) 
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
         ";
-
+    
         $stmt = $connection->prepare($query);
         $stmt->bind_param("ssssssssssssss", $fecalysis_id, $patient_id, $name, $gender, $dob, $color, $consistency, $occult_blood, $ova_or_parasite, $yeast_cells, $fat_globules, $pus_cells, $rbc, $bacteria);
         
         if ($stmt->execute()) {
-            echo "Record added successfully";
-        } else {
-            echo "Error: " . $query . "<br>" . $connection->error;
-        }
+            echo "
+            <script>
+                Swal.fire({
+                    title: 'Processing...',
+                    text: 'Saving fecalysis record...',
+                    allowOutsideClick: false,
+                    showConfirmButton: false,
+                    willOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
     
-        // Redirect or show a success message
-        header('Location: fecalysis.php');
-        exit;
+                setTimeout(() => {
+                    Swal.fire({
+                        title: 'Success!',
+                        text: 'Fecalysis record added successfully.',
+                        icon: 'success',
+                        confirmButtonColor: '#12369e',
+                        confirmButtonText: 'OK'
+                    }).then(() => {
+                        window.location.href = 'fecalysis.php';
+                    });
+                }, 1000);
+            </script>";
+        } else {
+            echo "
+            <script>
+                Swal.fire({
+                    title: 'Error!',
+                    text: 'Failed to add fecalysis record. Please try again.',
+                    icon: 'error',
+                    confirmButtonColor: '#12369e',
+                    confirmButtonText: 'OK'
+                });
+            </script>";
+        }
     } else {
-        echo "<script>alert('Patient not found. Please check the Patient ID.');</script>";
-    }
+        echo "
+        <script>
+            Swal.fire({
+                title: 'Patient Not Found!',
+                text: 'Please check the Patient ID and try again.',
+                icon: 'error',
+                confirmButtonColor: '#12369e',
+                confirmButtonText: 'OK'
+            });
+        </script>";
+    }    
 }
 ob_end_flush(); // Flush output buffer
 ?>
@@ -157,10 +194,10 @@ ob_end_flush(); // Flush output buffer
                 </thead>
                 <tbody>
                     <?php
-                    if(isset($_GET['ids'])){
-                        $id = sanitize($connection, $_GET['ids']);
+                    if(isset($_GET['fecalysis_id'])){
+                        $fecalysis_id = sanitize($connection, $_GET['fecalysis_id']);
                         $update_query = $connection->prepare("UPDATE tbl_fecalysis SET deleted = 1 WHERE fecalysis_id = ?");
-                        $update_query->bind_param("s", $id);
+                        $update_query->bind_param("s", $fecalysis_id);
                         $update_query->execute();
                     }
                     $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_fecalysis WHERE deleted = 0 ORDER BY date_time ASC");
@@ -195,7 +232,7 @@ ob_end_flush(); // Flush output buffer
                                     <?php endif; ?>
                                     <?php if ($editable): ?>
                                         <a class="dropdown-item" href="edit-fecalysis.php?id=<?php echo $row['fecalysis_id']; ?>"><i class="fa fa-pencil m-r-5"></i> Insert and Edit</a>
-                                        <a class="dropdown-item" href="fecalysis.php?id=<?php echo $row['fecalysis_id']; ?>" onclick="return confirmDelete()"><i class="fa fa-trash-o m-r-5"></i> Delete</a>
+                                        <a class="dropdown-item" href="#" onclick="return confirmDelete('<?php echo $row['fecalysis_id']; ?>')"><i class="fa fa-trash-o m-r-5"></i> Delete</a>
                                     <?php else: ?>
                                         <a class="dropdown-item disabled" href="#"><i class="fa fa-pencil m-r-5"></i> Edit</a>
                                         <a class="dropdown-item disabled" href="#"><i class="fa fa-trash-o m-r-5"></i> Delete</a>
@@ -244,16 +281,12 @@ ob_end_flush(); // Flush output buffer
                         <td><?php echo $row['gender']; ?></td>
                         <td><?php echo date('F d, Y g:i A', strtotime($row['date_time'])); ?></td>
                         <td><?php echo $row['pus_cells']; ?></td>
-                        <td><?php echo $row['red_blood_cells']; ?></td>
-                        <td><?php echo $row['epithelial_cells']; ?></td>
-                        <td><?php echo $row['a_urates_a_phosphates']; ?></td>
-                        <td><?php echo $row['mucus_threads']; ?></td>
+                        <td><?php echo $row['ova_or_parasite']; ?></td>
+                        <td><?php echo $row['yeast_cells']; ?></td>
+                        <td><?php echo $row['fat_globules']; ?></td>
+                        <td><?php echo $row['pus_cells']; ?></td>
+                        <td><?php echo $row['rbc']; ?></td>
                         <td><?php echo $row['bacteria']; ?></td>
-                        <td><?php echo $row['calcium_oxalates']; ?></td>
-                        <td><?php echo $row['uric_acid_crystals']; ?></td>
-                        <td><?php echo $row['pus_cells_clumps']; ?></td>
-                        <td><?php echo $row['coarse_granular_cast']; ?></td>
-                        <td><?php echo $row['hyaline_cast']; ?></td>
                     </tr>
                     <?php } ?>
                 </tbody>
@@ -267,9 +300,44 @@ include('footer.php');
 ?>
 
 <script language="JavaScript" type="text/javascript">
-    function confirmDelete() {
-        return confirm('Are you sure you want to delete this item?');
-    }
+    function confirmDelete(fecalysis_id) {
+        return Swal.fire({
+            title: 'Delete Fecalysis Record?',
+            text: 'Are you sure you want to delete this Fecalysis record? This action cannot be undone!',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#12369e',
+            confirmButtonText: 'Yes, delete it!',
+            cancelButtonText: 'Cancel'
+        }).then((result) => {
+        if (result.isConfirmed) {
+            window.location.href = 'fecalysis.php?fecalysis_id=' + fecalysis_id;
+        }
+    });
+}
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+document.querySelector('form').addEventListener('submit', function(event) {
+    event.preventDefault(); // Prevent form from submitting immediately
+
+    Swal.fire({
+        title: 'Processing...',
+        text: 'Inserting laboratory results...',
+        allowOutsideClick: false,
+        showConfirmButton: false,
+        willOpen: () => {
+            Swal.showLoading();
+        }
+    });
+    
+    // Submit the form after showing the loading message
+    setTimeout(() => {
+        event.target.submit();
+    }, 1000); // Adjust the timeout as needed
+});
 </script>
 
 <script>
@@ -402,6 +470,55 @@ include('footer.php');
         
         return buttons;
     }
+
+    function searchPatients() {
+        var input = document.getElementById("patientSearchInput").value;
+        if (input.length < 2) {
+            document.getElementById("searchResults").style.display = "none";
+            document.getElementById("searchResults").innerHTML = "";
+            return;
+        }
+        $.ajax({
+            url: "search-fecalysis.php",
+            method: "GET",
+            data: { query: input },
+            success: function (data) {
+                var results = document.getElementById("searchResults");
+                results.innerHTML = data;
+                results.style.display = "block";
+            }
+        });
+    }
+
+    $(document).on("click", ".search-result", function () {
+        var patientId = $(this).data("id");
+        var patientName = $(this).text();
+
+        $("#patientId").val(patientId);
+        $("#patientSearchInput").val(patientName);
+        $("#addPatientBtn").prop("disabled", false);
+        $("#searchResults").html("").hide();
+    });
+
+    $('.dropdown-toggle').on('click', function (e) {
+        var $el = $(this).next('.dropdown-menu');
+        var isVisible = $el.is(':visible');
+        
+        // Hide all dropdowns
+        $('.dropdown-menu').slideUp('400');
+        
+        // If this wasn't already visible, slide it down
+        if (!isVisible) {
+            $el.stop(true, true).slideDown('400');
+        }
+        
+        // Close the dropdown if clicked outside of it
+        $(document).on('click', function (e) {
+            if (!$(e.target).closest('.dropdown').length) {
+                $('.dropdown-menu').slideUp('400');
+            }
+        });
+    });
 </script>
 
 <style>
@@ -415,6 +532,32 @@ include('footer.php');
 </style>
 
 <style>
+    .dropdown-item {
+    padding: 7px 15px;
+    color: #333;
+}
+
+.dropdown-item:hover {
+    background-color: #f8f9fa;
+    color: #12369e;
+}
+
+.dropdown-item i {
+    margin-right: 8px;
+    color: #777;
+}
+
+.dropdown-item:hover i {
+    color: #12369e;
+}
+    .dropdown-action .dropdown-menu {
+        position: absolute;
+        left: -100px; /* This moves the box to the left */
+        min-width: 80px;
+        margin-top: -14px;
+        border-radius: 4px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
     .btn-outline-primary {
         background-color:rgb(252, 252, 252);
         color: gray;

@@ -21,14 +21,21 @@ include('includes/connection.php');
             </div>
         </div>
         <div class="table-responsive">
-        <div class="input-group">
-            <input class="form-control" type="text" id="deceasedSearchInput" onkeyup="filterDeceased()" placeholder="Search for Patient">
-            <div class="input-group-append">
-                    <button class="btn btn-outline-primary" type="button" onclick="clearSearch()">
+        <h5 class="font-weight-bold mb-2">Search Patient:</h5>
+            <div class="input-group mb-3">
+                <div class="position-relative w-100">
+                    <!-- Search Icon -->
+                    <i class="fa fa-search position-absolute text-secondary" style="top: 50%; left: 12px; transform: translateY(-50%);"></i>
+                    <!-- Input Field -->
+                    <input class="form-control" type="text" id="deceasedSearchInput" onkeyup="filterDeceased()" style="padding-left: 35px; padding-right: 35px;">
+                    <!-- Clear Button -->
+                    <button class="position-absolute border-0 bg-transparent text-secondary" type="button" onclick="clearSearch()" style="top: 50%; right: 10px; transform: translateY(-50%);">
                         <i class="fa fa-times"></i>
                     </button>
                 </div>
             </div>
+        </div>
+        <div class="table-responsive">
             <table class="datatable table table-hover table-striped" id="deceasedTable">
                 <thead style="background-color: #CCCCCC;">
                     <tr>
@@ -47,28 +54,17 @@ include('includes/connection.php');
                 <tbody>
                     <?php
                     // Handling record deletion with prepared statements to prevent SQL injection
-                    if (isset($_GET['ids'])) {
-                        try {
-                            // Show loading state first
-                            echo "<script>showLoading('Processing request...');</script>";
-                            
-                            $id = mysqli_real_escape_string($connection, $_GET['ids']);
-                            $delete_query = mysqli_query($connection, "UPDATE tbl_deceased SET deleted = 1 WHERE deceased_id = '$id'");
-                            
-                            if ($delete_query) {
-                                echo "<script>
-                                    showSuccess('Deceased record deleted successfully!', true);
-                                </script>";
-                            } else {
-                                throw new Exception(mysqli_error($connection));
-                            }
-                        } catch (Exception $e) {
-                            echo "<script>
-                                showError('Error deleting record: " . addslashes($e->getMessage()) . "');
-                            </script>";
-                        }
+                    if(isset($_GET['deceased_id'])){
+                        $deceased_id= sanitize($connection, $_GET['deceased_id']);
+                        $update_query = $connection->prepare("UPDATE tbl_deceased SET deleted = 1 WHERE deceased_id = ?");
+                        $update_query->bind_param("s", $deceased_id);
+                        $update_query->execute();
                     }
-
+                    
+                    function sanitize($connection, $data) {
+                        return mysqli_real_escape_string($connection, trim($data));
+                    }
+                    
                     // Fetching records from database with a prepared statement
                     $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_deceased WHERE deleted = 0");
                     while ($row = mysqli_fetch_array($fetch_query)) {
@@ -90,7 +86,7 @@ include('includes/connection.php');
                                     <?php 
                                     if ($_SESSION['role'] == 1 || $_SESSION['role'] == 3) {
                                         echo '<a class="dropdown-item" href="edit-deceased.php?id='. htmlspecialchars($row['deceased_id']) .'"><i class="fa fa-pencil m-r-5"></i> Edit</a>';
-                                        echo '<a class="dropdown-item delete-btn" data-id="'. htmlspecialchars($row['deceased_id']) .'" href="#"><i class="fa fa-trash-o m-r-5"></i> Delete</a>';
+                                        echo '<a class="dropdown-item" href="#" onclick="return confirmDelete(\''.$row['deceased_id'].'\')"><i class="fa fa-trash-o m-r-5"></i> Delete</a>';
                                     }
                                     ?>
                                     </div>
@@ -107,10 +103,22 @@ include('includes/connection.php');
 <?php
 include('footer.php');
 ?>
-
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script language="JavaScript" type="text/javascript">
-function confirmDelete(){
-    return confirm('Are you sure you want to delete this Deceased Record?');
+function confirmDelete(deceased_id) {
+    return Swal.fire({
+        title: 'Delete Deceased Record?',
+        text: 'Are you sure you want to delete this Deceased record? This action cannot be undone!',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#12369e',
+        confirmButtonText: 'Yes, delete it!'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            window.location.href = 'deceased.php?deceased_id=' + deceased_id;  
+        }
+    });
 }
 </script>
 
@@ -187,108 +195,26 @@ function confirmDelete(){
         
         return buttons;
     }
-</script>
-
-<script>
-$(document).ready(function() {
-    // Handle delete confirmation
-    $('.delete-btn').on('click', function(e) {
-        e.preventDefault();
-        const id = $(this).data('id');
-        
-        showConfirm(
-            'Delete Record?',
-            'Are you sure you want to delete this deceased record? This action cannot be undone!',
-            () => {
-                // Show loading state
-                showLoading('Deleting record...');
-                setTimeout(() => {
-                    window.location.href = 'deceased.php?ids=' + id;
-                }, 500);
-            }
-        );
-    });
-});
-
-// Function to handle record deletion
-function deleteRecord(id) {
-    showConfirm(
-        'Delete Record?',
-        'Are you sure you want to delete this deceased record? This action cannot be undone!',
-        () => {
-            // Show loading state
-            showLoading('Deleting record...');
-            setTimeout(() => {
-                window.location.href = 'deceased.php?ids=' + id;
-            }, 500);
+    
+    $('.dropdown-toggle').on('click', function (e) {
+    var $el = $(this).next('.dropdown-menu');
+    var isVisible = $el.is(':visible');
+    
+    // Hide all dropdowns
+    $('.dropdown-menu').slideUp('400');
+    
+    // If this wasn't already visible, slide it down
+    if (!isVisible) {
+        $el.stop(true, true).slideDown('400');
+    }
+    
+    // Close the dropdown if clicked outside of it
+    $(document).on('click', function (e) {
+        if (!$(e.target).closest('.dropdown').length) {
+            $('.dropdown-menu').slideUp('400');
         }
-    );
-    return false;
-}
-
-// Update onclick handlers in table
-$(document).ready(function() {
-    // Update delete links
-    $('a[onclick*="confirm"]').each(function() {
-        const id = $(this).attr('href').split('=')[1];
-        $(this).attr('onclick', `return deleteRecord('${id}')`);
     });
 });
-</script>
-
-<script>
-    function showLoading(message) {
-        Swal.fire({
-            title: message,
-            allowOutsideClick: false,
-            showConfirmButton: false,
-            onRender: () => {
-                Swal.showLoading();
-            }
-        });
-    }
-
-    function showSuccess(message, redirect) {
-        Swal.fire({
-            title: 'Success',
-            text: message,
-            icon: 'success',
-            allowOutsideClick: false,
-            showConfirmButton: true,
-            confirmButtonText: 'OK'
-        }).then((result) => {
-            if (redirect) {
-                window.location.href = 'deceased.php';
-            }
-        });
-    }
-
-    function showError(message) {
-        Swal.fire({
-            title: 'Error',
-            text: message,
-            icon: 'error',
-            allowOutsideClick: false,
-            showConfirmButton: true,
-            confirmButtonText: 'OK'
-        });
-    }
-
-    function showConfirm(title, message, callback) {
-        Swal.fire({
-            title: title,
-            text: message,
-            icon: 'warning',
-            allowOutsideClick: false,
-            showCancelButton: true,
-            confirmButtonText: 'Yes',
-            cancelButtonText: 'No'
-        }).then((result) => {
-            if (result.value) {
-                callback();
-            }
-        });
-    }
 </script>
 
 <style>
@@ -321,4 +247,36 @@ $(document).ready(function() {
     .btn-primary:hover {
         background: #05007E;
     }
+    .dropdown-action .action-icon {
+    color: #777;
+    font-size: 18px;
+    display: inline-block;
+    padding: 0 10px;
+}
+
+.dropdown-menu {
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 3px;
+    transform-origin: top right;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+.dropdown-item {
+    padding: 7px 15px;
+    color: #333;
+}
+
+.dropdown-item:hover {
+    background-color: #f8f9fa;
+    color: #12369e;
+}
+
+.dropdown-item i {
+    margin-right: 8px;
+    color: #777;
+}
+
+.dropdown-item:hover i {
+    color: #12369e;
+}
 </style>

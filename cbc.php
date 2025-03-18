@@ -178,13 +178,14 @@ ob_end_flush(); // Flush output buffer
                 </thead>
                 <tbody>
                     <?php
-                    if (isset($_GET['ids'])) {
-                        $id = sanitize($connection, $_GET['ids']);
-                        $update_query = $connection->prepare("UPDATE tbl_cbc SET deleted = 1 WHERE id = ?");
-                        $update_query->bind_param("s", $id);
+                    if (isset($_GET['cbc_id'])) {
+                        $cbc_id = sanitize($connection, $_GET['cbc_id']);
+                        $update_query = $connection->prepare("UPDATE tbl_cbc SET deleted = 1 WHERE cbc_id = ?");
+                        $update_query->bind_param("s", $cbc_id);
                         $update_query->execute();
                         echo "<script>showSuccess('Record deleted successfully', true);</script>";
                     }
+                    
                     $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_cbc WHERE deleted = 0 ORDER BY date_time ASC");
                     while ($row = mysqli_fetch_array($fetch_query)) {
                         $dob = $row['dob'];
@@ -224,10 +225,9 @@ ob_end_flush(); // Flush output buffer
                                     </form>
                                     <?php endif; ?>
                                     <?php if ($editable): ?>
-                                        
                                         <!-- Edit and Delete Options -->
                                         <a class="dropdown-item" href="edit-cbc.php?id=<?php echo $row['cbc_id']; ?>"><i class="fa fa-pencil m-r-5"></i> Insert and Edit</a>
-                                        <a class="dropdown-item" href="cbc.php?ids=<?php echo $row['cbc_id']; ?>" onclick="return confirmDelete()"><i class="fa fa-trash-o m-r-5"></i> Delete</a>
+                                        <a class="dropdown-item" href="#" onclick="return confirmDelete('<?php echo $row['cbc_id']; ?>')"><i class="fa fa-trash-o m-r-5"></i> Delete</a>
                                     <?php else: ?>
                                         <!-- Edit and Delete Options Disabled -->
                                         <a class="dropdown-item disabled" href="#">
@@ -251,9 +251,23 @@ ob_end_flush(); // Flush output buffer
 include('footer.php');
 ?>
 
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script language="JavaScript" type="text/javascript">
-function confirmDelete() {
-    return confirm('Are you sure you want to delete this item?');
+ 
+function confirmDelete(cbc_id) {
+    return Swal.fire({
+        title: 'Delete CBC Record?',
+        text: 'Are you sure you want to delete this CBC record? This action cannot be undone!',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#12369e',
+        confirmButtonText: 'Yes, delete it!'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            window.location.href = 'cbc.php?cbc_id=' + cbc_id;  
+        }
+    });
 }
 
 function clearSearch() {
@@ -261,11 +275,12 @@ function clearSearch() {
     filterCBC();
 }
 
-let canPrint, userRole;
+let canPrint, userRole, editable;
 
 $(document).ready(function() {
     canPrint = <?php echo $can_print ? 'true' : 'false' ?>;
     userRole = <?php echo $_SESSION['role']; ?>;
+    editable = <?php echo $editable ? 'true' : 'false' ?>;
 });
 
 function filterCBC() {
@@ -363,25 +378,6 @@ function getActionButtons(cbcId) {
     return buttons;
 }
 
-function deleteRecord(id) {
-    Swal.fire({
-        title: 'Delete CBC Record?',
-        text: 'Are you sure you want to delete this CBC record? This action cannot be undone!',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: 'Yes, delete it!',
-        cancelButtonText: 'No, cancel!',
-        reverseButtons: true
-    }).then((result) => {
-        if (result.value) {
-            setTimeout(() => {
-                window.location.href = 'cbc.php?ids=' + id;
-            }, 500);
-        }
-    });
-    return false;
-}
-
 function searchPatients() {
     var input = document.getElementById("patientSearchInput").value;
     if (input.length < 2) {
@@ -389,103 +385,38 @@ function searchPatients() {
         document.getElementById("searchResults").innerHTML = "";
         return;
     }
-    Swal.fire({
-        title: 'Searching...',
-        html: 'Please wait while we search for patients...',
-        allowOutsideClick: false,
-        showConfirmButton: false,
-        onBeforeOpen: () => {
-            Swal.showLoading();
-        }
-    });
     $.ajax({
         url: "search-cbc.php",
         method: "GET",
         data: { query: input },
-        success: function(response) {
-            Swal.close();
-            try {
-                const data = JSON.parse(response);
-                if (data.success) {
-                    // Update patient info fields
-                    $('#patient_name').val(data.name);
-                    $('#patient_age').val(data.age);
-                    $('#patient_gender').val(data.gender);
-                } else {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Patient not found',
-                        text: 'Please check the patient ID and try again.'
-                    });
-                }
-            } catch (e) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error searching for patient',
-                    text: 'Please try again later.'
-                });
-            }
-        },
-        error: function() {
-            Swal.fire({
-                icon: 'error',
-                title: 'Error searching for patient',
-                text: 'Please try again later.'
-            });
+        success: function (data) {
+            var results = document.getElementById("searchResults");
+            results.innerHTML = data;
+            results.style.display = "block";
         }
     });
 }
 
-function showError(message) {
-    Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: message
-    });
-}
+$(document).on("click", ".search-result", function () {
+    var patientId = $(this).data("id");
+    var patientName = $(this).text();
 
-function showSuccess(message, redirect) {
-    Swal.fire({
-        icon: 'success',
-        title: 'Success',
-        text: message
-    }).then((result) => {
-        if (redirect) {
-            window.location.href = 'cbc.php';
-        }
-    });
-}
-
-function showLoading(message) {
-    Swal.fire({
-        title: message,
-        html: 'Please wait...',
-        allowOutsideClick: false,
-        showConfirmButton: false,
-        onBeforeOpen: () => {
-            Swal.showLoading();
-        }
-    });
-}
-
-function showConfirm(title, message, callback) {
-    Swal.fire({
-        title: title,
-        text: message,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: 'Yes, delete it!',
-        cancelButtonText: 'No, cancel!',
-        reverseButtons: true
-    }).then((result) => {
-        if (result.value) {
-            callback();
-        }
-    });
-}
+    $("#patientId").val(patientId);
+    $("#patientSearchInput").val(patientName);
+    $("#addPatientBtn").prop("disabled", false);
+    $("#searchResults").html("").hide();
+});
 </script>
 
 <style>
+.dropdown-action .dropdown-menu {
+    position: absolute;
+    left: -100px; /* This moves the box to the left */
+    min-width: 80px;
+    margin-top: -14px;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}   
 .sticky-search {
     position: sticky;
     left: 0;
@@ -546,5 +477,36 @@ function showConfirm(title, message, callback) {
     .form-inline .input-group {
         width: 100%;
     }
-    
+    .dropdown-action .action-icon {
+    color: #777;
+    font-size: 18px;
+    display: inline-block;
+    padding: 0 10px;
+}
+
+.dropdown-menu {
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 3px;
+    transform-origin: top right;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+.dropdown-item {
+    padding: 7px 15px;
+    color: #333;
+}
+
+.dropdown-item:hover {
+    background-color: #f8f9fa;
+    color: #12369e;
+}
+
+.dropdown-item i {
+    margin-right: 8px;
+    color: #777;
+}
+
+.dropdown-item:hover i {
+    color: #12369e;
+}
 </style> 

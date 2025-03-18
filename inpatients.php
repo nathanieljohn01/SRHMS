@@ -144,7 +144,7 @@ ob_end_flush(); // Flush output buffer
                         $update_query->execute();
                         echo "<script>showSuccess('Inpatient record deleted successfully!', true);</script>";
                     }
-                    $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_inpatient");
+                    $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_inpatient WHERE deleted = 0 ORDER BY id DESC");
                     while ($row = mysqli_fetch_array($fetch_query)) {
                         $dob = $row['dob'];
                         $date = str_replace('/', '-', $dob); 
@@ -169,7 +169,7 @@ ob_end_flush(); // Flush output buffer
                                 <div class="dropdown dropdown-action">
                                     <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><i class="fa fa-ellipsis-v"></i></a>
                                     <div class="dropdown-menu dropdown-menu-right">
-                                        <?php if ($_SESSION['role'] == 3): ?>
+                                        <?php if ($_SESSION['role'] == 1): ?>
                                             <!-- Insert Room Link Disabled based on conditions -->
                                             <?php if (empty($row['room_type']) && empty($row['room_number']) && empty($row['bed_number'])): ?>
                                                 <a class="dropdown-item" href="insert-room.php?id=<?php echo $row['id']; ?>"><i class="fa fa-pencil m-r-5"></i> Insert Room</a>
@@ -186,7 +186,7 @@ ob_end_flush(); // Flush output buffer
                                         <?php endif; ?>
 
                                         <?php if ($_SESSION['role'] == 1): ?>
-                                            <a class="dropdown-item" href="inpatients.php?ids=<?php echo $row['id']; ?>" onclick="return confirmDelete(<?php echo $row['id']; ?>)"><i class="fa fa-trash-o m-r-5"></i> Delete</a>
+                                            <a class="dropdown-item" href="#" onclick="return confirmDelete('<?php echo $row['id']; ?>')"><i class="fa fa-trash-o m-r-5"></i> Delete</a>
                                         <?php endif; ?>
                                     </div>
                                 </div>
@@ -202,17 +202,22 @@ ob_end_flush(); // Flush output buffer
 <?php
 include('footer.php');
 ?>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script language="JavaScript" type="text/javascript">
-function confirmDelete(id){
-    return showConfirm(
-        'Delete Patient?',
-        'Are you sure you want to delete this patient? This action cannot be undone!',
-        () => {
-            setTimeout(() => {
-                window.location.href = 'inpatients.php?ids=' + id;
-            }, 500);
+function confirmDelete(id) {
+    return Swal.fire({
+        title: 'Delete Patient Record?',
+        text: 'Are you sure you want to delete this Patient record? This action cannot be undone!',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#12369e',
+        confirmButtonText: 'Yes, delete it!'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            window.location.href = 'inpatients.php?id=' + id;
         }
-    );
+    });
 }
 
 function confirmDischarge(id) {
@@ -288,8 +293,8 @@ function confirmDischarge(id) {
             }
             
             if (role == 1) {
-                actionButtons += `<a class="dropdown-item" href="inpatients.php?ids=${row.id}" onclick="return confirmDelete(${row.id})">
-                    <i class="fa fa-trash-o m-r-5"></i> Delete</a>`;
+                actionButtons += ` <a class="dropdown-item" href="#" onclick="return confirmDelete('${row.id}')">
+                        <i class="fa fa-trash-o m-r-5"></i> Delete</a>`;
             }
 
             tbody.append(`<tr>
@@ -350,113 +355,48 @@ function confirmDischarge(id) {
         $("#addPatientBtn").prop("disabled", false); // Enable the Add button
         $("#searchResults").html("").hide(); // Clear and hide the dropdown
     });
+
+    $('.dropdown-toggle').on('click', function (e) {
+        var $el = $(this).next('.dropdown-menu');
+        var isVisible = $el.is(':visible');
+        
+        // Hide all dropdowns
+        $('.dropdown-menu').slideUp('400');
+        
+        // If this wasn't already visible, slide it down
+        if (!isVisible) {
+            $el.stop(true, true).slideDown('400');
+        }
+        
+        // Close the dropdown if clicked outside of it
+        $(document).on('click', function (e) {
+            if (!$(e.target).closest('.dropdown').length) {
+                $('.dropdown-menu').slideUp('400');
+            }
+        });
+    });
 </script>
 
-<script>
-function showError(message) {
-    Swal.fire({
-        title: 'Error!',
-        text: message,
-        icon: 'error',
-        confirmButtonColor: '#12369e'
-    });
-}
-
-function showConfirm(title, message, callback) {
-    Swal.fire({
-        title: title,
-        text: message,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#12369e',
-        cancelButtonColor: '#f62d51',
-        confirmButtonText: 'Yes'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            callback();
-        }
-    });
-}
-
-function showSuccess(message, redirect = false) {
-    Swal.fire({
-        icon: 'success',
-        title: 'Success',
-        text: message,
-        showConfirmButton: false,
-        timer: 2000
-    }).then(() => {
-        if (redirect) {
-            window.location.reload();
-        }
-    });
-}
-
-function showLoading(message) {
-    Swal.fire({
-        title: message,
-        text: 'Please wait...',
-        allowOutsideClick: false,
-        showConfirmButton: false,
-        willOpen: () => {
-            Swal.showLoading();
-        }
-    });
-}
-</script>
-
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
-<script>
-// Function to show a success message
-// Function to show SweetAlert messages
-function showSuccess(message) {
-    Swal.fire({
-        title: 'Success!',
-        text: message,
-        icon: 'success',
-        confirmButtonText: 'OK',
-        confirmButtonColor: '#12369e'
-    }).then(() => {
-        window.location.href = 'inpatients.php'; // Redirect after closing alert
-    });
-}
-
-// Check if success query parameter exists
-const urlParams = new URLSearchParams(window.location.search);
-if (urlParams.has('success')) {
-    showSuccess('Patient admitted successfully!');
-}
-
-// Prevent form submission and show loading alert
-document.querySelector('form').addEventListener('submit', function(event) {
-    event.preventDefault();
-
-    Swal.fire({
-        title: 'Processing...',
-        text: 'Admitting patient...',
-        allowOutsideClick: false,
-        showConfirmButton: false,
-        didOpen: () => {
-            Swal.showLoading();
-        }
-    });
-
-    setTimeout(() => {
-        event.target.submit();
-    }, 1000);
-});
-
-</script>
-
-
-<!-- SweetAlert2 CSS -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
-
-<!-- SweetAlert2 JS -->
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <style>
+.dropdown-item {
+    padding: 7px 15px;
+    color: #333;
+}
+
+.dropdown-item:hover {
+    background-color: #f8f9fa;
+    color: #12369e;
+}
+
+.dropdown-item i {
+    margin-right: 8px;
+    color: #777;
+}
+
+.dropdown-item:hover i {
+    color: #12369e;
+}      
 .btn-outline-primary {
 background-color:rgb(252, 252, 252);
 color: gray;

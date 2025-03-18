@@ -221,215 +221,25 @@ $(document).ready(function() {
     $('#scheduleTable').DataTable();
 });
 
-// Handle form submission
-$('#scheduleForm').on('submit', function(e) {
-    e.preventDefault();
+$('.dropdown-toggle').on('click', function (e) {
+    var $el = $(this).next('.dropdown-menu');
+    var isVisible = $el.is(':visible');
     
-    // Basic validation
-    const required = ['doctor_id', 'schedule_date', 'start_time', 'end_time'];
-    let isValid = true;
-    let emptyFields = [];
+    // Hide all dropdowns
+    $('.dropdown-menu').slideUp('400');
     
-    required.forEach(field => {
-        if (!$(`#${field}`).val()) {
-            isValid = false;
-            emptyFields.push(field.replace('_', ' '));
-        }
-    });
-    
-    if (!isValid) {
-        showError(`Please fill in the following fields: ${emptyFields.join(', ')}`);
-        return;
+    // If this wasn't already visible, slide it down
+    if (!isVisible) {
+        $el.stop(true, true).slideDown('400');
     }
     
-    // Validate time slots
-    const startTime = new Date(`2000-01-01 ${$('#start_time').val()}`);
-    const endTime = new Date(`2000-01-01 ${$('#end_time').val()}`);
-    
-    if (endTime <= startTime) {
-        showError('End time must be after start time');
-        return;
-    }
-    
-    // Show loading state
-    showLoading('Saving schedule...');
-    
-    // Submit the form
-    this.submit();
-});
-
-// Handle delete confirmation
-$('.delete-btn').on('click', function(e) {
-    e.preventDefault();
-    const id = $(this).data('id');
-    
-    showConfirm(
-        'Delete Schedule?',
-        'Are you sure you want to delete this schedule? This action cannot be undone!',
-        () => {
-            // Show loading state
-            showLoading('Deleting schedule...');
-            setTimeout(() => {
-                window.location.href = 'schedule.php?ids=' + id;
-            }, 500);
-        }
-    );
-});
-
-// Initialize datetime pickers with better UX
-$('#schedule_date').datetimepicker({
-    format: 'YYYY-MM-DD',
-    minDate: new Date(),
-    icons: {
-        up: "fa fa-chevron-up",
-        down: "fa fa-chevron-down",
-        next: 'fa fa-chevron-right',
-        previous: 'fa fa-chevron-left'
-    }
-});
-
-$('#start_time, #end_time').datetimepicker({
-    format: 'HH:mm',
-    stepping: 15,
-    icons: {
-        up: "fa fa-chevron-up",
-        down: "fa fa-chevron-down",
-        next: 'fa fa-chevron-right',
-        previous: 'fa fa-chevron-left'
-    }
-});
-
-// Handle doctor search with better UX
-$('#doctorSearch').on('keyup', function() {
-    const query = $(this).val();
-    if (query.length < 2) {
-        $('#searchResults').html('').hide();
-        return;
-    }
-    
-    showLoading('Searching for doctor...');
-    
-    $.ajax({
-        url: 'search_doctor.php',
-        type: 'POST',
-        data: { query: query },
-        success: function(response) {
-            Swal.close();
-            try {
-                const data = JSON.parse(response);
-                if (data.success) {
-                    // Update doctor info fields
-                    $('#doctor_name').val(data.name);
-                    $('#doctor_specialty').val(data.specialty);
-                    $('#searchResults').html('').hide();
-                    
-                    // Show success message
-                    showSuccess('Doctor found!');
-                } else {
-                    showError('Doctor not found');
-                    $('#searchResults').html('').hide();
-                }
-            } catch (e) {
-                showError('Error searching for doctor');
-                $('#searchResults').html('').hide();
-            }
-        },
-        error: function() {
-            showError('Error searching for doctor');
-            $('#searchResults').html('').hide();
+    // Close the dropdown if clicked outside of it
+    $(document).on('click', function (e) {
+        if (!$(e.target).closest('.dropdown').length) {
+            $('.dropdown-menu').slideUp('400');
         }
     });
 });
-
-// Handle AJAX errors globally
-$(document).ajaxError(function(event, jqXHR, settings, error) {
-    showError('Error fetching data. Please try again.');
-});
-
-// Update onclick handlers in table
-$(document).ready(function() {
-    // Update delete links
-    $('a[onclick*="confirm"]').each(function() {
-        const id = $(this).attr('href').split('=')[1];
-        $(this).attr('onclick', `return deleteSchedule('${id}')`);
-    });
-    
-    // Handle table filtering
-    $('#scheduleSearch').on('keyup', function() {
-        const query = $(this).val().toLowerCase();
-        $('#scheduleTable tbody tr').filter(function() {
-            $(this).toggle($(this).text().toLowerCase().indexOf(query) > -1);
-        });
-    });
-});
-
-// SweetAlert2 helper functions
-function showSuccess(message, redirect = false) {
-    Swal.fire({
-        icon: 'success',
-        title: 'Success',
-        text: message,
-        showConfirmButton: false,
-        timer: 2000
-    }).then(() => {
-        if (redirect) {
-            window.location.reload();
-        }
-    });
-}
-
-function showError(message) {
-    Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: message,
-        showConfirmButton: false,
-        timer: 2000
-    });
-}
-
-function showLoading(message) {
-    Swal.fire({
-        title: message,
-        text: 'Please wait...',
-        allowOutsideClick: false,
-        showConfirmButton: false,
-        willOpen: () => {
-            Swal.showLoading();
-        }
-    });
-}
-
-function showConfirm(title, message, callback) {
-    Swal.fire({
-        icon: 'warning',
-        title: title,
-        text: message,
-        showCancelButton: true,
-        confirmButtonText: 'Yes',
-        cancelButtonText: 'No',
-        reverseButtons: true
-    }).then((result) => {
-        if (result.value) {
-            callback();
-        }
-    });
-}
-
-function deleteSchedule(id) {
-    showConfirm(
-        'Delete Schedule?',
-        'Are you sure you want to delete this schedule? This action cannot be undone!',
-        () => {
-            // Show loading state
-            showLoading('Deleting schedule...');
-            setTimeout(() => {
-                window.location.href = 'schedule.php?ids=' + id;
-            }, 500);
-        }
-    );
-    return false;
-}
 </script>
 
 <style>
@@ -462,5 +272,23 @@ function deleteSchedule(id) {
 }
 .btn-primary:hover {
     background: #05007E;
+}
+.dropdown-item {
+    padding: 7px 15px;
+    color: #333;
+}
+
+.dropdown-item:hover {
+    background-color: #f8f9fa;
+    color: #12369e;
+}
+
+.dropdown-item i {
+    margin-right: 8px;
+    color: #777;
+}
+
+.dropdown-item:hover i {
+    color: #12369e;
 }
 </style>

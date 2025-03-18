@@ -67,6 +67,15 @@ $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_payment WHERE delete
                 </thead>
                 <tbody>
                     <?php
+                    if (isset($_GET['ids'])) {
+                        $id = intval($_GET['ids']); 
+                        if ($id) {
+                            $update_query = mysqli_prepare($connection, "UPDATE tbl_payment SET deleted = 1 WHERE id = ?");
+                            mysqli_stmt_bind_param($update_query, "i", $id);
+                            mysqli_stmt_execute($update_query);
+                            mysqli_stmt_close($update_query);
+                        }
+                    }
                     while ($row = mysqli_fetch_array($fetch_query)) {
                         // Sanitize output to prevent XSS
                         $payment_id = htmlspecialchars($row['payment_id'], ENT_QUOTES, 'UTF-8');
@@ -95,8 +104,8 @@ $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_payment WHERE delete
                                         <a class="dropdown-item" href="generate-receipt.php?id=<?php echo $row['id']; ?>">
                                             <i class="fa fa-file-text-o m-r-5"></i> Generate Receipt
                                         </a>
-                                        <a class="dropdown-item" href="payment-processing.php?ids=<?php echo $row['id']; ?>" onclick="return confirmDelete()">
-                                            <i class="fa fa-trash-o m-r-5"></i> Delete
+                                        <a class="dropdown-item" href="#" onclick="return confirmDelete('<?php echo $row['id']; ?>')">
+                                            <i class="fa fa-trash-o m-r-5"></i> Delete 
                                         </a>
                                     </div>
                                 </div>
@@ -112,6 +121,25 @@ $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_payment WHERE delete
 </div>
 
 <?php include('footer.php'); ?>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script language="JavaScript" type="text/javascript">
+    function confirmDelete(id) {
+        return Swal.fire({
+            title: 'Delete Payment Record?',
+            text: 'Are you sure you want to delete this Payment record? This action cannot be undone!',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#12369e',
+            confirmButtonText: 'Yes, delete it!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                window.location.href = 'payment-processing.php?ids=' + id;  
+            }
+        });
+    }
+</script>
 
 <script>
 function clearSearch() {
@@ -180,10 +208,6 @@ function updatePaymentTable(data) {
             </tr>
         `);
     });
-}
-
-function confirmDelete() {
-    return confirm('Are you sure you want to delete this Payment Record?');
 }
 
 </script>

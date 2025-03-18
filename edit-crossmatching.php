@@ -18,13 +18,13 @@ if (isset($_GET['id'])) {
 
     // Fetch existing crossmatching data using prepared statement
     $fetch_query = mysqli_prepare($connection, "SELECT * FROM tbl_crossmatching WHERE crossmatching_id = ?");
-    mysqli_stmt_bind_param($fetch_query, "s", $crossmatch_id);
+    mysqli_stmt_bind_param($fetch_query, "s", $crossmatching_id);
     mysqli_stmt_execute($fetch_query);
     $result = mysqli_stmt_get_result($fetch_query);
-    $crossmatch_data = mysqli_fetch_array($result);
+    $crossmatching_data = mysqli_fetch_array($result);
     mysqli_stmt_close($fetch_query);
 
-    if (!$crossmatch_data) {
+    if (!$crossmatching_data) {
         echo "Crossmatching data not found.";
         exit;
     }
@@ -51,6 +51,18 @@ if (isset($_POST['edit-crossmatching'])) {
     $to_be_consumed_before = sanitize($connection, $_POST['to_be_consumed_before']);
     $hours = sanitize($connection, $_POST['hours']);
     $minor_crossmatching = sanitize($connection, $_POST['minor_crossmatching']);
+
+    // Fetch patient information using prepared statement
+    $patient_query = mysqli_prepare($connection, "SELECT patient_id, gender, dob, patient_type FROM tbl_patient WHERE CONCAT(first_name, ' ', last_name) = ?");
+    mysqli_stmt_bind_param($patient_query, "s", $patient_name);
+    mysqli_stmt_execute($patient_query);
+    $patient_result = mysqli_stmt_get_result($patient_query);
+    $row = mysqli_fetch_array($patient_result);
+    mysqli_stmt_close($patient_query);
+
+    $patient_id = $row['patient_id'];
+    $gender = $row['gender'];
+    $dob = $row['dob'];
 
     // Update crossmatching data using prepared statement
     $update_query = mysqli_prepare($connection, "UPDATE tbl_crossmatching SET 
@@ -135,12 +147,12 @@ if (isset($_POST['edit-crossmatching'])) {
                         </div>
                         <div class="col-sm-6">
                             <label for="patient_name">Patient Name</label>
-                            <input class="form-control" type="text" name="patient_name" id="patient_name" value="<?php echo htmlspecialchars($dengue_duo_data['patient_name']); ?>" required>
+                            <input class="form-control" type="text" name="patient_name" id="patient_name" value="<?php echo htmlspecialchars($crossmatching_data['patient_name']); ?>" readonly>
                         </div>
                     </div>
                     <div class="form-group">
                         <label for="date_time">Date and Time</label>
-                        <input type="datetime-local" class="form-control" name="date_time" id="date_time" value="<?php echo date('Y-m-d\TH:i', strtotime($dengue_duo_data['date_time'])); ?>">
+                        <input type="datetime-local" class="form-control" name="date_time" id="date_time" value="<?php echo date('Y-m-d\TH:i', strtotime($crossmatching_data['date_time'])); ?>">
                     </div>
                     <div class="form-group row">
                         <div class="col-sm-6">
@@ -178,14 +190,17 @@ if (isset($_POST['edit-crossmatching'])) {
                             <input class="form-control" type="text" name="donors_blood_type" id="donors_blood_type" value="<?php echo htmlspecialchars($crossmatching_data['donors_blood_type']); ?>">
                         </div>
                         <div class="col-sm-6">
-                            <label for="for_packed_red_blood_cell">For Packed Red Blood Cell</label>
-                            <input class="form-control" type="text" name="for_packed_red_blood_cell" id="for_packed_red_blood_cell" value="<?php echo htmlspecialchars($crossmatching_data['for_packed_red_blood_cell']); ?>">
+                            <label for="packed_red_blood_cell">For Packed Red Blood Cell</label>
+                            <input class="form-control" type="text" name="packed_red_blood_cell" id="packed_red_blood_cell" value="<?php echo htmlspecialchars($crossmatching_data['packed_red_blood_cell']); ?>">
                         </div>
                     </div>
                     <div class="form-group row">
                         <div class="col-sm-6">
                             <label for="time_packed">Time Packed</label>
-                            <input type="time" class="form-control" name="time_packed" id="time_packed" value="<?php echo htmlspecialchars($crossmatching_data['time_packed']); ?>">
+                            <div class="input-group">
+                                <input type="time" class="form-control" name="time_packed" id="time_packed">
+                                <button type="button" class="btn btn-primary px-3" onclick="setCurrentTime('time_packed')">Now</button>
+                            </div>
                         </div>
                         <div class="col-sm-6">
                             <label for="dated">Dated</label>
@@ -196,6 +211,7 @@ if (isset($_POST['edit-crossmatching'])) {
                         <div class="col-sm-6">
                             <label for="open_system">Open System</label>
                             <select class="form-control" name="open_system" id="open_system">
+                                <option value="Select" <?php if ($crossmatching_data['open_system'] == 'Select') echo 'selected'; ?>readonly>Select</option>
                                 <option value="Yes" <?php echo ($crossmatching_data['open_system'] == 'Yes') ? 'selected' : ''; ?>>Yes</option>
                                 <option value="No" <?php echo ($crossmatching_data['open_system'] == 'No') ? 'selected' : ''; ?>>No</option>
                             </select>
@@ -203,6 +219,7 @@ if (isset($_POST['edit-crossmatching'])) {
                         <div class="col-sm-6">
                             <label for="closed_system">Closed System</label>
                             <select class="form-control" name="closed_system" id="closed_system">
+                                <option value="Select" <?php if ($crossmatching_data['closed_system'] == 'Select') echo 'selected'; ?>readonly>Select</option>
                                 <option value="Yes" <?php echo ($crossmatching_data['closed_system'] == 'Yes') ? 'selected' : ''; ?>>Yes</option>
                                 <option value="No" <?php echo ($crossmatching_data['closed_system'] == 'No') ? 'selected' : ''; ?>>No</option>
                             </select>
@@ -211,7 +228,10 @@ if (isset($_POST['edit-crossmatching'])) {
                     <div class="form-group row">
                         <div class="col-sm-6">
                             <label for="to_be_consumed_before">To Be Consumed Before</label>
-                            <input type="time" class="form-control" name="to_be_consumed_before" id="to_be_consumed_before" value="<?php echo htmlspecialchars($crossmatching_data['to_be_consumed_before']); ?>">
+                            <div class="input-group">
+                                <input type="time" class="form-control" name="to_be_consumed_before" id="to_be_consumed_before">
+                                <button type="button" class="btn btn-primary px-3" onclick="setCurrentTime('to_be_consumed_before')">Now</button>
+                            </div>
                         </div>
                         <div class="col-sm-6">
                             <label for="hours">Hours</label>
@@ -231,20 +251,49 @@ if (isset($_POST['edit-crossmatching'])) {
     </div>
 </div>
 
+<?php
+include('footer.php');
+?>
+
+<script src="assets/js/moment.min.js"></script>
+<script src="assets/js/bootstrap-datetimepicker.js"></script>
+<script src="assets/js/bootstrap-datetimepicker.min.js"></script>
+
+<script>
+function setCurrentTime(inputId) {
+    let now = new Date();
+    let hours = String(now.getHours()).padStart(2, '0');
+    let minutes = String(now.getMinutes()).padStart(2, '0');
+    document.getElementById(inputId).value = `${hours}:${minutes}`;
+}
+</script>
+
 <style>
-    .btn-primary.submit-btn {
-        border-radius: 4px; 
-        padding: 10px 20px;
-        font-size: 16px;
-    }
-    .btn-primary {
-            background: #12369e;
-            border: none;
-        }
-        .btn-primary:hover {
-            background: #05007E;
-        }
-        .form-control {
+.input-group .form-control {
+    border-right: 0; /* Para seamless ang transition ng input field papunta sa button */
+}
+
+.input-group .btn {
+    border-left: 0;
+    border-radius: 0 8px 8px 0; /* Rounded corners sa right side */
+}
+
+.input-group .form-control:focus {
+    box-shadow: none; /* Tatanggalin ang default focus shadow para mas clean */
+} 
+.btn-primary.submit-btn {
+    border-radius: 4px; 
+    padding: 10px 20px;
+    font-size: 16px;
+}
+.btn-primary {
+    background: #12369e;
+    border: none;
+}
+.btn-primary:hover {
+    background: #05007E;
+}
+.form-control {
     border-radius: .375rem; /* Rounded corners */
     border-color: #ced4da; /* Border color */
     background-color: #f8f9fa; /* Background color */

@@ -118,7 +118,7 @@ if (isset($_POST['edit-electrolytes'])) {
                         </div>
                         <div class="col-sm-6">
                             <label for="patient_name">Patient Name</label>
-                            <input class="form-control" type="text" name="patient_name" id="patient_name" value="<?php echo htmlspecialchars($electrolytes_data['patient_name']); ?>" required>
+                            <input class="form-control" type="text" name="patient_name" id="patient_name" value="<?php echo htmlspecialchars($electrolytes_data['patient_name']); ?>" readonly>
                         </div>
                     </div>
                     <div class="form-group">
@@ -127,19 +127,26 @@ if (isset($_POST['edit-electrolytes'])) {
                     </div>
                     <div class="form-group">
                         <label for="sodium">Sodium (Na<sup>+</sup>)</label>
-                        <input class="form-control" type="text" name="sodium" id="sodium" value="<?php echo htmlspecialchars($electrolytes_data['sodium']); ?>">
+                        <input class="form-control" type="number" name="sodium" id="sodium" value="<?php echo htmlspecialchars($electrolytes_data['sodium']); ?>" 
+                            step="0.01" min="100" max="200" required>
                     </div>
+
                     <div class="form-group">
                         <label for="potassium">Potassium (K<sup>+</sup>)</label>
-                        <input class="form-control" type="text" name="potassium" id="potassium" value="<?php echo htmlspecialchars($electrolytes_data['potassium']); ?>">
+                        <input class="form-control" type="number" name="potassium" id="potassium" value="<?php echo htmlspecialchars($electrolytes_data['potassium']); ?>" 
+                            step="0.01" min="2.5" max="6.5" required>
                     </div>
+
                     <div class="form-group">
                         <label for="chloride">Chloride (Cl<sup>-</sup>)</label>
-                        <input class="form-control" type="text" name="chloride" id="chloride" value="<?php echo htmlspecialchars($electrolytes_data['chloride']); ?>">
+                        <input class="form-control" type="number" name="chloride" id="chloride" value="<?php echo htmlspecialchars($electrolytes_data['chloride']); ?>" 
+                            step="0.01" min="70" max="130" required>
                     </div>
+
                     <div class="form-group">
                         <label for="calcium">Calcium (Ca<sup>2+</sup>)</label>
-                        <input class="form-control" type="text" name="calcium" id="calcium" value="<?php echo htmlspecialchars($electrolytes_data['calcium']); ?>">
+                        <input class="form-control" type="number" name="calcium" id="calcium" value="<?php echo htmlspecialchars($electrolytes_data['calcium']); ?>" 
+                            step="0.01" min="1.0" max="3.0" required>
                     </div>
                     <div class="text-center mt-4">
                         <button class="btn btn-primary submit-btn" name="edit-electrolytes">Update Result</button>

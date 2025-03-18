@@ -170,6 +170,17 @@ if (isset($_POST['submit_payment'])) {
                         if (!$update_rad) {
                             throw new Exception("Error updating radiology orders: " . mysqli_error($connection));
                         }
+                  
+                        // Update treatment records
+                        $update_treatment = mysqli_query($connection, "
+                            UPDATE tbl_treatment 
+                            SET is_billed = 1 
+                            WHERE patient_name = '$patient_name'
+                        ");
+                      
+                        if (!$update_treatment) {
+                            throw new Exception("Error updating treatment records: " . mysqli_error($connection));
+                        }
                     }
                 }
             } else if ($patient_type == 'Outpatient') {

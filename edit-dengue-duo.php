@@ -18,13 +18,13 @@ if (isset($_GET['id'])) {
 
     // Fetch existing dengue duo data using prepared statement
     $fetch_query = mysqli_prepare($connection, "SELECT * FROM tbl_dengueduo WHERE dd_id = ?");
-    mysqli_stmt_bind_param($fetch_query, "s", $dengueduo_id);
+    mysqli_stmt_bind_param($fetch_query, "s", $dd_id);
     mysqli_stmt_execute($fetch_query);
     $result = mysqli_stmt_get_result($fetch_query);
-    $dengueduo_data = mysqli_fetch_array($result);
+    $dengue_duo_data = mysqli_fetch_array($result);
     mysqli_stmt_close($fetch_query);
 
-    if (!$dengueduo_data) {
+    if (!$dengue_duo_data) {
         echo "Dengue Duo test data not found.";
         exit;
     }
@@ -33,7 +33,7 @@ if (isset($_GET['id'])) {
 // Handle form submission for editing dengue duo test data
 if (isset($_POST['edit-dengueduo'])) {
     // Sanitize inputs
-    $dengueduo_id = sanitize($connection, $_POST['dd_id']);
+    $dd_id = sanitize($connection, $_POST['dd_id']);
     $patient_name = sanitize($connection, $_POST['patient_name']);
     $date_time = sanitize($connection, $_POST['date_time']);
     $ns1ag = sanitize($connection, $_POST['ns1ag'] ?? NULL);
@@ -99,7 +99,7 @@ if (isset($_POST['edit-dengueduo'])) {
                 <h4 class="page-title">Edit Dengue Duo Result</h4>
             </div>
             <div class="col-sm-8 text-right mb-3">
-                <a href="dengueduo.php" class="btn btn-primary"><i class="fa fa-arrow-left"></i> Back</a>
+                <a href="dengue-duo.php" class="btn btn-primary"><i class="fa fa-arrow-left"></i> Back</a>
             </div>
         </div>
         <div class="row">
@@ -112,7 +112,7 @@ if (isset($_POST['edit-dengueduo'])) {
                         </div>
                         <div class="col-sm-6">
                             <label for="patient_name">Patient Name</label>
-                            <input class="form-control" type="text" name="patient_name" id="patient_name" value="<?php echo htmlspecialchars($dengue_duo_data['patient_name']); ?>" required>
+                            <input class="form-control" type="text" name="patient_name" id="patient_name" value="<?php echo htmlspecialchars($dengue_duo_data['patient_name']); ?>" readonly>
                         </div>
                     </div>
                     <div class="form-group">
@@ -121,22 +121,34 @@ if (isset($_POST['edit-dengueduo'])) {
                     </div>
                     <div class="form-group">
                         <label for="ns1ag">NS1Ag</label>
-                        <input class="form-control" type="text" name="ns1ag" id="ns1ag" value="<?php echo htmlspecialchars($dengue_duo_data['ns1ag']); ?>">
+                        <select class="form-control" name="ns1ag" id="ns1ag" required>
+                             <option value="Select" <?php if ($dengue_duo_data['ns1ag'] == 'Select') echo 'selected'; ?>readonly>Select</option>
+                            <option value="Positive" <?php if ($dengue_duo_data['ns1ag'] == 'Positive') echo 'selected'; ?>>Positive</option>
+                            <option value="Negative" <?php if ($dengue_duo_data['ns1ag'] == 'Negative') echo 'selected'; ?>>Negative</option>
+                        </select>
                     </div>
                     <div class="form-group">
                         <label for="igg">IgG</label>
-                        <input class="form-control" type="text" name="igg" id="igg" value="<?php echo htmlspecialchars($dengue_duo_data['igg']); ?>">
+                        <select class="form-control" name="igg" id="igg" required>
+                            <option value="Select" <?php if ($dengue_duo_data['igg'] == 'Select') echo 'selected'; ?>readonly>Select</option>
+                            <option value="Positive" <?php if ($dengue_duo_data['igg'] == 'Positive') echo 'selected'; ?>>Positive</option>
+                            <option value="Negative" <?php if ($dengue_duo_data['igg'] == 'Negative') echo 'selected'; ?>>Negative</option>
+                        </select>
                     </div>
                     <div class="form-group">
                         <label for="igm">IgM</label>
-                        <input class="form-control" type="text" name="igm" id="igm" value="<?php echo htmlspecialchars($dengue_duo_data['igm']); ?>">
+                        <select class="form-control" name="igm" id="igm" required>
+                            <option value="Select" <?php if ($dengue_duo_data['igm'] == 'Select') echo 'selected'; ?>readonly>Select</option>
+                            <option value="Positive" <?php if ($dengue_duo_data['igm'] == 'Positive') echo 'selected'; ?>>Positive</option>
+                            <option value="Negative" <?php if ($dengue_duo_data['igm'] == 'Negative') echo 'selected'; ?>>Negative</option>
+                        </select>
                     </div>
                     <div class="text-center mt-4">
                         <button class="btn btn-primary submit-btn" name="edit-dengueduo">Update Result</button>
                     </div>
                 </form>
             </div>
-        </div>qd
+        </div>
     </div>
 </div>
 

@@ -20,7 +20,6 @@ if (isset($_POST['add-employee'])) {
     $emailid = sanitize($connection, $_POST['emailid']);
     $pwd = sanitize($connection, $_POST['pwd']); // Plain password
     $dob = sanitize($connection, $_POST['dob']);
-    $employee_id = sanitize($connection, $_POST['employee_id']);
     $joining_date = sanitize($connection, $_POST['joining_date']);
     $gender = sanitize($connection, $_POST['gender']);
     $phone = sanitize($connection, $_POST['phone']);
@@ -50,10 +49,10 @@ if (isset($_POST['add-employee'])) {
 
     if (!isset($msg)) {
         // Prepared statement for inserting employee data
-        $stmt = mysqli_prepare($connection, "INSERT INTO tbl_employee (first_name, last_name, specialization, username, emailid, password, dob, employee_id, joining_date, gender, address, phone, bio, role, status, profile_picture) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt = mysqli_prepare($connection, "INSERT INTO tbl_employee (first_name, last_name, specialization, username, emailid, password, dob, joining_date, gender, address, phone, bio, role, status, profile_picture) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
     
         // Bind parameters (updated with hashed password and correct binary type)
-        mysqli_stmt_bind_param($stmt, 'sssssssssssssssb', $first_name, $last_name, $specialization, $username, $emailid, $hashed_pwd, $dob, $employee_id, $joining_date, $gender, $address, $phone, $bio, $role, $status, $profile_picture);
+        mysqli_stmt_bind_param($stmt, 'ssssssssssssssb', $first_name, $last_name, $specialization, $username, $emailid, $hashed_pwd, $dob, $joining_date, $gender, $address, $phone, $bio, $role, $status, $profile_picture);
     
         // Send the binary data for `profile_picture` (index 16)
         if ($profile_picture) {
@@ -157,14 +156,7 @@ if (isset($_POST['add-employee'])) {
                                 <label>Password</label>
                                 <input class="form-control" type="password" name="pwd" required>
                             </div>
-                        </div>
-                        <!-- Employee ID -->
-                        <div class="col-sm-6">
-                            <div class="form-group">
-                                <label>Employee ID <span class="text-danger">*</span></label>
-                                <input class="form-control" type="text" name="employee_id" required>
-                            </div>
-                        </div>
+                        </div>                
                         <!-- Joining Date -->
                         <div class="col-sm-6">
                             <div class="form-group">

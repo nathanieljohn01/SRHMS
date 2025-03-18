@@ -49,8 +49,13 @@ if (isset($_GET['msg'])) {
                 <tbody>
                     <?php
                     if (isset($_GET['ids'])) {
-                        $id = $_GET['ids'];
-                        $update_query = mysqli_prepare($connection, "UPDATE tbl_inpatient_record SET deleted = 1 WHERE id = ?");
+                        $id = intval($_GET['ids']); 
+                        if ($id) {
+                            $update_query = mysqli_prepare($connection, "UPDATE tbl_housekeeping_schedule SET deleted = 1 WHERE id = ?");
+                            mysqli_stmt_bind_param($update_query, "i", $id);
+                            mysqli_stmt_execute($update_query);
+                            mysqli_stmt_close($update_query);
+                        }
                     }
                     $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_housekeeping_schedule WHERE deleted = 0");
                     while ($row = mysqli_fetch_array($fetch_query)) {
@@ -72,7 +77,7 @@ if (isset($_GET['msg'])) {
                                     <div class="dropdown-menu dropdown-menu-right">
                                         <a class="dropdown-item <?php echo $isDisabled; ?>" href="#" onclick="confirmCompletion(<?php echo $row['id']; ?>);"><i class="fa fa-check m-r-5"></i> Complete</a>
                                         <a class="dropdown-item edit-link <?php echo $isEditable; ?>" href="edit-housekeeping-schedule.php?id=<?php echo $row['id']; ?>"><i class="fa fa-pencil m-r-5"></i> Edit</a>
-                                        <a class="dropdown-item" href="housekeeping-schedule.php?ids=<?php echo $row['id']; ?>" onclick="return confirm('Are you sure you want to delete this schedule?')"><i class="fa fa-trash-o m-r-5"></i> Delete</a>
+                                        <a class="dropdown-item" href="#" onclick="return confirmDelete('<?php echo $row['id']; ?>')"><i class="fa fa-trash-o m-r-5"></i> Delete </a>
                                     </div>
                                 </div>
                             </td>
@@ -88,6 +93,24 @@ if (isset($_GET['msg'])) {
 include('footer.php');
 ?>
 
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script language="JavaScript" type="text/javascript">
+    function confirmDelete(id) {
+        return Swal.fire({
+            title: 'Delete Housekeeping Record?',
+            text: 'Are you sure you want to delete this Housekeeping record? This action cannot be undone!',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#12369e',
+            confirmButtonText: 'Yes, delete it!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                window.location.href = 'housekeeping-schedule.php?ids=' + id;  
+            }
+        });
+    }
+</script>
 <style>
 .btn-primary {
     background: #12369e;
