@@ -30,7 +30,7 @@ if ($patientType === 'hemodialysis') {
         FROM tbl_billing_newborn b
         LEFT JOIN tbl_billing_others o ON b.billing_id = o.billing_id
         WHERE b.deleted = 0
-        GROUP BY b.billing_id, b.patient_id, b.transaction_datetime
+        GROUP BY b.billing_id, b.newborn_id, b.transaction_datetime
         ORDER BY b.transaction_datetime DESC
     ";
 } else {
@@ -108,18 +108,24 @@ if ($patientType === 'hemodialysis') {
                         $id = intval($_GET['ids']);
                         $type = $_GET['type'] ?? ''; // Add type parameter
                         
-                        if($type == 'inpatient') {
+                        if ($type == 'inpatient') {
                             $stmt = $connection->prepare("UPDATE tbl_billing_inpatient SET deleted = 1 WHERE id = ?");
                             $stmt->bind_param("i", $id);
                             $stmt->execute();
                             $stmt->close();
                         } 
-                        else if($type == 'hemodialysis') {
+                        else if ($type == 'hemodialysis') {
                             $stmt = $connection->prepare("UPDATE tbl_billing_hemodialysis SET deleted = 1 WHERE id = ?");
                             $stmt->bind_param("i", $id);
                             $stmt->execute(); 
                             $stmt->close();
-                        }
+                        } 
+                        else if ($type == 'newborn') { // Added condition for newborn billing
+                            $stmt = $connection->prepare("UPDATE tbl_billing_newborn SET deleted = 1 WHERE id = ?");
+                            $stmt->bind_param("i", $id);
+                            $stmt->execute(); 
+                            $stmt->close();
+                        }                        
                     }
                      $patient_query = mysqli_query($connection, $query);
                      while ($row = mysqli_fetch_array($patient_query)) {
@@ -130,7 +136,15 @@ if ($patientType === 'hemodialysis') {
                     ?>
                     <tr data-billing-id="<?php echo $row['billing_id']; ?>">
                         <td><?php echo $row['billing_id']; ?></td>
-                        <td><?php echo $row['patient_id']; ?></td>
+                        <td>
+                            <?php 
+                            if ($patientType === 'newborn') {
+                                echo $row['newborn_id']; 
+                            } else {
+                                echo $row['patient_id']; 
+                            }
+                            ?>
+                        </td>
                         <td><?php echo $row['patient_name']; ?></td>
                         <td><?php echo $year; ?></td>
                         <td><?php echo $row['gender']; ?></td>
@@ -141,12 +155,16 @@ if ($patientType === 'hemodialysis') {
                         <td><?php echo date('F d, Y g:i A', strtotime($row['transaction_datetime'])); ?></td>
                         <td class="text-right">
                             <div class="dropdown dropdown-action">
-                                <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><i class="fa fa-ellipsis-v"></i></a>
+                                <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
+                                    <i class="fa fa-ellipsis-v"></i>
+                                </a>
                                 <div class="dropdown-menu dropdown-menu-right">
                                     <?php
                                     if ($_SESSION['role'] == 1) {
                                         echo '<a class="dropdown-item" href="edit-billing.php?id='.$row['id'].'"><i class="fa fa-pencil m-r-5"></i> Edit</a>';
-                                        echo '<a class="dropdown-item" href="#" onclick="return confirmDelete(\''.$row['id'].'\', \''.$patientType.'\')"><i class="fa fa-trash-o m-r-5"></i> Delete</a>';
+                                        echo '<a class="dropdown-item" href="#" onclick="return confirmDelete(\''.$row['id'].'\', \''.$patientType.'\')">
+                                                <i class="fa fa-trash-o m-r-5"></i> Delete
+                                            </a>';
                                     }
                                     ?>
                                 </div>

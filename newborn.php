@@ -18,6 +18,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['selectedMedicines']) &
     $selectedMedicines = json_decode($_POST['selectedMedicines'], true);
 
     if ($selectedMedicines) {
+        // Fetch newborn's first name and last name
+        $fetchNewbornQuery = $connection->prepare("SELECT first_name, last_name FROM tbl_newborn WHERE newborn_id = ?");
+        $fetchNewbornQuery->bind_param("s", $newbornId);
+        $fetchNewbornQuery->execute();
+        $fetchNewbornQuery->bind_result($firstName, $lastName);
+        $fetchNewbornQuery->fetch();
+        $fetchNewbornQuery->close();
+
+        $patientName = $firstName . ' ' . $lastName; // Concatenate first and last name
+
         foreach ($selectedMedicines as $medicine) {
             $medicineId = sanitize($connection, $medicine['id']);
             $medicineName = sanitize($connection, $medicine['name']);
@@ -26,22 +36,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['selectedMedicines']) &
             $price = floatval($medicine['price']);
             $totalPrice = $quantity * $price;
 
-            error_log("Inserting treatment for newborn_id: $newbornId, medicine_name: $medicineName, total_quantity: $quantity");
-            if (empty($newbornId)) {
-                $msg = "Error: newbornId is empty after sanitization.";
-            }
-
             // Insert treatment details into tbl_treatment
             $insertQuery = $connection->prepare("
-                INSERT INTO tbl_treatment (newborn_id, medicine_name, medicine_brand, total_quantity, price, total_price, treatment_date)
-                VALUES (?, ?, ?, ?, ?, ?, NOW())
+                INSERT INTO tbl_treatment (newborn_id, patient_name, medicine_name, medicine_brand, total_quantity, price, total_price, treatment_date)
+                VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
             ");
-
-            $insertQuery->bind_param("sssidd", $newbornId, $medicineName, $medicineBrand, $quantity, $price, $totalPrice);
+            $insertQuery->bind_param("ssssidd", $newbornId, $patientName, $medicineName, $medicineBrand, $quantity, $price, $totalPrice);
 
             if (!$insertQuery->execute()) {
                 $msg = "Error inserting treatment: " . $insertQuery->error;
-                error_log($msg); // Log the error for debugging
+                error_log($msg);
                 break;
             }
 
@@ -122,6 +126,7 @@ ob_end_flush();
                         <th>First Name</th>
                         <th>Last Name</th>
                         <th>Gender</th>
+                        <th>Address</th>
                         <th>Date of Birth</th>
                         <th>Time of Birth</th>
                         <th>Birth Weight</th>
@@ -131,6 +136,7 @@ ob_end_flush();
                         <th>Admission Date and Time</th>
                         <th>Discharge Date and Time</th>
                         <th>Physician</th>
+                        <th>Diagnosis</th>
                         <th>Action</th>
                     </tr>
                 </thead>
@@ -169,8 +175,8 @@ ob_end_flush();
                     $fetch_query->execute();
                     $result = $fetch_query->get_result();      
                     while ($row = $result->fetch_assoc()):
-                        $admission_date_time = date('F d, Y g:i A', strtotime($row['admission_datetime']));
-                        $discharge_date_time = $row['discharge_datetime'] ? date('F d, Y g:i A', strtotime($row['discharge_datetime'])) : 'N/A';
+                        $admission_date = date('F d, Y g:i A', strtotime($row['admission_date']));
+                        $discharge_date = $row['discharge_date'] ? date('F d, Y g:i A', strtotime($row['discharge_date'])) : 'N/A';
                         
                         $treatmentDetails = $row['treatments'] ?: 'No treatments added';
                     ?>
@@ -179,6 +185,7 @@ ob_end_flush();
                             <td><?= htmlspecialchars($row['first_name']); ?></td>
                             <td><?= htmlspecialchars($row['last_name']); ?></td>
                             <td><?= htmlspecialchars($row['gender']); ?></td>
+                            <td><?= htmlspecialchars($row['address']); ?></td>
                             <td><?= htmlspecialchars($row['dob']); ?></td>
                             <td><?= htmlspecialchars($row['tob']); ?></td>
                             <td><?= htmlspecialchars($row['birth_weight']); ?></td>
@@ -193,9 +200,10 @@ ob_end_flush();
                                 <?php endif; ?>
                             </td>
                             <td><?= htmlspecialchars($row['room_type']); ?></td>
-                            <td><?= $admission_date_time; ?></td>
-                            <td><?= $discharge_date_time; ?></td>
+                            <td><?= $admission_date; ?></td>
+                            <td><?= $discharge_date; ?></td>
                             <td><?= htmlspecialchars($row['physician']); ?></td>
+                            <td><?= htmlspecialchars($row['diagnosis']); ?></td>
                             <td class="text-right">
                                 <div class="dropdown dropdown-action">
                                     <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
@@ -491,8 +499,8 @@ $('.dropdown-toggle').on('click', function (e) {
                         `}
                     </td>
                     <td>${row.room_type}</td>
-                    <td>${row.admission_date_time}</td>
-                    <td>${row.discharge_date_time}</td>
+                    <td>${row.admission_date}</td>
+                    <td>${row.discharge_date}</td>
                     <td>${row.physician}</td>
                     <td class="text-right">
                         <div class="dropdown dropdown-action">

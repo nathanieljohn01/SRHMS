@@ -55,6 +55,7 @@ if (isset($_POST['add-billing'])) {
             JOIN tbl_patient AS p
             ON ipr.patient_id = p.patient_id
             WHERE ipr.patient_name = '$patient_name_escaped'");
+    
     } else if ($patient_type == 'hemodialysis') {
         $patient_name_escaped = mysqli_real_escape_string($connection, $patient_name);
         $patient_result = mysqli_query($connection, "
@@ -63,13 +64,21 @@ if (isset($_POST['add-billing'])) {
             JOIN tbl_patient AS p
             ON h.patient_id = p.patient_id
             WHERE h.patient_name = '$patient_name_escaped'");
+    
+    } else if ($patient_type == 'newborn') {
+        $patient_name_escaped = mysqli_real_escape_string($connection, $patient_name);
+        $patient_result = mysqli_query($connection, "
+            SELECT newborn_id, CONCAT(first_name, ' ', last_name) AS patient_name, dob, gender, admission_date, discharge_date, diagnosis, address
+            FROM tbl_newborn
+            WHERE CONCAT(first_name, ' ', last_name) = '$patient_name_escaped'");
     }
-
+    
     $patient = mysqli_fetch_array($patient_result, MYSQLI_ASSOC);
 
     if ($patient) {
         // Retrieve patient details and handle NULL values
         $patient_id = !empty($patient['patient_id']) ? $patient['patient_id'] : "NULL";
+        $newborn_id = !empty($patient['newborn_id']) ? $patient['newborn_id'] : "NULL";
         $dob = !empty($patient['dob']) ? "'" . $patient['dob'] . "'" : "NULL";
         $gender = !empty($patient['gender']) ? "'" . $patient['gender'] . "'" : "NULL";
         $admission_date = !empty($patient['admission_date']) ? "'" . $patient['admission_date'] . "'" : "NULL";
@@ -239,35 +248,6 @@ if (isset($_POST['add-billing'])) {
             '$rad_discount', '$med_discount', '$or_discount', '$supplies_discount', '$other_discount', 
             '$pf_discount', '$readers_discount', '$remaining_balance')";
 
-            if (mysqli_query($connection, $query)) {
-                echo "
-                <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
-                <script>
-                    document.addEventListener('DOMContentLoaded', function() {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Success!',
-                            text: 'Billing account added successfully!',
-                            confirmButtonColor: '#12369e'
-                        }).then(() => {
-                            window.location.href = 'billing.php';
-                        });
-                    });
-                </script>";
-            } else {
-                echo "
-                <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
-                <script>
-                    document.addEventListener('DOMContentLoaded', function() {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Database Error',
-                            text: 'Failed to add billing account. Please try again.',
-                            confirmButtonColor: '#12369e'
-                        });
-                    });
-                </script>";
-            }
         } elseif ($patient_type == 'hemodialysis') {
             $query = "INSERT INTO tbl_billing_hemodialysis
             (billing_id, patient_id, patient_name, dob, gender, admission_date, discharge_date, diagnosis, address,
@@ -284,40 +264,73 @@ if (isset($_POST['add-billing'])) {
             '$rad_discount', '$med_discount', '$or_discount', '$supplies_discount', '$other_discount', 
             '$pf_discount', '$readers_discount', '$remaining_balance')";
 
-            if (mysqli_query($connection, $query)) {
-                echo "
-                <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
-                <script>
-                    document.addEventListener('DOMContentLoaded', function() {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Success!',
-                            text: 'Billing account added successfully!',
-                            confirmButtonColor: '#12369e'
-                        }).then(() => {
-                            window.location.href = 'billing.php';
-                        });
+        } elseif ($patient_type == 'newborn') {
+            $query = "INSERT INTO tbl_billing_newborn
+            (billing_id, newborn_id, patient_name, dob, gender, admission_date, discharge_date, diagnosis, address,
+            lab_fee, room_fee, medication_fee, operating_room_fee, supplies_fee, total_due, non_discounted_total,
+            discount_amount, professional_fee, pwd_discount_amount, readers_fee, others_fee, rad_fee,
+            vat_exempt_discount_amount, first_case, second_case, philhealth_pf, philhealth_hb,
+            room_discount, lab_discount, rad_discount, med_discount, or_discount, supplies_discount,
+            other_discount, pf_discount, readers_discount, remaining_balance)
+            VALUES ('$billing_id', '$newborn_id', '$patient_name', $dob, $gender, $admission_date, $discharge_date, 
+            $diagnosis, $address, '$lab_fee', '$room_fee', '$medication_fee', '$operating_room_fee', 
+            '$supplies_fee', '$total_due', '$non_discounted_total', '$total_discount', '$professional_fee', 
+            '$pwd_discount_amount', '$readers_fee', '$others_fee', '$rad_fee', '$vat_exempt_discount_amount', 
+            '$first_case', '$second_case', '$philhealth_pf', '$philhealth_hb', '$room_discount', '$lab_discount', 
+            '$rad_discount', '$med_discount', '$or_discount', '$supplies_discount', '$other_discount', 
+            '$pf_discount', '$readers_discount', '$remaining_balance')";
+
+        } else {
+            echo "
+            <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error!',
+                        text: 'Invalid patient type selected.',
+                        confirmButtonColor: '#12369e'
                     });
-                </script>";
-            } else {
-                echo "
-                <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
-                <script>
-                    document.addEventListener('DOMContentLoaded', function() {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Database Error',
-                            text: 'Failed to add billing account. Please try again.',
-                            confirmButtonColor: '#12369e'
-                        });
+                });
+            </script>";
+            exit();
+        }
+
+        if (mysqli_query($connection, $query)) {
+            echo "
+            <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Success!',
+                        text: 'Billing account added successfully!',
+                        confirmButtonColor: '#12369e'
+                    }).then(() => {
+                        window.location.href = 'billing.php';
                     });
-                </script>";
-            }
+                });
+            </script>";
+        } else {
+            echo "
+            <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Database Error',
+                        text: 'Failed to add billing account. Please try again.',
+                        confirmButtonColor: '#12369e'
+                    });
+                });
+            </script>";
+        }
+
         } else {
             $msg = "Error: Patient type not selected.";
         }
     }
-}
+
 ?>
 <div class="page-wrapper">
     <div class="content">
@@ -774,7 +787,6 @@ document.addEventListener('DOMContentLoaded', function () {
         // Recalculate total
         calculateTotalDue();
     });
-
 
     // Event listener for selecting a patient
     patientList.addEventListener('click', function (e) {

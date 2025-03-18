@@ -18,7 +18,7 @@ if ($row[0] == 0) {
 }
 
 if (isset($_REQUEST['save-newborn'])) {
-    // Sanitize user input using mysqli_real_escape_string and htmlspecialchars for security
+    // Sanitize user input
     function sanitize($connection, $input) {
         return mysqli_real_escape_string($connection, htmlspecialchars(trim($input), ENT_QUOTES, 'UTF-8'));
     }
@@ -27,12 +27,17 @@ if (isset($_REQUEST['save-newborn'])) {
     $first_name = sanitize($connection, $_REQUEST['first_name']);
     $last_name = sanitize($connection, $_REQUEST['last_name']);
     $dob = DateTime::createFromFormat('d/m/Y', $_REQUEST['dob'])->format('F j, Y');
-    $tob = date("g:i A", strtotime ($_REQUEST['tob']));
+    $tob = date("g:i A", strtotime($_REQUEST['tob']));
     $gender = sanitize($connection, $_REQUEST['gender']);
     $birth_weight = sanitize($connection, $_REQUEST['birth_weight']);
     $birth_height = sanitize($connection, $_REQUEST['birth_height']);
     $gestational_age = sanitize($connection, $_REQUEST['gestational_age']);
     $physician = sanitize($connection, $_REQUEST['physician']);
+    $address = sanitize($connection, $_REQUEST['address']); 
+    $diagnosis = sanitize($connection, $_REQUEST['diagnosis']); 
+    
+    // Set default value for room_type
+    $room_type = "NICU"; 
 
     // Check if the newborn with the same first and last name already exists
     $check_query = mysqli_prepare($connection, "SELECT * FROM tbl_newborn WHERE first_name = ? AND last_name = ?");
@@ -42,7 +47,7 @@ if (isset($_REQUEST['save-newborn'])) {
 
     if (mysqli_num_rows($check_result) > 0) {
         $msg = "Newborn with the same name already exists.";
-        // SweetAlert error message for duplicate
+        // SweetAlert error message
         echo "
         <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
         <script>
@@ -55,10 +60,11 @@ if (isset($_REQUEST['save-newborn'])) {
             });
         </script>";
     } else {
-        // Insert newborn details into the database using prepared statements
-        $insert_query = mysqli_prepare($connection, "INSERT INTO tbl_newborn (newborn_id, first_name, last_name, dob, tob, gender, birth_weight, birth_height, gestational_age, physician, admission_datetime) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
-        mysqli_stmt_bind_param($insert_query, 'ssssssssss', $newborn_id, $first_name, $last_name, $dob, $tob, $gender, $birth_weight, $birth_height, $gestational_age, $physician);
+        // Insert newborn details into the database with room_type, address, and diagnosis
+        $insert_query = mysqli_prepare($connection, "INSERT INTO tbl_newborn 
+            (newborn_id, first_name, last_name, dob, tob, gender, birth_weight, birth_height, gestational_age, physician, address, diagnosis, room_type, admission_date) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+        mysqli_stmt_bind_param($insert_query, 'sssssssssssss', $newborn_id, $first_name, $last_name, $dob, $tob, $gender, $birth_weight, $birth_height, $gestational_age, $physician, $address, $diagnosis, $room_type);
     
         // Execute the insert query
         if (mysqli_stmt_execute($insert_query)) {
@@ -78,7 +84,7 @@ if (isset($_REQUEST['save-newborn'])) {
                         text: '$msg',
                         confirmButtonColor: '#12369e'
                     }).then(() => {
-                        window.location.href = 'newborn.php'; // Adjust the redirection URL as needed
+                        window.location.href = 'newborn.php';
                     });
                 });
             </script>";
@@ -138,6 +144,12 @@ if (isset($_REQUEST['save-newborn'])) {
                         </div>
                         <div class="col-sm-6">
                             <div class="form-group">
+                                <label>Address</label>
+                                <input class="form-control" type="text" name="address" required>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="form-group">
                                 <label>Date of Birth</label>
                                 <div class="cal-icon">
                                     <input type="text" class="form-control datetimepicker" name="dob" required>
@@ -187,12 +199,6 @@ if (isset($_REQUEST['save-newborn'])) {
                         </div>
                         <div class="col-sm-6">
                             <div class="form-group">
-                                <label>Gestational Age (weeks)</label>
-                                <input class="form-control" type="text" name="gestational_age">
-                            </div>
-                        </div>
-                        <div class="col-sm-6">
-                            <div class="form-group">
                                 <label>Physician</label>
                                 <select class="form-control" name="physician" required>
                                     <option value="">Select Physician</option>
@@ -204,6 +210,12 @@ if (isset($_REQUEST['save-newborn'])) {
                                     }
                                     ?>
                                 </select>
+                            </div>
+                        </div>
+                        <div class="col-sm-12">
+                            <div class="form-group">
+                                <label>Diagnosis</label>
+                                <textarea class="form-control" name="diagnosis" rows="2" required></textarea>
                             </div>
                         </div>
                         <div class="col-12 mt-3 text-center">

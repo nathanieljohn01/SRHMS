@@ -10,8 +10,8 @@ $sql = "SELECT n.*,
         ORDER BY t.treatment_date 
         SEPARATOR '<br>'
     ) as treatments,
-    n.admission_datetime,
-    n.discharge_datetime
+    n.admission_date,
+    n.discharge_date
     FROM tbl_newborn n
     LEFT JOIN tbl_treatment t ON n.newborn_id = t.newborn_id 
     WHERE n.deleted = 0 
@@ -28,7 +28,7 @@ $sql = "SELECT n.*,
         LOWER(n.physician) LIKE LOWER(?)
     )
     GROUP BY n.id, n.newborn_id
-    ORDER BY n.admission_datetime DESC";
+    ORDER BY n.admission_date DESC";
 
 $search_term = "%{$query}%";
 $stmt = mysqli_prepare($connection, $sql);
