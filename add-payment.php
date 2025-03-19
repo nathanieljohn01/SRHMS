@@ -31,18 +31,32 @@ if (isset($_POST['submit_payment'])) {
 
     // Fetch patient_id
     $patient_id = null;
-    $patient_query = mysqli_query($connection, "SELECT patient_id FROM tbl_patient WHERE CONCAT(first_name, ' ', last_name) = '$patient_name'");
-    if (!$patient_query) {
-        $errors[] = "Database error: " . mysqli_error($connection);
-    } else {
-        $patient_row = mysqli_fetch_assoc($patient_query);
-        if (!$patient_row) {
-            $errors[] = "Patient not found in the system.";
+    if ($patient_type == 'Newborn') {
+        $patient_query = mysqli_query($connection, "SELECT newborn_id FROM tbl_newborn WHERE CONCAT(first_name, ' ', last_name) = '$patient_name'");
+        if (!$patient_query) {
+            $errors[] = "Database error: " . mysqli_error($connection);
         } else {
-            $patient_id = $patient_row['patient_id'];
+            $patient_row = mysqli_fetch_assoc($patient_query);
+            if (!$patient_row) {
+                $errors[] = "Newborn not found in the system.";
+            } else {
+                $patient_id = $patient_row['newborn_id'];
+            }
+        }
+    } else {
+        $patient_query = mysqli_query($connection, "SELECT patient_id FROM tbl_patient WHERE CONCAT(first_name, ' ', last_name) = '$patient_name'");
+        if (!$patient_query) {
+            $errors[] = "Database error: " . mysqli_error($connection);
+        } else {
+            $patient_row = mysqli_fetch_assoc($patient_query);
+            if (!$patient_row) {
+                $errors[] = "Patient not found in the system.";
+            } else {
+                $patient_id = $patient_row['patient_id'];
+            }
         }
     }
-    
+ 
     if (empty($errors)) {
         mysqli_begin_transaction($connection);
         
@@ -375,10 +389,146 @@ if (isset($_POST['submit_payment'])) {
                         if (!$update_treatment) {
                             throw new Exception("Error updating treatment records: " . mysqli_error($connection));
                         }
+                        
+                    }
+                }
+            } else if ($patient_type == 'Newborn') {
+                // Get newborn billing details
+                $total_due_query = mysqli_query($connection, "
+                    SELECT total_due, remaining_balance 
+                    FROM tbl_billing_newborn 
+                    WHERE patient_name = '$patient_name' 
+                    ORDER BY id DESC LIMIT 1
+                ");
+                
+                if (!$total_due_query) {
+                    throw new Exception("Error fetching billing details: " . mysqli_error($connection));
+                }
+                
+                $total_due_row = mysqli_fetch_assoc($total_due_query);
+                $total_due = $total_due_row ? $total_due_row['total_due'] : 0;
+                $amount_to_pay = $total_due_row ? $total_due_row['remaining_balance'] : 0;
+                $amount_paid = str_replace(',', '', $_POST['amount_paid']);
+                $amount_paid = floatval($amount_paid);
+                $initial_remaining = max(0, $amount_to_pay - $amount_paid);
+                
+                // Insert payment record using newborn_id as patient_id
+                $insert_query = "INSERT INTO tbl_payment (
+                    payment_id, patient_id, patient_name, patient_type,
+                    total_due, amount_to_pay, amount_paid, remaining_balance, payment_datetime
+                ) VALUES (
+                    '$payment_id', '$patient_id', '$patient_name', '$patient_type',
+                    $total_due, $amount_to_pay, $amount_paid, $initial_remaining, NOW()
+                )";
+
+                if (!mysqli_query($connection, $insert_query)) {
+                    throw new Exception("Error inserting payment record: " . mysqli_error($connection));
+                }
+                
+                // Update newborn billing status and remaining balance
+                $update_balance = mysqli_query($connection, "
+                    UPDATE tbl_billing_newborn 
+                    SET remaining_balance = $initial_remaining,
+                        status = CASE 
+                            WHEN $initial_remaining <= 0 THEN 'Paid'
+                            ELSE status 
+                        END
+                    WHERE patient_name = '$patient_name' 
+                    ORDER BY id DESC LIMIT 1
+                ");
+            }
+
+            if (!$update_balance) {
+                throw new Exception("Error updating balance: " . mysqli_error($connection));
+            }
+
+            // If payment is complete (remaining balance is 0), update billing_others
+            if ($initial_remaining <= 0) {
+                // Get the billing_id from the latest inpatient billing
+                $billing_id_query = mysqli_query($connection, "
+                    SELECT billing_id 
+                    FROM tbl_billing_newborn 
+                    WHERE patient_name = '$patient_name' 
+                    ORDER BY id DESC LIMIT 1
+                ");
+                
+                if (!$billing_id_query) {
+                    throw new Exception("Error getting billing ID: " . mysqli_error($connection));
+                }
+                
+                $billing_row = mysqli_fetch_assoc($billing_id_query);
+                if ($billing_row) {
+                    $billing_id = $billing_row['billing_id'];
+                    
+                    // Update all related records in billing_others
+                    $update_others = mysqli_query($connection, "
+                        UPDATE tbl_billing_others 
+                        SET is_billed = 1 
+                        WHERE billing_id = '$billing_id'
+                    ");
+                    
+                    if (!$update_others) {
+                        throw new Exception("Error updating billing others: " . mysqli_error($connection));
+                    }
+
+                    // Update inpatient record
+                    $update_inpatient = mysqli_query($connection, "
+                        UPDATE tbl_newborn
+                        SET is_billed = 1 
+                        WHERE patient_name = '$patient_name'
+                    ");
+                    
+                    if (!$update_inpatient) {
+                        throw new Exception("Error updating inpatient record: " . mysqli_error($connection));
+                    }
+
+                    // Update operating room record
+                    $update_or = mysqli_query($connection, "
+                        UPDATE tbl_operating_room 
+                        SET is_billed = 1 
+                        WHERE patient_name = '$patient_name'
+                    ");
+                    
+                    if (!$update_or) {
+                        throw new Exception("Error updating operating room record: " . mysqli_error($connection));
+                    }
+
+                    // Update lab orders
+                    $update_lab = mysqli_query($connection, "
+                        UPDATE tbl_laborder 
+                        SET is_billed = 1 
+                        WHERE patient_name = '$patient_name'
+                        AND deleted = 0
+                    ");
+                    
+                    if (!$update_lab) {
+                        throw new Exception("Error updating lab orders: " . mysqli_error($connection));
+                    }
+
+                    // Update radiology orders
+                    $update_rad = mysqli_query($connection, "
+                        UPDATE tbl_radiology 
+                        SET is_billed = 1 
+                        WHERE patient_name = '$patient_name'
+                        AND deleted = 0
+                    ");
+                    
+                    if (!$update_rad) {
+                        throw new Exception("Error updating radiology orders: " . mysqli_error($connection));
+                    }
+              
+                    // Update treatment records
+                    $update_treatment = mysqli_query($connection, "
+                        UPDATE tbl_treatment 
+                        SET is_billed = 1 
+                        WHERE patient_name = '$patient_name'
+                    ");
+                  
+                    if (!$update_treatment) {
+                        throw new Exception("Error updating treatment records: " . mysqli_error($connection));
                     }
                 }
             }
-
             mysqli_commit($connection);
 
             echo "
@@ -462,6 +612,7 @@ if (isset($_POST['submit_payment'])) {
                                     <option value="Inpatient">Inpatient</option>
                                     <option value="Outpatient">Outpatient</option>
                                     <option value="Hemodialysis">Hemodialysis</option>
+                                    <option value="Newborn">Newborn</option>
                                 </select>
                             </div>
                         </div>
@@ -612,6 +763,51 @@ if (isset($_POST['submit_payment'])) {
                         </div>
                     </div>
 
+                    <!-- Newborn Billing Table -->
+                    <table class="table table-bordered mt-4" id="newbornBillingTable" style="display: none;">
+                        <thead style="background-color: #CCCCCC;">
+                            <tr>
+                                <th>Description</th>
+                                <th>Amount</th>
+                                <th>Discount</th>
+                                <th>Net Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                        <tfoot>
+                            <tr>
+                                <th colspan="4">Total Fees: <span id="newbornGrossAmount" class="float-right">₱0.00</span></th>
+                            </tr>
+                            <tr>
+                                <td colspan="4" class="pl-4">Less:</td>
+                            </tr>
+                            <tr>
+                                <td colspan="4" class="pl-5">PhilHealth (PF) <span id="newbornPhilhealthPF" class="float-right">₱0.00</span></td>
+                            </tr>
+                            <tr>
+                                <td colspan="4" class="pl-5">PhilHealth (HB) <span id="newbornPhilhealthHB" class="float-right">₱0.00</span></td>
+                            </tr>
+                            <tr>
+                                <td colspan="4" class="pl-5">VAT Exempt <span id="newbornVatExempt" class="float-right">₱0.00</span></td>
+                            </tr>
+                            <tr>
+                                <td colspan="4" class="pl-5">Senior Citizen Discount <span id="newbornSeniorDiscount" class="float-right">₱0.00</span></td>
+                            </tr>
+                            <tr>
+                                <td colspan="4" class="pl-5">PWD Discount <span id="newbornPWDDiscount" class="float-right">₱0.00</span></td>
+                            </tr>
+                            <tr>
+                                <td colspan="4" class="pl-5">Amount Already Paid <span id="newbornAmountPaid" class="float-right">₱0.00</span></td>
+                            </tr>
+                            <tr class="font-weight-bold">
+                                <th colspan="4">Total Amount Due: <span id="newbornAmountDue" class="float-right">₱0.00</span></th>
+                            </tr>
+                            <tr class="font-weight-bold">
+                                <th colspan="4">Remaining Balance: <span id="newbornRemainingBalance" class="float-right">₱0.00</span></th>
+                            </tr>
+                        </tfoot>
+                    </table>
+
                     <div class="row mt-4">
                         <div class="col-md-12">
                             <button type="submit" name="submit_payment" class="btn btn-primary">Submit Payment</button>
@@ -632,47 +828,47 @@ const outpatientLabTable = document.getElementById('outpatientLabTable');
 const outpatientRadTable = document.getElementById('outpatientRadTable');
 const inpatientBillingTable = document.getElementById('inpatientBillingTable');
 const hemodialysisBillingTable = document.getElementById('hemodialysisBillingTable');
+const newbornBillingTable = document.getElementById('newbornBillingTable'); // Added Newborn Billing Table
 const patientTypeSelect = document.getElementById('patient_type');
 let currentTotalDue = 0;
 
 function togglePatientSearch() {
     const selectedType = patientTypeSelect.value;
     patientSearch.parentElement.parentElement.style.display = 'block';
-    
+
     // Clear all tables and amounts
     outpatientLabTable.style.display = 'none';
     outpatientRadTable.style.display = 'none';
     inpatientBillingTable.style.display = 'none';
     hemodialysisBillingTable.style.display = 'none';
-    
+    newbornBillingTable.style.display = 'none'; // Hide Newborn Billing Table
+
     // Clear table contents
     outpatientLabTable.querySelector('tbody').innerHTML = '';
     outpatientRadTable.querySelector('tbody').innerHTML = '';
     inpatientBillingTable.querySelector('tbody').innerHTML = '';
     hemodialysisBillingTable.querySelector('tbody').innerHTML = '';
-    
+    newbornBillingTable.querySelector('tbody').innerHTML = ''; // Clear Newborn Billing Table
+
     // Clear all amounts and spans
-    document.getElementById('inpatientGrossAmount').textContent = '₱0.00';
-    document.getElementById('inpatientPhilhealthPF').textContent = '₱0.00';
-    document.getElementById('inpatientPhilhealthHB').textContent = '₱0.00';
-    document.getElementById('inpatientVatExempt').textContent = '₱0.00';
-    document.getElementById('inpatientSeniorDiscount').textContent = '₱0.00';
-    document.getElementById('inpatientPWDDiscount').textContent = '₱0.00';
-    document.getElementById('inpatientAmountPaid').textContent = '₱0.00';
-    document.getElementById('inpatientAmountDue').textContent = '₱0.00';
-    document.getElementById('inpatientRemainingBalance').textContent = '₱0.00';
+    const fieldsToReset = [
+        'inpatientGrossAmount', 'inpatientPhilhealthPF', 'inpatientPhilhealthHB', 'inpatientVatExempt', 
+        'inpatientSeniorDiscount', 'inpatientPWDDiscount', 'inpatientAmountPaid', 
+        'inpatientAmountDue', 'inpatientRemainingBalance',
+
+        'hemodialysisGrossAmount', 'hemodialysisPhilhealthPF', 'hemodialysisPhilhealthHB', 
+        'hemodialysisVatExempt', 'hemodialysisSeniorDiscount', 'hemodialysisPWDDiscount', 
+        'hemodialysisAmountPaid', 'hemodialysisAmountDue', 'hemodialysisRemainingBalance',
+
+        'newbornGrossAmount', 'newbornPhilhealthPF', 'newbornPhilhealthHB', 'newbornVatExempt', 
+        'newbornSeniorDiscount', 'newbornPWDDiscount', 'newbornAmountPaid', 
+        'newbornAmountDue', 'newbornRemainingBalance' // Reset Newborn Billing Amounts
+    ];
+
+    fieldsToReset.forEach(id => document.getElementById(id).textContent = '₱0.00');
     
-    document.getElementById('hemodialysisGrossAmount').textContent = '₱0.00';
-    document.getElementById('hemodialysisPhilhealthPF').textContent = '₱0.00';
-    document.getElementById('hemodialysisPhilhealthHB').textContent = '₱0.00';
-    document.getElementById('hemodialysisVatExempt').textContent = '₱0.00';
-    document.getElementById('hemodialysisSeniorDiscount').textContent = '₱0.00';
-    document.getElementById('hemodialysisPWDDiscount').textContent = '₱0.00';
-    document.getElementById('hemodialysisAmountPaid').textContent = '₱0.00';
-    document.getElementById('hemodialysisAmountDue').textContent = '₱0.00';
-    document.getElementById('hemodialysisRemainingBalance').textContent = '₱0.00';
     currentTotalDue = 0;
-    
+
     // Show appropriate table based on type
     if (selectedType === 'Outpatient') {
         outpatientLabTable.style.display = 'table';
@@ -681,8 +877,10 @@ function togglePatientSearch() {
         inpatientBillingTable.style.display = 'table';
     } else if (selectedType === 'Hemodialysis') {
         hemodialysisBillingTable.style.display = 'table';
+    } else if (selectedType === 'Newborn') { // Show Newborn Billing Table
+        newbornBillingTable.style.display = 'table';
     }
-    
+
     // Clear search and amounts
     patientSearch.value = '';
     document.getElementById('selected_patient_name').value = '';
@@ -706,18 +904,25 @@ function calculateRemainingBalance() {
 
 patientSearch.addEventListener('keyup', function() {
     const selectedType = patientTypeSelect.value;
+    
     if (this.value.length > 0) {
         const searchEndpoint = selectedType === 'Outpatient' ? 'search-opt.php' : 
                              selectedType === 'Inpatient' ? 'search-ipt-payment.php' : 
-                             'search-hemodialysis-payment.php';
-        fetch(searchEndpoint + '?search=' + this.value)
-            .then(response => response.json())
-            .then(data => {
-                searchResults.style.display = 'block';
-                searchResults.innerHTML = data.map(patient => 
-                    `<li class="search-result" data-id="${patient.patient_id}">${patient.patient_name}</li>`
-                ).join('');
-            });
+                             selectedType === 'Hemodialysis' ? 'search-hemodialysis-payment.php' : 
+                             selectedType === 'Newborn' ? 'search-nb-payment.php' : ''; // Newborn case
+
+        if (searchEndpoint) {
+            fetch(searchEndpoint + '?search=' + encodeURIComponent(this.value))
+                .then(response => response.json())
+                .then(data => {
+                    searchResults.style.display = 'block';
+                    searchResults.innerHTML = data.map(patient => {
+                        const id = selectedType === 'Newborn' ? patient.newborn_id : patient.patient_id; // Ensure newborn_id is used
+                        return `<li class="search-result" data-id="${id}">${patient.patient_name}</li>`;
+                    }).join('');
+                })
+                .catch(error => console.error('Error fetching data:', error)); // Debugging
+        }
     } else {
         searchResults.style.display = 'none';
     }
@@ -856,12 +1061,12 @@ document.addEventListener('click', function(e) {
 
                     // Add rows for each fee type
                     const fees = [
-                        { name: 'Dialysis Fee', fee: data.dialysis_fee, discount: data.dialysis_discount, net: data.net_dialysis_fee },
                         { name: 'Medication Fee', fee: data.medication_fee, discount: data.med_discount, net: data.net_medication_fee },
                         { name: 'Laboratory Fee', fee: data.lab_fee, discount: data.lab_discount, net: data.net_lab_fee },
                         { name: 'Supplies Fee', fee: data.supplies_fee, discount: data.supplies_discount, net: data.net_supplies_fee },
                         { name: 'Others Fee', fee: data.others_fee, discount: data.other_discount, net: data.net_others_fee },
-                        { name: 'Professional Fee', fee: data.professional_fee, discount: data.pf_discount, net: data.net_pf_fee }
+                        { name: 'Professional Fee', fee: data.professional_fee, discount: data.pf_discount, net: data.net_pf_fee },
+                        { name: 'Readers Fee', fee: data.readers_fee, discount: data.readers_discount, net: data.net_readers_fee }
                     ];
 
                     fees.forEach(item => {
@@ -912,6 +1117,72 @@ document.addEventListener('click', function(e) {
                     document.getElementById('hemodialysisRemainingBalance').textContent = `₱${remainingBalance.toFixed(2)}`;
                     updateAmountToPay(remainingBalance);
                 });
+        } else if (selectedType === 'Newborn') {
+            fetch('newborn-billing-fee.php?patient_name=' + patientName)
+                .then(response => response.json())
+                .then(data => {
+                    const tbody = newbornBillingTable.querySelector('tbody');
+                    tbody.innerHTML = '';
+                    newbornBillingTable.style.display = 'table';
+
+                    // Add rows for each fee type
+                    const fees = [
+                        { name: 'Room Fee', fee: data.room_fee, discount: data.room_discount, net: data.net_room_fee },
+                        { name: 'Medication Fee', fee: data.medication_fee, discount: data.med_discount, net: data.net_medication_fee },
+                        { name: 'Laboratory Fee', fee: data.lab_fee, discount: data.lab_discount, net: data.net_lab_fee },
+                        { name: 'Supplies Fee', fee: data.supplies_fee, discount: data.supplies_discount, net: data.net_supplies_fee },
+                        { name: 'Professional Fee', fee: data.professional_fee, discount: data.pf_discount, net: data.net_pf_fee },
+                        { name: 'Readers Fee', fee: data.readers_fee, discount: data.readers_discount, net: data.net_readers_fee }
+                    ];
+
+                    fees.forEach(item => {
+                        if (parseFloat(item.fee || 0) > 0) {  // Only show rows with fees
+                            const row = document.createElement('tr');
+                            row.innerHTML = `
+                                <td>${item.name}</td>
+                                <td>₱${parseFloat(item.fee || 0).toFixed(2)}</td>
+                                <td>₱${parseFloat(item.discount || 0).toFixed(2)}</td>
+                                <td>₱${parseFloat(item.net || 0).toFixed(2)}</td>
+                            `;
+                            tbody.appendChild(row);
+                        }
+                    });
+
+                    // Show total fees
+                    const subTotal = parseFloat(data.total_amount || 0);
+                    document.getElementById('newbornGrossAmount').textContent = `₱${subTotal.toFixed(2)}`;
+
+                    // Show all discounts
+                    const philHealthPF = parseFloat(data.philhealth_pf || 0);
+                    const philHealthHB = parseFloat(data.philhealth_hb || 0);
+                    const vatExempt = parseFloat(data.vat_exempt_discount_amount || 0);
+                    const seniorDiscount = parseFloat(data.discount_amount || 0);
+                    const pwdDiscount = parseFloat(data.pwd_discount_amount || 0);
+
+                    document.getElementById('newbornPhilhealthPF').textContent = `₱${philHealthPF.toFixed(2)}`;
+                    document.getElementById('newbornPhilhealthHB').textContent = `₱${philHealthHB.toFixed(2)}`;
+                    document.getElementById('newbornVatExempt').textContent = `₱${vatExempt.toFixed(2)}`;
+                    document.getElementById('newbornSeniorDiscount').textContent = `₱${seniorDiscount.toFixed(2)}`;
+                    document.getElementById('newbornPWDDiscount').textContent = `₱${pwdDiscount.toFixed(2)}`;
+
+                    // Get amount paid from tbl_payment
+                    fetch('get-total-payments.php?patient_name=' + patientName)
+                        .then(response => response.json())
+                        .then(paymentData => {
+                            const amountPaid = parseFloat(paymentData.total_paid || 0);
+                            document.getElementById('newbornAmountPaid').textContent = `₱${amountPaid.toFixed(2)}`;
+                        });
+
+                    // Calculate final amount due
+                    const totalDue = subTotal - vatExempt - seniorDiscount - pwdDiscount - philHealthPF - philHealthHB;
+                    document.getElementById('newbornAmountDue').textContent = `₱${totalDue.toFixed(2)}`;
+                    currentTotalDue = totalDue;
+
+                    // Show remaining balance and set as amount_to_pay
+                    const remainingBalance = parseFloat(data.remaining_balance || 0);
+                    document.getElementById('newbornRemainingBalance').textContent = `₱${remainingBalance.toFixed(2)}`;
+                    updateAmountToPay(remainingBalance);
+                });
         }
     }
 });
@@ -920,6 +1191,25 @@ function updateAmountToPay(total) {
     document.querySelector('input[name="amount_to_pay"]').value = total.toFixed(2);
 }
 
+$('.dropdown-toggle').on('click', function (e) {
+        var $el = $(this).next('.dropdown-menu');
+        var isVisible = $el.is(':visible');
+        
+        // Hide all dropdowns
+        $('.dropdown-menu').slideUp('400');
+        
+        // If this wasn't already visible, slide it down
+        if (!isVisible) {
+            $el.stop(true, true).slideDown('400');
+        }
+        
+        // Close the dropdown if clicked outside of it
+        $(document).on('click', function (e) {
+            if (!$(e.target).closest('.dropdown').length) {
+                $('.dropdown-menu').slideUp('400');
+            }
+        });
+    });
 </script>
 <style>
 .btn-primary.submit-btn {

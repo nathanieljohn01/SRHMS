@@ -406,6 +406,26 @@ $(document).on("click", ".search-result", function () {
     $("#addPatientBtn").prop("disabled", false);
     $("#searchResults").html("").hide();
 });
+
+$('.dropdown-toggle').on('click', function (e) {
+        var $el = $(this).next('.dropdown-menu');
+        var isVisible = $el.is(':visible');
+        
+        // Hide all dropdowns
+        $('.dropdown-menu').slideUp('400');
+        
+        // If this wasn't already visible, slide it down
+        if (!isVisible) {
+            $el.stop(true, true).slideDown('400');
+        }
+        
+        // Close the dropdown if clicked outside of it
+        $(document).on('click', function (e) {
+            if (!$(e.target).closest('.dropdown').length) {
+                $('.dropdown-menu').slideUp('400');
+            }
+        });
+    });
 </script>
 
 <style>

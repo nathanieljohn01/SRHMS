@@ -9,19 +9,12 @@ $sql = "SELECT
             p.patient_id,
             p.patient_name,
             p.patient_type,
-            CASE 
-                WHEN p.patient_type = 'Inpatient' THEN bi.total_due
-                ELSE p.total_due
-            END as total_due,
+            p.total_due,
             SUM(p.amount_paid) as total_paid,
+            p.remaining_balance as balance,
             CASE 
-                WHEN p.patient_type = 'Inpatient' THEN bi.remaining_balance
-                ELSE 0
-            END as balance,
-            CASE 
-                WHEN p.patient_type = 'Inpatient' AND bi.remaining_balance <= 0 THEN 'Fully Paid'
-                WHEN p.patient_type != 'Inpatient' THEN 'Fully Paid'
-                ELSE 'Partially Paid'
+                WHEN p.remaining_balance > 0 THEN 'Partially Paid'
+                ELSE 'Fully Paid'
             END as status,
             COALESCE(bi.billing_id, '') as billing_id
         FROM tbl_payment p

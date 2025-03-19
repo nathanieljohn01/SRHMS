@@ -8,18 +8,22 @@ if (empty($_SESSION['name'])) {
 include('header.php');
 include('includes/connection.php');
 
-// Get the latest ID from both tables
-$fetch_inpatient = mysqli_query($connection, "SELECT MAX(id) AS id FROM tbl_billing_inpatient");
-$fetch_hemodialysis = mysqli_query($connection, "SELECT MAX(id) AS id FROM tbl_billing_hemodialysis");
+$fetch_max_billing_id = mysqli_query($connection, "
+    SELECT MAX(CAST(SUBSTRING(billing_id, 4) AS UNSIGNED)) AS max_billing_id FROM (
+        SELECT billing_id FROM tbl_billing_inpatient 
+        UNION ALL 
+        SELECT billing_id FROM tbl_billing_hemodialysis 
+        UNION ALL 
+        SELECT billing_id FROM tbl_billing_newborn
+    ) AS all_billing
+");
 
-$row_inpatient = mysqli_fetch_row($fetch_inpatient);
-$row_hemodialysis = mysqli_fetch_row($fetch_hemodialysis);
-
-// Compare and get the highest ID between the two tables
-$highest_id = max($row_inpatient[0], $row_hemodialysis[0]);
+$row_max_billing_id = mysqli_fetch_assoc($fetch_max_billing_id);
+$highest_id = isset($row_max_billing_id['max_billing_id']) ? (int)$row_max_billing_id['max_billing_id'] : 0;
 
 // Generate the next billing ID
-$bl_id = ($highest_id == 0) ? 1 : $highest_id + 1;
+$bl_id = $highest_id + 1;
+$billing_id = 'BL-' . $bl_id;
 
 // Add input validation function
 function validateInput($data) {

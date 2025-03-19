@@ -149,12 +149,15 @@ function updatePaymentTable(data) {
     
     data.forEach(function(row) {
         const statusClass = row.status === 'Fully Paid' ? 'status-green' : 'status-orange';
-        const billingIdDisplay = row.patient_type === 'Inpatient' ? `(Billing ID: ${row.billing_id})` : '';
+        // Format patient ID display for newborns
+        const patientIdDisplay = row.patient_type === 'Newborn' ? 
+            `Newborn ID (${row.patient_id})` : 
+            row.patient_id;
         
         tbody.append(`
             <tr>
-                <td>${row.patient_id}</td>
-                <td>${row.patient_name} ${billingIdDisplay}</td>
+                <td>${patientIdDisplay}</td>
+                <td>${row.patient_name}</td>
                 <td>${row.patient_type}</td>
                 <td>₱${row.total_due}</td>
                 <td>₱${row.total_paid}</td>

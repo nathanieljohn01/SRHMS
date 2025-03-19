@@ -150,8 +150,16 @@ if ($patientType === 'hemodialysis') {
                         <td><?php echo $row['gender']; ?></td>
                         <td><?php echo $row['address']; ?></td>
                         <td><?php echo $row['diagnosis']; ?></td>
-                        <td><?php echo date('F d, Y g:i A', strtotime($row['admission_date'])); ?></td>
-                        <td><?php echo date('F d, Y g:i A', strtotime($row['discharge_date'])); ?></td>
+                        <td>
+                            <?php 
+                            echo !empty($row['admission_date']) ? date('F d, Y g:i A', strtotime($row['admission_date'])) : ''; 
+                            ?>
+                        </td>
+                        <td>
+                            <?php 
+                            echo !empty($row['discharge_date']) ? date('F d, Y g:i A', strtotime($row['discharge_date'])) : ''; 
+                            ?>
+                        </td>
                         <td><?php echo date('F d, Y g:i A', strtotime($row['transaction_datetime'])); ?></td>
                         <td class="text-right">
                             <div class="dropdown dropdown-action">
@@ -463,6 +471,26 @@ function getActionButtons(billingId, type) {
     }
     return '';
 }
+
+$('.dropdown-toggle').on('click', function (e) {
+        var $el = $(this).next('.dropdown-menu');
+        var isVisible = $el.is(':visible');
+        
+        // Hide all dropdowns
+        $('.dropdown-menu').slideUp('400');
+        
+        // If this wasn't already visible, slide it down
+        if (!isVisible) {
+            $el.stop(true, true).slideDown('400');
+        }
+        
+        // Close the dropdown if clicked outside of it
+        $(document).on('click', function (e) {
+            if (!$(e.target).closest('.dropdown').length) {
+                $('.dropdown-menu').slideUp('400');
+            }
+        });
+    });
 </script>
 
 <style>

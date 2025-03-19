@@ -592,6 +592,15 @@
             });
         });
     });
+
+    // Add event listener to sidebar menu items
+    const menuItems = document.querySelectorAll('#sidebar .sidebar-menu a');
+    menuItems.forEach(item => {
+        item.addEventListener('click', () => {
+            // Minimize the sidebar when a menu item is clicked
+            toggleSidebar();
+        });
+    });
 });
 
 // Throttle function for better performance
@@ -606,6 +615,25 @@ function throttle(func, limit) {
     };
 }
 
+$('.dropdown-toggle').on('click', function (e) {
+    var $el = $(this).next('.dropdown-menu');
+    var isVisible = $el.is(':visible');
+    
+    // Hide all dropdowns
+    $('.dropdown-menu').slideUp('400');
+    
+    // If this wasn't already visible, slide it down
+    if (!isVisible) {
+        $el.stop(true, true).slideDown('400');
+    }
+    
+    // Close the dropdown if clicked outside of it
+    $(document).on('click', function (e) {
+        if (!$(e.target).closest('.dropdown').length) {
+            $('.dropdown-menu').slideUp('400');
+        }
+    });
+});
 </script>
 <style>   
 .custom-dropdown {
