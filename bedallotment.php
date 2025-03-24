@@ -218,4 +218,15 @@ include('footer.php');
 .dropdown-item:hover i {
     color: #12369e;
 }
+.page-header {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #e9ecef;
+}
+.page-title {
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: #343a40;
+}
+
 </style>

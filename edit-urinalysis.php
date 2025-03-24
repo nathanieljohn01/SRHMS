@@ -224,7 +224,7 @@ if (isset($_POST['edit-urinalysis'])) {
                         <input class="form-control" type="text" name="hyaline_cast" id="hyaline_cast" value="<?php echo htmlspecialchars($urinalysis_data['hyaline_cast']); ?>">
                     </div>
                     <div class="text-center mt-4">
-                        <button class="btn btn-primary submit-btn" name="edit-urinalysis">Update Result</button>
+                        <button class="btn btn-primary submit-btn" name="edit-urinalysis"><i class="fas fa-save mr-2"></i>Update Result</button>
                     </div>
                 </form>
             </div>

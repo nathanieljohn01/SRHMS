@@ -130,7 +130,7 @@ if (isset($_POST['save-inpatient'])) {
                         </select>
                     </div>
                     <div class="m-t-20 text-center">
-                        <button name="save-inpatient" class="btn btn-primary submit-btn">Save</button>
+                        <button name="save-inpatient" class="btn btn-primary submit-btn"><i class="fas fa-save mr-2"></i>Save</button>
                     </div>
                 </form>
             </div>

@@ -177,7 +177,7 @@ if (isset($_POST['edit-fecalysis'])) {
                         </select>
                     </div>
                     <div class="text-center mt-4">
-                        <button class="btn btn-primary submit-btn" name="edit-fecalysis">Update Result</button>
+                        <button class="btn btn-primary submit-btn" name="edit-fecalysis"><i class="fas fa-save mr-2"></i>Update Result</button>
                     </div>
                 </form>
             </div>

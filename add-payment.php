@@ -203,81 +203,69 @@ if (isset($_POST['submit_payment'])) {
                     }
                 }
             } else if ($patient_type == 'Outpatient') {
-                // Escape inputs to prevent SQL injection 
-                $patient_name = mysqli_real_escape_string($connection, $patient_name);
-                $patient_id = mysqli_real_escape_string($connection, $patient_id);
-                $payment_id = mysqli_real_escape_string($connection, $payment_id);
-                $patient_type = mysqli_real_escape_string($connection, $patient_type);
-                     
-                // For outpatient, calculate total from lab and radiology
-                $lab_query = mysqli_query($connection, "
-                    SELECT COALESCE(SUM(price), 0) as total_lab 
-                    FROM tbl_laborder 
-                    WHERE patient_name = '$patient_name' 
-                    AND is_billed = 0 
-                    AND deleted = 0
-                ");
-            
-                $rad_query = mysqli_query($connection, "
-                    SELECT COALESCE(SUM(price), 0) as total_rad 
-                    FROM tbl_radiology 
-                    WHERE patient_name = '$patient_name' 
-                    AND is_billed = 0 
-                    AND deleted = 0
-                ");
-            
-                if (!$lab_query || !$rad_query) {
-                    throw new Exception("Error calculating fees: " . mysqli_error($connection));
+                // Start explicit transaction
+                mysqli_begin_transaction($connection);
+                
+                try {
+                    // Escape variables for security
+                    $escaped_patient_name = mysqli_real_escape_string($connection, $patient_name);
+                    $escaped_patient_id = mysqli_real_escape_string($connection, $patient_id);
+                    $escaped_payment_id = mysqli_real_escape_string($connection, $payment_id);
+                    $escaped_patient_type = mysqli_real_escape_string($connection, $patient_type);
+                    
+                    // Calculate totals
+                    $lab_query = mysqli_query($connection, "SELECT COALESCE(SUM(price), 0) as total_lab FROM tbl_laborder 
+                        WHERE patient_name = '$escaped_patient_name' AND is_billed = 0 AND deleted = 0");
+                    $rad_query = mysqli_query($connection, "SELECT COALESCE(SUM(price), 0) as total_rad FROM tbl_radiology 
+                        WHERE patient_name = '$escaped_patient_name' AND is_billed = 0 AND deleted = 0");
+                    
+                    $lab_total = mysqli_fetch_assoc($lab_query)['total_lab'];
+                    $rad_total = mysqli_fetch_assoc($rad_query)['total_rad'];
+                    
+                    $amount_to_pay = $lab_total + $rad_total;
+                    $total_due = $amount_to_pay;
+                    $amount_paid = $amount_to_pay; // Force full payment
+                    $initial_remaining = 0;
+                    
+                    // Insert payment record
+                    $insert_result = mysqli_query($connection, "INSERT INTO tbl_payment (
+                        payment_id, patient_id, patient_name, patient_type,
+                        total_due, amount_to_pay, amount_paid, remaining_balance, payment_datetime
+                    ) VALUES (
+                        '$escaped_payment_id', '$escaped_patient_id', '$escaped_patient_name', '$escaped_patient_type',
+                        $total_due, $amount_to_pay, $amount_paid, $initial_remaining, NOW()
+                    )");
+                    
+                    if (!$insert_result) {
+                        throw new Exception("Payment insert failed: " . mysqli_error($connection));
+                    }
+                    
+                    // Update lab orders
+                    $update_lab = mysqli_query($connection, "UPDATE tbl_laborder SET is_billed = 1 
+                        WHERE patient_name = '$escaped_patient_name' AND is_billed = 0 AND deleted = 0");
+                        
+                    if (!$update_lab) {
+                        throw new Exception("Lab update failed: " . mysqli_error($connection));
+                    }
+                    
+                    // Update radiology orders
+                    $update_rad = mysqli_query($connection, "UPDATE tbl_radiology SET is_billed = 1 
+                        WHERE patient_name = '$escaped_patient_name' AND is_billed = 0 AND deleted = 0");
+                        
+                    if (!$update_rad) {
+                        throw new Exception("Radiology update failed: " . mysqli_error($connection));
+                    }
+                    
+                    // Commit the transaction
+                    if (!mysqli_commit($connection)) {
+                        throw new Exception("Transaction commit failed: " . mysqli_error($connection));
+                    }
+                    
+                } catch (Exception $e) {
+                    // Roll back on any error
+                    mysqli_rollback($connection);
+                    throw $e;
                 }
-            
-                $lab_total = mysqli_fetch_assoc($lab_query)['total_lab'];
-                $rad_total = mysqli_fetch_assoc($rad_query)['total_rad'];
-            
-                $amount_to_pay = $lab_total + $rad_total;
-                $total_due = $amount_to_pay;
-                $amount_paid = str_replace(',', '', $_POST['amount_paid']); // Get actual amount paid from form
-                $amount_paid = floatval($amount_paid);
-                $initial_remaining = max(0, $amount_to_pay - $amount_paid);
-
-
-                // Insert payment record for outpatient
-                $insert_query = "INSERT INTO tbl_payment (
-                    payment_id, patient_id, patient_name, patient_type,
-                    total_due, amount_to_pay, amount_paid, remaining_balance, payment_datetime
-                ) VALUES (
-                    '$payment_id', '$patient_id', '$patient_name', '$patient_type',
-                    $total_due, $amount_to_pay, $amount_paid, $initial_remaining, NOW()
-                )";
-            
-                if (!mysqli_query($connection, $insert_query)) {
-                    throw new Exception("Error inserting payment: " . mysqli_error($connection));
-                }
-            
-                // Update lab orders
-                $update_lab = mysqli_query($connection, "
-                    UPDATE tbl_laborder 
-                    SET is_billed = 1 
-                    WHERE patient_name = '$patient_name'
-                    AND is_billed = 0
-                    AND deleted = 0
-                ");
-            
-                if (!$update_lab) {
-                    throw new Exception("Error updating lab orders: " . mysqli_error($connection));
-                }
-            
-                // Update radiology orders
-                $update_rad = mysqli_query($connection, "
-                    UPDATE tbl_radiology 
-                    SET is_billed = 1 
-                    WHERE patient_name = '$patient_name'
-                    AND is_billed = 0
-                    AND deleted = 0
-                ");
-            
-                if (!$update_rad) {
-                    throw new Exception("Error updating radiology orders: " . mysqli_error($connection));
-                }           
             } else if ($patient_type == 'Hemodialysis') {
                 // Escape inputs to prevent SQL injection
                 $patient_name = mysqli_real_escape_string($connection, $patient_name);
@@ -603,35 +591,56 @@ if (isset($_POST['submit_payment'])) {
 <div class="page-wrapper">
     <div class="content">
         <div class="row">
-            <div class="col-sm-4">
-                <h4 class="page-title">Add Payment</h4>
-            </div>
-            <div class="col-sm-8 text-right mb-3">
-                <a href="payment-processing.php" class="btn btn-primary float-right"><i class="fa fa-arrow-left"></i> Back</a>
+            <div class="col-sm-12">
+                <div class="page-header">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <h4 class="page-title">Add Payment</h4>
+                        </div>
+                        <div class="col-md-6 text-right">
+                            <a href="payment-processing.php" class="btn btn-primary">
+                                <i class="fas fa-arrow-left mr-2"></i> Back
+                            </a>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
         <div class="card">
+            <div class="card-header">
+                <h5 class="card-title" style="font-weight: bold;">Payment Information</h5>
+            </div>
             <div class="card-body">
                 <form method="POST">
                     <div class="row">
                         <div class="col-md-6">
                             <div class="form-group">
-                                <label>Payment ID</label>
-                                <input class="form-control" type="text" name="payment_id" value="<?php if(!empty($pay_id)) { echo 'PAY-'.$pay_id; } else { echo 'PAY-1'; } ?>" disabled>
+                                <label class="font-weight-bold">Payment ID</label>
+                                <div class="input-group">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text bg-light"><i class="fas fa-id-badge"></i></span>
+                                    </div>
+                                    <input class="form-control" type="text" name="payment_id" value="<?php if(!empty($pay_id)) { echo 'PAY-'.$pay_id; } else { echo 'PAY-1'; } ?>" readonly>
+                                </div>
                             </div>
                         </div>
 
                         <div class="col-md-6">
                             <div class="form-group">
-                                <label>Patient Type</label>
-                                <select class="form-control" name="patient_type" id="patient_type" required onchange="togglePatientSearch()">
-                                    <option value="">Select Type</option>
-                                    <option value="Outpatient">Outpatient</option>
-                                    <option value="Inpatient">Inpatient</option>
-                                    <option value="Hemodialysis">Hemodialysis</option>
-                                    <option value="Newborn">Newborn</option>
-                                </select>
+                                <label class="font-weight-bold">Patient Type</label>
+                                <div class="input-group">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text bg-light"><i class="fas fa-user-tag"></i></span>
+                                    </div>
+                                    <select class="form-control select2" name="patient_type" id="patient_type" required onchange="togglePatientSearch()">
+                                        <option value="">Select Patient Type</option>
+                                        <option value="Outpatient">Outpatient</option>
+                                        <option value="Inpatient">Inpatient</option>
+                                        <option value="Hemodialysis">Hemodialysis</option>
+                                        <option value="Newborn">Newborn</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -639,196 +648,256 @@ if (isset($_POST['submit_payment'])) {
                     <div class="row">
                         <div class="col-md-6">
                             <div class="form-group">
-                                <label>Patient Name</label>
+                                <label class="font-weight-bold">Patient Name</label>
                                 <div class="input-group">
-                                    <input type="text" class="form-control" id="patient_search" placeholder="Search for patient" autocomplete="off">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text bg-light"><i class="fas fa-user"></i></span>
+                                    </div>
+                                    <input type="text" class="form-control" id="patient_search" placeholder="Search patient name" autocomplete="off">
                                     <input type="hidden" name="patient_name" id="selected_patient_name">
-                                    <div class="search-results" id="search_results" style="display:none;"></div>
+                                </div>
+                                <div class="search-results" id="search_results" style="display:none;"></div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label class="font-weight-bold">Amount to Pay</label>
+                                <div class="input-group">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text bg-light">₱</span>
+                                    </div>
+                                    <input type="number" step="0.01" class="form-control" name="amount_to_pay" required readonly>
                                 </div>
                             </div>
                         </div>
 
                         <div class="col-md-3">
                             <div class="form-group">
-                                <label>Amount to Pay</label>
-                                <input type="number" step="0.01" class="form-control" name="amount_to_pay" required readonly>
-                            </div>
-                        </div>
-
-                        <div class="col-md-3">
-                            <div class="form-group">
-                                <label>Amount Paid</label>
-                                <input type="number" step="0.01" class="form-control" name="amount_paid" required onchange="calculateRemainingBalance()">
+                                <label class="font-weight-bold">Amount Paid</label>
+                                <div class="input-group">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text bg-light">₱</span>
+                                    </div>
+                                    <input type="number" step="0.01" class="form-control" name="amount_paid" required onchange="calculateRemainingBalance()">
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="row">
+                    <div class="row mt-3">
                         <div class="col-md-12">
-                            <!-- Laboratory Fees Table -->
-                            <table class="table table-bordered mt-4" id="outpatientLabTable" style="display: none;">
-                                <thead style="background-color: #CCCCCC;">
-                                    <tr>
-                                        <th>Lab Test</th>
-                                        <th>Lab Price</th>
-                                        <th>Request Date</th>
-                                    </tr>
-                                </thead>
-                                <tbody></tbody>
-                            </table>
+                            <!-- Laboratory Fees Card -->
+                            <div class="card mb-4" id="outpatientLabTable" style="display: none;">
+                                <div class="card-header">
+                                    <h5 class="card-title mb-0"><i class="fas fa-flask mr-2"></i>Laboratory Fees</h5>
+                                </div>
+                                <div class="card-body p-0">
+                                    <div class="table-responsive">
+                                        <table class="table table-hover mb-0">
+                                            <thead>
+                                                <tr>
+                                                    <th>Lab Test</th>
+                                                    <th class="text-right">Price</th>
+                                                    <th>Request Date</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody></tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
 
-                            <!-- Radiology Fees Table -->
-                            <table class="table table-bordered mt-4" id="outpatientRadTable" style="display: none;">
-                                <thead style="background-color: #CCCCCC;">
-                                    <tr>
-                                        <th>Radiology Test</th>
-                                        <th>Price</th>
-                                        <th>Request Date</th>
-                                    </tr>
-                                </thead>
-                                <tbody></tbody>
-                            </table>
+                            <!-- Radiology Fees Card -->
+                            <div class="card mb-4" id="outpatientRadTable" style="display: none;">
+                                <div class="card-header">
+                                    <h5 class="card-title mb-0"><i class="fas fa-x-ray mr-2"></i>Radiology Fees</h5>
+                                </div>
+                                <div class="card-body p-0">
+                                    <div class="table-responsive">
+                                        <table class="table table-hover mb-0">
+                                            <thead>
+                                                <tr>
+                                                    <th>Radiology Test</th>
+                                                    <th class="text-right">Price</th>
+                                                    <th>Request Date</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody></tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
 
-                            <!-- Inpatient Billing Table -->
-                            <table class="table table-bordered mt-4" id="inpatientBillingTable" style="display: none;">
-                                <thead style="background-color: #CCCCCC;">
-                                    <tr>
-                                        <th>Description</th>
-                                        <th>Amount</th>
-                                        <th>Discount</th>
-                                        <th>Net Amount</th>
-                                    </tr>
-                                </thead>
-                                <tbody></tbody>
-                                <tfoot>
-                                    <tr>
-                                        <th colspan="4">Total Fees: <span id="inpatientGrossAmount" class="float-right">₱0.00</span></th>
-                                    </tr>
-                                    <tr>
-                                        <td colspan="4" class="pl-4">Less:</td>
-                                    </tr>
-                                    <tr>
-                                        <td colspan="4" class="pl-5">PhilHealth (PF) <span id="inpatientPhilhealthPF" class="float-right">₱0.00</span></td>
-                                    </tr>
-                                    <tr>
-                                        <td colspan="4" class="pl-5">PhilHealth (HB) <span id="inpatientPhilhealthHB" class="float-right">₱0.00</span></td>
-                                    </tr>
-                                    <tr>
-                                        <td colspan="4" class="pl-5">VAT Exempt <span id="inpatientVatExempt" class="float-right">₱0.00</span></td>
-                                    </tr>
-                                    <tr>
-                                        <td colspan="4" class="pl-5">Senior Citizen Discount <span id="inpatientSeniorDiscount" class="float-right">₱0.00</span></td>
-                                    </tr>
-                                    <tr>
-                                        <td colspan="4" class="pl-5">PWD Discount <span id="inpatientPWDDiscount" class="float-right">₱0.00</span></td>
-                                    </tr>
-                                    <tr>
-                                        <td colspan="4" class="pl-5">Amount Already Paid <span id="inpatientAmountPaid" class="float-right">₱0.00</span></td>
-                                    </tr>
-                                    <tr class="font-weight-bold">
-                                        <th colspan="4">Total Amount Due: <span id="inpatientAmountDue" class="float-right">₱0.00</span></th>
-                                    </tr>
-                                    <tr class="font-weight-bold">
-                                        <th colspan="4">Remaining Balance: <span id="inpatientRemainingBalance" class="float-right">₱0.00</span></th>
-                                    </tr>
-                                </tfoot>
-                            </table>
+                            <!-- Inpatient Billing Card -->
+                            <div class="card mb-4" id="inpatientBillingTable" style="display: none;">
+                                <div class="card-header">
+                                    <h5 class="card-title mb-0"><i class="fas fa-procedures mr-2"></i>Inpatient Billing Details</h5>
+                                </div>
+                                <div class="card-body p-0">
+                                    <div class="table-responsive">
+                                        <table class="table table-hover mb-0">
+                                            <thead>
+                                                <tr>
+                                                    <th>Description</th>
+                                                    <th class="text-right">Amount</th>
+                                                    <th class="text-right">Discount</th>
+                                                    <th class="text-right">Net Amount</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody></tbody>
+                                            <tfoot class="font-weight-bold">
+                                                <tr>
+                                                    <td colspan="4" class="pl-4">Total Fees: <span id="inpatientGrossAmount" class="float-right">₱0.00</span></td>
+                                                </tr>
+                                                <tr class="text-muted">
+                                                    <td colspan="4" class="pl-4"><small>Less:</small></td>
+                                                </tr>
+                                                <tr>
+                                                    <td colspan="4" class="pl-5">PhilHealth (PF) <span id="inpatientPhilhealthPF" class="float-right">₱0.00</span></td>
+                                                </tr>
+                                                <tr>
+                                                    <td colspan="4" class="pl-5">PhilHealth (HB) <span id="inpatientPhilhealthHB" class="float-right">₱0.00</span></td>
+                                                </tr>
+                                                <tr>
+                                                    <td colspan="4" class="pl-5">VAT Exempt <span id="inpatientVatExempt" class="float-right">₱0.00</span></td>
+                                                </tr>
+                                                <tr>
+                                                    <td colspan="4" class="pl-5">Senior Citizen Discount <span id="inpatientSeniorDiscount" class="float-right">₱0.00</span></td>
+                                                </tr>
+                                                <tr>
+                                                    <td colspan="4" class="pl-5">PWD Discount <span id="inpatientPWDDiscount" class="float-right">₱0.00</span></td>
+                                                </tr>
+                                                <tr>
+                                                    <td colspan="4" class="pl-5">Amount Already Paid <span id="inpatientAmountPaid" class="float-right">₱0.00</span></td>
+                                                </tr>
+                                                <tr class="table-primary">
+                                                    <td colspan="4" class="pl-4">Total Amount Due: <span id="inpatientAmountDue" class="float-right">₱0.00</span></td>
+                                                </tr>
+                                                <tr class="table-active">
+                                                    <td colspan="4" class="pl-4">Remaining Balance: <span id="inpatientRemainingBalance" class="float-right">₱0.00</span></td>
+                                                </tr>
+                                            </tfoot>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
 
-                            <!-- Hemodialysis Billing Table -->
-                            <table class="table table-bordered mt-4" id="hemodialysisBillingTable" style="display: none;">
-                                <thead style="background-color: #CCCCCC;">
-                                    <tr>
-                                        <th>Description</th>
-                                        <th>Amount</th>
-                                        <th>Discount</th>
-                                        <th>Net Amount</th>
-                                    </tr>
-                                </thead>
-                                <tbody></tbody>
-                                <tfoot>
-                                    <tr>
-                                        <th colspan="4">Total Fees: <span id="hemodialysisGrossAmount" class="float-right">₱0.00</span></th>
-                                    </tr>
-                                    <tr>
-                                        <td colspan="4" class="pl-4">Less:</td>
-                                    </tr>
-                                    <tr>
-                                        <td colspan="4" class="pl-5">PhilHealth (PF) <span id="hemodialysisPhilhealthPF" class="float-right">₱0.00</span></td>
-                                    </tr>
-                                    <tr>
-                                        <td colspan="4" class="pl-5">PhilHealth (HB) <span id="hemodialysisPhilhealthHB" class="float-right">₱0.00</span></td>
-                                    </tr>
-                                    <tr>
-                                        <td colspan="4" class="pl-5">VAT Exempt <span id="hemodialysisVatExempt" class="float-right">₱0.00</span></td>
-                                    </tr>
-                                    <tr>
-                                        <td colspan="4" class="pl-5">Senior Citizen Discount <span id="hemodialysisSeniorDiscount" class="float-right">₱0.00</span></td>
-                                    </tr>
-                                    <tr>
-                                        <td colspan="4" class="pl-5">PWD Discount <span id="hemodialysisPWDDiscount" class="float-right">₱0.00</span></td>
-                                    </tr>
-                                    <tr>
-                                        <td colspan="4" class="pl-5">Amount Already Paid <span id="hemodialysisAmountPaid" class="float-right">₱0.00</span></td>
-                                    </tr>
-                                    <tr class="font-weight-bold">
-                                        <th colspan="4">Total Amount Due: <span id="hemodialysisAmountDue" class="float-right">₱0.00</span></th>
-                                    </tr>
-                                    <tr class="font-weight-bold">
-                                        <th colspan="4">Remaining Balance: <span id="hemodialysisRemainingBalance" class="float-right">₱0.00</span></th>
-                                    </tr>
-                                </tfoot>
-                            </table>
+                            <!-- Hemodialysis Billing Card -->
+                            <div class="card mb-4" id="hemodialysisBillingTable" style="display: none;">
+                                <div class="card-header">
+                                    <h5 class="card-title mb-0"><i class="fas fa-heartbeat mr-2"></i>Hemodialysis Billing Details</h5>
+                                </div>
+                                <div class="card-body p-0">
+                                    <div class="table-responsive">
+                                        <table class="table table-hover mb-0">
+                                            <thead>
+                                                <tr>
+                                                    <th>Description</th>
+                                                    <th class="text-right">Amount</th>
+                                                    <th class="text-right">Discount</th>
+                                                    <th class="text-right">Net Amount</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody></tbody>
+                                            <tfoot class="font-weight-bold">
+                                                <tr>
+                                                    <td colspan="4" class="pl-4">Total Fees: <span id="hemodialysisGrossAmount" class="float-right">₱0.00</span></td>
+                                                </tr>
+                                                <tr class="text-muted">
+                                                    <td colspan="4" class="pl-4"><small>Less:</small></td>
+                                                </tr>
+                                                <tr>
+                                                    <td colspan="4" class="pl-5">PhilHealth (PF) <span id="hemodialysisPhilhealthPF" class="float-right">₱0.00</span></td>
+                                                </tr>
+                                                <tr>
+                                                    <td colspan="4" class="pl-5">PhilHealth (HB) <span id="hemodialysisPhilhealthHB" class="float-right">₱0.00</span></td>
+                                                </tr>
+                                                <tr>
+                                                    <td colspan="4" class="pl-5">VAT Exempt <span id="hemodialysisVatExempt" class="float-right">₱0.00</span></td>
+                                                </tr>
+                                                <tr>
+                                                    <td colspan="4" class="pl-5">Senior Citizen Discount <span id="hemodialysisSeniorDiscount" class="float-right">₱0.00</span></td>
+                                                </tr>
+                                                <tr>
+                                                    <td colspan="4" class="pl-5">PWD Discount <span id="hemodialysisPWDDiscount" class="float-right">₱0.00</span></td>
+                                                </tr>
+                                                <tr>
+                                                    <td colspan="4" class="pl-5">Amount Already Paid <span id="hemodialysisAmountPaid" class="float-right">₱0.00</span></td>
+                                                </tr>
+                                                <tr class="table-primary">
+                                                    <td colspan="4" class="pl-4">Total Amount Due: <span id="hemodialysisAmountDue" class="float-right">₱0.00</span></td>
+                                                </tr>
+                                                <tr class="table-active">
+                                                    <td colspan="4" class="pl-4">Remaining Balance: <span id="hemodialysisRemainingBalance" class="float-right">₱0.00</span></td>
+                                                </tr>
+                                            </tfoot>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Newborn Billing Card -->
+                            <div class="card mb-4" id="newbornBillingTable" style="display: none;">
+                                <div class="card-header">
+                                    <h5 class="card-title mb-0"><i class="fas fa-baby mr-2"></i>Newborn Billing Details</h5>
+                                </div>
+                                <div class="card-body p-0">
+                                    <div class="table-responsive">
+                                        <table class="table table-hover mb-0">
+                                            <thead>
+                                                <tr>
+                                                    <th>Description</th>
+                                                    <th class="text-right">Amount</th>
+                                                    <th class="text-right">Discount</th>
+                                                    <th class="text-right">Net Amount</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody></tbody>
+                                            <tfoot class="font-weight-bold">
+                                                <tr>
+                                                    <td colspan="4" class="pl-4">Total Fees: <span id="newbornGrossAmount" class="float-right">₱0.00</span></td>
+                                                </tr>
+                                                <tr class="text-muted">
+                                                    <td colspan="4" class="pl-4"><small>Less:</small></td>
+                                                </tr>
+                                                <tr>
+                                                    <td colspan="4" class="pl-5">PhilHealth (PF) <span id="newbornPhilhealthPF" class="float-right">₱0.00</span></td>
+                                                </tr>
+                                                <tr>
+                                                    <td colspan="4" class="pl-5">PhilHealth (HB) <span id="newbornPhilhealthHB" class="float-right">₱0.00</span></td>
+                                                </tr>
+                                                <tr>
+                                                    <td colspan="4" class="pl-5">VAT Exempt <span id="newbornVatExempt" class="float-right">₱0.00</span></td>
+                                                </tr>
+                                                <tr>
+                                                    <td colspan="4" class="pl-5">Senior Citizen Discount <span id="newbornSeniorDiscount" class="float-right">₱0.00</span></td>
+                                                </tr>
+                                                <tr>
+                                                    <td colspan="4" class="pl-5">PWD Discount <span id="newbornPWDDiscount" class="float-right">₱0.00</span></td>
+                                                </tr>
+                                                <tr>
+                                                    <td colspan="4" class="pl-5">Amount Already Paid <span id="newbornAmountPaid" class="float-right">₱0.00</span></td>
+                                                </tr>
+                                                <tr class="table-primary">
+                                                    <td colspan="4" class="pl-4">Total Amount Due: <span id="newbornAmountDue" class="float-right">₱0.00</span></td>
+                                                </tr>
+                                                <tr class="table-active">
+                                                    <td colspan="4" class="pl-4">Remaining Balance: <span id="newbornRemainingBalance" class="float-right">₱0.00</span></td>
+                                                </tr>
+                                            </tfoot>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
-
-                    <!-- Newborn Billing Table -->
-                    <table class="table table-bordered mt-4" id="newbornBillingTable" style="display: none;">
-                        <thead style="background-color: #CCCCCC;">
-                            <tr>
-                                <th>Description</th>
-                                <th>Amount</th>
-                                <th>Discount</th>
-                                <th>Net Amount</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                        <tfoot>
-                            <tr>
-                                <th colspan="4">Total Fees: <span id="newbornGrossAmount" class="float-right">₱0.00</span></th>
-                            </tr>
-                            <tr>
-                                <td colspan="4" class="pl-4">Less:</td>
-                            </tr>
-                            <tr>
-                                <td colspan="4" class="pl-5">PhilHealth (PF) <span id="newbornPhilhealthPF" class="float-right">₱0.00</span></td>
-                            </tr>
-                            <tr>
-                                <td colspan="4" class="pl-5">PhilHealth (HB) <span id="newbornPhilhealthHB" class="float-right">₱0.00</span></td>
-                            </tr>
-                            <tr>
-                                <td colspan="4" class="pl-5">VAT Exempt <span id="newbornVatExempt" class="float-right">₱0.00</span></td>
-                            </tr>
-                            <tr>
-                                <td colspan="4" class="pl-5">Senior Citizen Discount <span id="newbornSeniorDiscount" class="float-right">₱0.00</span></td>
-                            </tr>
-                            <tr>
-                                <td colspan="4" class="pl-5">PWD Discount <span id="newbornPWDDiscount" class="float-right">₱0.00</span></td>
-                            </tr>
-                            <tr>
-                                <td colspan="4" class="pl-5">Amount Already Paid <span id="newbornAmountPaid" class="float-right">₱0.00</span></td>
-                            </tr>
-                            <tr class="font-weight-bold">
-                                <th colspan="4">Total Amount Due: <span id="newbornAmountDue" class="float-right">₱0.00</span></th>
-                            </tr>
-                            <tr class="font-weight-bold">
-                                <th colspan="4">Remaining Balance: <span id="newbornRemainingBalance" class="float-right">₱0.00</span></th>
-                            </tr>
-                        </tfoot>
-                    </table>
 
                     <div class="row mt-4">
-                        <div class="col-md-12">
-                            <button type="submit" name="submit_payment" class="btn btn-primary">Submit Payment</button>
+                        <div class="col-md-12 text-center">
+                            <button type="submit" name="submit_payment" class="btn btn-primary btn-lg">
+                                <i class="fas fa-credit-card mr-2"></i> Submit Payment
+                            </button>
                         </div>
                     </div>
                 </form>
@@ -1228,6 +1297,7 @@ $('.dropdown-toggle').on('click', function (e) {
             }
         });
     });
+    
 </script>
 <style>
 .btn-primary.submit-btn {
@@ -1243,56 +1313,112 @@ $('.dropdown-toggle').on('click', function (e) {
     background: #05007E;
 }
 .form-control {
-    border-radius: .375rem; /* Rounded corners */
-    border-color: #ced4da; /* Border color */
-    background-color: #f8f9fa; /* Background color */
+    border-radius: .375rem;
+    border-color: #ced4da;
+    background-color: #f8f9fa;
 }
 select.form-control {
-    border-radius: .375rem; /* Rounded corners */
-    border: 1px solid; /* Border color */
-    border-color: #ced4da; /* Border color */
-    background-color: #f8f9fa; /* Background color */
-    padding: .375rem 2.5rem .375rem .75rem; /* Adjust padding to make space for the larger arrow */
-    font-size: 1rem; /* Font size */
-    line-height: 1.5; /* Line height */
-    height: calc(2.25rem + 2px); /* Adjust height */
-    -webkit-appearance: none; /* Remove default styling on WebKit browsers */
-    -moz-appearance: none; /* Remove default styling on Mozilla browsers */
-    appearance: none; /* Remove default styling on other browsers */
+    border-radius: .375rem;
+    border: 1px solid #ced4da;
+    background-color: #f8f9fa;
+    padding: .375rem 2.5rem .375rem .75rem;
+    font-size: 1rem;
+    line-height: 1.5;
+    height: calc(2.25rem + 2px);
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
     background: url('data:image/svg+xml;charset=UTF-8,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20"%3E%3Cpath d="M7 10l5 5 5-5z" fill="%23aaa"/%3E%3C/svg%3E') no-repeat right 0.75rem center;
-    background-size: 20px; /* Size of the custom arrow */
-}      
+    background-size: 20px;
+}
+
+/* Search results */
 .search-results {
     position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
     z-index: 1000;
-    max-height: 200px;
+    width: 100%;
+    max-height: 300px;
     overflow-y: auto;
     background: white;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    border: 1px solid #dee2e6;
+    border-radius: 0.25rem;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    margin-top: 2px;
 }
-
 .search-result {
-    padding: 8px 15px;
+    padding: 0.75rem 1.25rem;
     cursor: pointer;
     list-style: none;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid #f8f9fa;
+    transition: all 0.2s;
 }
-
 .search-result:hover {
     background-color: #12369e;
     color: white;
 }
-
 .search-result:last-child {
     border-bottom: none;
 }
 
-.input-group {
-    position: relative;
+/* Tables */
+.table {
+    font-size: 0.9rem;
+}
+.table th {
+    border-top: none;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    letter-spacing: 0.5px;
+    color: #6c757d;
+    background-color: #CCCCCC;
+}
+.table td, .table th {
+    vertical-align: middle;
+    padding: 0.75rem 1rem;
+}
+.table-hover tbody tr:hover {
+    background-color: rgba(18, 54, 158, 0.05);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .card-body {
+        padding: 1rem;
+    }
+    .table-responsive {
+        border: none;
+    }
+}
+
+/* Card headers */
+.card-header {
+    background-color: #CCCCCC;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.card-title {
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: #343a40;
+}
+/* Amount styling */
+.float-right {
+    font-weight: 600;
+}
+
+/* Special table rows */
+.table-primary td {
+    background-color: rgba(18, 54, 158, 0.1) !important;
+}
+.table-active td {
+    background-color: rgba(108, 117, 125, 0.1) !important;
+}
+
+/* Input group */
+.input-group-text {
+    background-color: #f8f9fa;
+    border-color: #ced4da;
 }
 </style>

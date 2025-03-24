@@ -178,7 +178,7 @@ if (isset($_POST['save-deceased'])) {
                             </div>
                         </div>
                         <div class="col-12 mt-3 text-center">
-                            <button class="btn btn-primary submit-btn" name="save-deceased">Save</button>
+                            <button class="btn btn-primary submit-btn" name="save-deceased"><i class="fas fa-save mr-2"></i>Save</button>
                         </div>
                     </div>
                 </form>

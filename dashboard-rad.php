@@ -254,6 +254,73 @@ for ($i = $current_month; $i <= 12; $i++) {
     });
 </script>
 <style>
+dash-widget {
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    transition: all 0.3s ease;
+    height: 80%;
+}
+
+.dash-widget:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+}   
+.dash-widget-bg1, 
+.dash-widget-bg2,
+.dash-widget-bg3,
+.dash-widget-bg4 {
+    width: 80px;
+    height: 80px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 28px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.dash-widget-info {
+    padding: 20px;
+}
+
+.dash-widget-info h3 {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 5px;
+    color: #2c3e50;
+}
+
+.widget-title1, 
+.widget-title2, 
+.widget-title3, 
+.widget-title4 {
+    font-size: 14px;
+    color: #7f8c8d;
+}
+.card:hover {
+    box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+}
+
+.card-header {
+    background: white;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.card-header h4 {
+    font-weight: 600;
+    color: #2c3e50;
+    margin: 0;
+}
+
+.card-body {
+    padding: 20px;
+}      
 .btn-primary {
     background: #12369e;
     border: none;

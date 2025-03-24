@@ -270,7 +270,7 @@ if (isset($_POST['save-patient'])) {
                             </div>
                         </div>
                         <div class="col-12 mt-3 text-center">
-                            <button class="btn btn-primary submit-btn" name="save-patient">Save</button>
+                            <button class="btn btn-primary submit-btn" name="save-patient"><i class="fas fa-save mr-2"></i>Save</button>
                         </div>
                     </div>
                 </form>

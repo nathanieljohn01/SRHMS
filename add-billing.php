@@ -339,253 +339,304 @@ if (isset($_POST['add-billing'])) {
 <div class="page-wrapper">
     <div class="content">
         <div class="row">
-            <div class="col-sm-4">
-                <h4 class="page-title">Add Account</h4>
-            </div>
-            <div class="col-sm-8 text-right mb-3">
-                <a href="billing.php" class="btn btn-primary float-right"><i class="fa fa-arrow-left"></i> Back</a>
+            <div class="col-sm-12">
+                <div class="page-header">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <h4 class="page-title">Statement of Account</h4>
+                        </div>
+                        <div class="col-md-6 text-right">
+                            <a href="billing.php" class="btn btn-primary">
+                                <i class="fas fa-arrow-left mr-2"></i> Back
+                            </a>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
-        <div class="col-lg-10 offset-lg-1">
-            <form method="post" action="">
-                <!-- Patient Type Dropdown -->
-                <div class="form-group row">
-                    <div class="col-sm-12">
-                        <label for="patient-type-select">Patient Type</label>
-                        <select class="form-control" id="patient-type-select" name="patient_type" required>
-                            <option value="">Select Patient Type</option>
-                            <option value="inpatient">Inpatient</option>
-                            <option value="hemodialysis">Hemodialysis</option>
-                            <option value="newborn">Newborn</option>
-                        </select>
-                    </div>
-                </div>
-                <!-- Billing ID -->
-                <div class="form-group row">
-                    <div class="col-sm-6">
-                        <label>Billing ID</label>
-                        <input class="form-control" type="text" value="<?php echo 'BL-' . $bl_id; ?>" disabled>
-                    </div>
-                    <div class="col-md-6">
-                        <label for="patient-search">Patient Name</label>
-                        <input type="text" class="form-control" id="patient-search" name="patient_name" placeholder="Search for patient" autocomplete="off" required>
-                        <div id="patient-list" class="patient-list"></div>
-                    </div>
-                </div>
-                <!-- Inpatient Fields Section (Initially Hidden) -->
-                <div id="patient-section" class="patient-type-section" style="display:none;">
-                    <!-- Room Charges Section -->
-                    <h4>Room Charges</h4> 
-                    <table class="table table-bordered">
-                        <thead style="background-color:rgba(204, 204, 204, 0.1);">
-                            <tr>
-                                <th>Admission Date</th>
-                                <th>Discharge Date</th>
-                                <th>Room Type</th>
-                            </tr>
-                        </thead>
-                        <tbody id="room-fee-container"></tbody>
-                    </table>
 
-                    <!-- Medicine Charges Section -->
-                    <h4>Medicine Charges</h4>    
-                    <table class="table table-bordered">
-                        <thead style="background-color:rgba(204, 204, 204, 0.1);">
-                            <tr>
-                                <th>Medicine Name (Brand)</th>
-                                <th>Total Quantity</th>
-                                <th>Price</th>
-                                <th>Total Price</th>
-                            </tr>
-                        </thead>
-                        <tbody id="medication-fee-container"></tbody>
-                    </table>
-
-                    <!-- Lab Charges Section -->
-                    <h4>Lab Charges</h4> 
-                    <table class="table table-bordered">
-                        <thead style="background-color:rgba(204, 204, 204, 0.1);">
-                            <tr>
-                                <th>Lab Test</th>
-                                <th>Price</th>
-                            </tr>
-                        </thead>
-                        <tbody id="lab-tests-container"></tbody>
-                    </table>
-
-                    <!-- Radiology Charges Section -->
-                    <h4>Radiology Charges</h4>
-                    <table class="table table-bordered">
-                        <thead style="background-color:rgba(204, 204, 204, 0.1);">
-                            <tr>
-                                <th>Radiology Test</th>
-                                <th>Price</th>
-                            </tr>
-                        </thead>
-                        <tbody id="rad-tests-container"></tbody>
-                    </table>
-
-                    <!-- Operation Room Fee Section -->
-                    <h4>Operation Room Fee</h4>
-                    <table class="table table-bordered">
-                        <thead style="background-color:rgba(204, 204, 204, 0.1);">
-                            <tr>
-                                <th>Operation Type</th>
-                                <th>Price</th>
-                            </tr>
-                        </thead>
-                        <tbody id="or-fee-container">
-                            <!-- OR Fee rows will be populated here by JavaScript -->
-                        </tbody>
-                    </table>
-                </div>
-
-                <div class="fees-container">
-                <h4 class="fees-title">Additional Fees</h4>
-                    <!-- Supplies Fee Section -->
-                    <div class="form-group row">
-                        <div class="col-sm-12">
-                            <label for="supplies-fee" class="form-label">Supplies</label>
-                            <input type="number" step="0.01" min="0" class="form-control" id="supplies-fee" name="supplies_fee" placeholder="Enter supplies fee">
+        <div class="card billing-card">
+            <div class="card-header">
+                <h5 class="card-title">Account Information</h5>
+            </div>
+            <div class="card-body">
+                <form method="post" action="">
+                    <!-- Patient Information Section -->
+                    <div class="form-section">
+                        <h6 class="section-title">Patient Details</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label>Patient Type</label>
+                                    <select class="form-control" id="patient-type-select" name="patient_type" required>
+                                        <option value="">Select Patient Type</option>
+                                        <option value="inpatient">Inpatient</option>
+                                        <option value="hemodialysis">Hemodialysis</option>
+                                        <option value="newborn">Newborn</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label>Billing ID</label>
+                                    <input class="form-control" type="text" value="<?php echo 'BL-' . $bl_id; ?>" disabled>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="form-group">
+                                    <label>Patient Name</label>
+                                    <div class="search-container">
+                                        <input type="text" class="form-control" id="patient-search" name="patient_name" placeholder="Search patient name" autocomplete="off" required>
+                                        <div id="patient-list" class="search-results"></div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Others Fee Section -->
-                    <div class="form-group row">
-                        <div class="col-sm-12">
-                            <label>Others:</label>
-                            <div id="other-items-container">
-                                <!-- Default input fields (initial row) -->
-                                <div class="row align-items-center other-item mb-2">
-                                    <div class="col-sm-6">
-                                        <input type="text" class="form-control mb-2" name="others[0][name]" placeholder="Item Name">
+                    <!-- Charges Section -->
+                    <div class="form-section charges-section">
+                        <h6 class="section-title">Service Charges</h6>
+                        <div id="patient-section">
+                            <!-- Room Charges -->
+                            <div class="charge-group">
+                                <h5>Room Charges</h5>
+                                <div class="table-responsive">
+                                    <table class="table">
+                                        <thead>
+                                            <tr>
+                                                <th>Admission Date</th>
+                                                <th>Discharge Date</th>
+                                                <th>Room Type</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="room-fee-container"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- Medicine Charges -->
+                            <div class="charge-group">
+                                <h5>Medicine Charges</h5>
+                                <div class="table-responsive">
+                                    <table class="table">
+                                        <thead>
+                                            <tr>
+                                                <th>Medicine Name</th>
+                                                <th>Quantity</th>
+                                                <th>Price</th>
+                                                <th>Total</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="medication-fee-container"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- Lab Charges -->
+                            <div class="charge-group">
+                                <h5>Lab Tests</h5>
+                                <div class="table-responsive">
+                                    <table class="table">
+                                        <thead>
+                                            <tr>
+                                                <th>Test Name</th>
+                                                <th>Price</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="lab-tests-container"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- Radiology Charges -->
+                            <div class="charge-group">
+                                <h5>Radiology Tests</h5>
+                                <div class="table-responsive">
+                                    <table class="table">
+                                        <thead>
+                                            <tr>
+                                                <th>Test Name</th>
+                                                <th>Price</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="rad-tests-container"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- Operation Room -->
+                            <div class="charge-group">
+                                <h5>Operation Room</h5>
+                                <div class="table-responsive">
+                                    <table class="table">
+                                        <thead>
+                                            <tr>
+                                                <th>Procedure</th>
+                                                <th>Price</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="or-fee-container"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Additional Fees -->
+                        <div class="additional-fees">
+                            <h5>Additional Fees</h5>
+                                <div class="row">
+                                    <div class="col-md-12">
+                                        <div class="form-group">
+                                            <label for="supplies-fee">Supplies</label>
+                                            <input type="number" step="0.01" min="0" class="form-control" id="supplies-fee" name="supplies_fee" placeholder="Enter amount">
+                                        </div>
                                     </div>
-                                    <div class="col-sm-6">
-                                        <input type="number" step="0.01" min="0" class="form-control" name="others[0][cost]" placeholder="Item Cost">
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label for="professional-fee">Professional Fee</label>
+                                            <input type="number" step="0.01" min="0" class="form-control" id="professional-fee" name="professional_fee" placeholder="Enter amount">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label for="readers-fee">Reader's Fee</label>
+                                            <input type="number" step="0.01" min="0" class="form-control" id="readers-fee" name="readers_fee" placeholder="Enter amount">
+                                        </div>
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- Button to Add More Items -->
-                            <div class="text-center mt-3">
-                                <button type="button" id="add-other-item" class="btn btn-primary btn-info">Add More Items</button>
+                            <!-- Other Items -->
+                            <div class="other-items">
+                                <label>Other Charges</label>
+                                <div id="other-items-container">
+                                    <div class="row align-items-center other-item mb-2" id="item-row-0">
+                                        <div class="col-md-6">
+                                            <input type="text" class="form-control" name="others[0][name]" placeholder="Item description" required>
+                                        </div>
+                                        <div class="col-md-5">
+                                            <input type="number" step="0.01" class="form-control" name="others[0][cost]" placeholder="Amount" required>
+                                        </div>
+                                        <div class="col-md-1">
+                                            <button type="button" class="btn btn-sm btn-danger remove-item" disabled>
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button type="button" id="add-other-item" class="btn btn-sm btn-primary mt-2">
+                                    <i class="fas fa-plus mr-1"></i> Add Item
+                                </button>
                             </div>
-                        </div>
-                    </div>
 
-                    <!-- Professional Fee and Readers Fee -->
-                    <div class="form-group row">
-                        <div class="col-sm-6">
-                            <label for="professional-fee">Professional's Fee</label>
-                            <input type="number" step="0.01" min="0" class="form-control" id="professional-fee" name="professional_fee" placeholder="Enter Professional Fee">
-                        </div>
-                        <div class="col-sm-6">
-                            <label for="readers-fee">Reader's Fee</label>
-                            <input type="number" step="0.01" min="0" class="form-control" id="readers-fee" name="readers_fee" placeholder="Enter Readers Fee">
-                        </div>
-                    </div>
-                </div>
-
-                <div class="checkbox-container">
-                <h4 class="discounts-title">Discounts</h4> <!-- Added title -->
                     <!-- Discounts Section -->
-                    <div class="form-group row">
-                        <div class="col-sm-4">
-                            <div class="discount-checkbox-wrapper">
-                                <label class="checkbox-label" for="vat-exempt-checkbox">
-                                    <span>VAT Exempt (12%)</span>
-                                    <input type="checkbox" id="vat-exempt-checkbox" name="vat_exempt_checkbox" value="on">
-                                    <span class="checkmark"></span>
-                                </label>
+                    <div class="form-section discounts-section">
+                        <h6 class="section-title">Discounts & Deductions</h6>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="discount-option">
+                                    <div class="custom-control custom-checkbox">
+                                        <input type="checkbox" class="custom-control-input" id="vat-exempt-checkbox" name="vat_exempt_checkbox" value="on">
+                                        <label class="custom-control-label" for="vat-exempt-checkbox">VAT Exempt (12%)</label>
+                                    </div>
+                                    <div class="discount-value" id="vat-exempt-discount">₱0.00</div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="discount-option">
+                                    <div class="custom-control custom-checkbox">
+                                        <input type="checkbox" class="custom-control-input" id="discount-checkbox" name="discount_checkbox" value="on">
+                                        <label class="custom-control-label" for="discount-checkbox">Senior Discount (20%)</label>
+                                    </div>
+                                    <div class="discount-value" id="discount-amount">₱0.00</div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="discount-option">
+                                    <div class="custom-control custom-checkbox">
+                                        <input type="checkbox" class="custom-control-input" id="pwd-discount-checkbox" name="pwd_discount_checkbox" value="on">
+                                        <label class="custom-control-label" for="pwd-discount-checkbox">PWD Discount (20%)</label>
+                                    </div>
+                                    <div class="discount-value" id="pwd-discount">₱0.00</div>
+                                </div>
                             </div>
                         </div>
-                        <div class="col-sm-4">
-                            <div class="discount-checkbox-wrapper">
-                                <label class="checkbox-label" for="discount-checkbox">
-                                    <span>Senior Citizen Discount (20%)</span>
-                                    <input type="checkbox" id="discount-checkbox" name="discount_checkbox" value="on">
-                                    <span class="checkmark"></span>
-                                </label>
-                            </div>
-                        </div>
-                        <div class="col-sm-4">
-                            <div class="discount-checkbox-wrapper">
-                                <label class="checkbox-label" for="pwd-discount-checkbox">
-                                    <span>PWD Discount (20%)</span>
-                                    <input type="checkbox" id="pwd-discount-checkbox" name="pwd_discount_checkbox" value="on">
-                                    <span class="checkmark"></span>
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-                </div>
 
-                <!-- PhilHealth Case Rate Section -->
-                <div class="philhealth-box">
-                    <h4>PhilHealth Case Rate</h4>
-                    <div class="form-group row">
-                        <div class="col-sm-12">
-                            <select class="form-control" id="case-rate-select" name="case_rate">
-                                <option value="">Select Case Rate</option>
-                                <option value="first">First Case Rate</option>
-                                <option value="second">Second Case Rate</option>
-                            </select>
+                        <!-- PhilHealth Section -->
+                        <div class="philhealth-section">
+                            <h5>PhilHealth Deductions</h5>
+                            <div class="form-group">
+                                <select class="form-control" id="case-rate-select" name="case_rate">
+                                    <option value="">Select Case Rate</option>
+                                    <option value="first">First Case Rate</option>
+                                    <option value="second">Second Case Rate</option>
+                                </select>
+                            </div>
+                            
+                            <div id="first-case-rate-container" style="display: none;">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label>Professional Fee Discount</label>
+                                        <input type="number" step="0.01" min="0" class="form-control" id="professional-fee-discount" name="philhealth_pf" placeholder="Enter amount" disabled>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label>Hospital Bill Discount</label>
+                                        <input type="number" step="0.01" min="0" class="form-control" id="hospital-bill-discount" name="philhealth_hb" placeholder="Enter amount" disabled>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div id="second-case-rate-container" style="display: none;">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label>Professional Fee Discount</label>
+                                        <input type="number" step="0.01" min="0" class="form-control" id="professional-fee-discount-second" name="philhealth_pf" placeholder="Enter amount" disabled>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label>Hospital Bill Discount</label>
+                                        <input type="number" step="0.01" min="0" class="form-control" id="hospital-bill-discount-second" name="philhealth_hb" placeholder="Enter amount" disabled>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                    <!-- First Case Rate Fields (Hidden) -->
-                    <div id="first-case-rate-container" class="form-group row" style="display: none;">
-                        <div class="col-sm-6">
-                            <label for="professional-fee-discount">Professional Fee Discount</label>
-                            <input type="number" step="0.01" min="0" class="form-control" id="professional-fee-discount" name="philhealth_pf" placeholder="Enter Amount" disabled>
-                        </div>
-                        <div class="col-sm-6">
-                            <label for="hospital-bill-discount">Hospital Bill Discount</label>
-                            <input type="number" step="0.01" min="0" class="form-control" id="hospital-bill-discount" name="philhealth_hb" placeholder="Enter Amount" disabled>
-                        </div>
-                    </div>
-                    <!-- Second Case Rate Fields (Hidden) -->
-                    <div id="second-case-rate-container" class="form-group row" style="display: none;">
-                        <div class="col-sm-6">
-                            <label for="professional-fee-discount-second">Professional Fee Discount</label>
-                            <input type="number" step="0.01" min="0" class="form-control" id="professional-fee-discount-second" name="philhealth_pf" placeholder="Enter Amount" disabled>
-                        </div>
-                        <div class="col-sm-6">
-                            <label for="hospital-bill-discount-second">Hospital Bill Discount</label>
-                            <input type="number" step="0.01" min="0" class="form-control" id="hospital-bill-discount-second" name="philhealth_hb" placeholder="Enter Amount" disabled>
-                        </div>
-                    </div>
-                </div>
 
-                <div class="form-group row">
-                    <div class="col-sm-6 mb-3">
-                        <div class="vat-exempt-discount-box">
-                            <h5>VAT Exempt (12%):</h5>
-                            <p id="vat-exempt-discount">₱0.00</p>
+                    <!-- Summary Section -->
+                    <div class="form-section summary-section">
+                        <h6 class="section-title">Account Summary</h6>
+                        <div class="summary-card">
+                            <div class="summary-row">
+                                <span class="summary-label">Total Charges:</span>
+                                <span class="summary-value" id="total-charges">₱0.00</span>
+                            </div>
+                            <div class="summary-row">
+                                <span class="summary-label">Total Discounts:</span>
+                                <span class="summary-value" id="total-discounts">₱0.00</span>
+                            </div>
+                            <div class="summary-row total-due">
+                                <span class="summary-label" style="font-weight: bold;">Total Amount Due:</span>
+                                <span class="summary-value" id="total-due">₱0.00</span>
+                            </div>
                         </div>
                     </div>
-                    <div class="col-sm-6 mb-3">
-                        <div class="discount-amount-box">
-                            <h5>Senior Citizen Discount (20%):</h5>
-                            <p id="discount-amount">₱0.00</p>
-                        </div>
+
+                    <!-- Submit Button -->
+                    <div class="form-submit text-center mt-4">
+                        <button type="submit" name="add-billing" class="btn btn-primary btn-lg">
+                            <i class="fas fa-file-invoice-dollar mr-2"></i> Generate Statement
+                        </button>
                     </div>
-                    <div class="col-sm-6 mb-3">
-                        <div class="pwd-discount-box">
-                            <h5>PWD Discount (20%):</h5>
-                            <p id="pwd-discount">₱0.00</p>
-                        </div>
-                    </div>
-                    <div class="col-sm-6 mb-3">
-                        <div class="total-due-box">
-                            <h5>Total Due: (Amount to pay)</h5>
-                            <p id="total-due">₱0.00</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="mt-3 text-center">
-                    <button class="btn btn-primary submit-btn" name="add-billing">Add Account</button>
-                </div>
-            </form>
+                </form>
+            </div>
         </div>
     </div>
 </div>
@@ -927,37 +978,62 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    // Add event listener for the "Add Item" button
     document.getElementById('add-other-item').addEventListener('click', function () {
-    const container = document.getElementById('other-items-container');
-    const itemCount = Math.floor(container.children.length / 2); // Count pairs of inputs
+        const container = document.getElementById('other-items-container');
+        const itemCount = container.querySelectorAll('.other-item').length; // Count existing items
 
-    const newItemHTML = `
-        <div class="row align-items-center other-item mb-2 position-relative" id="item-row-${itemCount}">
-            <div class="col-sm-6">
-                <input type="text" class="form-control" name="others[${itemCount}][name]" placeholder="Item Name" required>
+        const newItemHTML = `
+            <div class="row align-items-center other-item mb-2" id="item-row-${itemCount}">
+                <div class="col-md-6">
+                    <input type="text" class="form-control" name="others[${itemCount}][name]" placeholder="Item description" required>
+                </div>
+                <div class="col-md-5">
+                    <input type="number" step="0.01" class="form-control" name="others[${itemCount}][cost]" placeholder="Amount" required>
+                </div>
+                <div class="col-md-1">
+                    <button type="button" class="btn btn-sm btn-danger remove-item" data-id="item-row-${itemCount}">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
             </div>
-            <div class="col-sm-6 position-relative">
-                <input type="number" class="form-control" name="others[${itemCount}][cost]" placeholder="Item Cost" required>
-                <button type="button" class="remove-item btn btn-danger btn-sm position-absolute" 
-                    style="right: -35px; top: 50%; transform: translateY(-50%);" 
-                    data-id="item-row-${itemCount}">&times;
-                </button>
-            </div>
-        </div>
-    `;
+        `;
 
+        container.insertAdjacentHTML('beforeend', newItemHTML);
 
-    container.insertAdjacentHTML('beforeend', newItemHTML);
-    });
-
-    // Event delegation for "X" button to remove an item
-    document.getElementById('other-items-container').addEventListener('click', function (event) {
-        if (event.target.classList.contains('remove-item')) {
-            const itemId = event.target.getAttribute('data-id');
-            document.getElementById(itemId)?.remove();
+        // Enable all remove buttons except for the first item
+        const removeButtons = document.querySelectorAll('.remove-item');
+        if (removeButtons.length > 1) {
+            removeButtons.forEach(button => {
+                button.disabled = false;
+            });
         }
     });
 
+    // Single event delegation for remove buttons (should be outside the add button click handler)
+    document.getElementById('other-items-container').addEventListener('click', function (event) {
+        if (event.target.closest('.remove-item')) {
+            const button = event.target.closest('.remove-item');
+            const itemId = button.getAttribute('data-id');
+            document.getElementById(itemId)?.remove();
+            
+            // After removal, check if we need to disable the first remove button
+            const remainingItems = document.querySelectorAll('.other-item');
+            if (remainingItems.length === 1) {
+                remainingItems[0].querySelector('.remove-item').disabled = true;
+            }
+            
+            // Re-index the remaining items
+            const items = document.querySelectorAll('.other-item');
+            items.forEach((item, index) => {
+                item.id = `item-row-${index}`;
+                const inputs = item.querySelectorAll('input');
+                inputs[0].name = `others[${index}][name]`;
+                inputs[1].name = `others[${index}][cost]`;
+                item.querySelector('.remove-item').setAttribute('data-id', `item-row-${index}`);
+            });
+        }
+    });
 
     // Add event listener for PWD checkbox
     pwdDiscountCheckbox.addEventListener('change', function () {
@@ -1205,32 +1281,6 @@ select.form-control {
     border: 1px solid #e0e4e8;
     transition: box-shadow 0.3s ease, transform 0.3s ease;
 }
-
-/* Hover Effect */
-.fees-container:hover {
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
-    transform: translateY(-4px);
-}
-
-.fees-container h4 {
-    font-size: 18px;
-    color: #343a40;
-    margin-bottom: 15px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid #e0e4e8;
-}
-
-.fees-container select,
-.fees-container input {
-    border: 2px solid #e0e4e8;
-    transition: all 0.3s ease;
-}
-
-.fees-container select:focus,
-.fees-container input:focus {
-    border-color: #12369e;
-    box-shadow: 0 0 0 3px rgba(18,54,158,0.1);
-}
 .btn-primary.submit-btn {
     border-radius: 6px;
     padding: 12px 24px;
@@ -1302,32 +1352,7 @@ input[type="checkbox"] {
     cursor: pointer;
 }
 
-/* Enhanced Box Styles */
-.total-due-box, .discount-amount-box, .pwd-discount-box, .vat-exempt-discount-box {
-    padding: 20px;
-    background-color: rgb(241, 241, 241);
-    border-radius: 12px;
-    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
-    margin-bottom: 25px;
-    border: 1px solid #e0e4e8;
-    transition: box-shadow 0.3s ease, transform 0.3s ease;
-    text-align: center;
-}
 
-.total-due-box:hover, .discount-amount-box:hover, 
-.pwd-discount-box:hover, .vat-exempt-discount-box:hover {
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
-    transform: translateY(-4px);
-}
-
-/* Enhanced Title Styles */
-.total-due-box h5, .discount-amount-box h5,
-.pwd-discount-box h5, .vat-exempt-discount-box h5 {
-    font-size: 16px;
-    color: #343a40;
-    margin-bottom: 12px;
-    font-weight: 600;
-}
 
 /* Enhanced Value Styles */
 #total-due, #discount-amount, #pwd-discount, #vat-exempt-discount {
@@ -1473,112 +1498,277 @@ table tr:hover {
 }
 
 /* Responsive Improvements */
+
+/* Responsive Adjustments */
 @media (max-width: 768px) {
-    .col-sm-6 {
-        width: 100%;
-        padding: 0 10px;
+    .form-section {
+        padding: 15px;
     }
     
-    .total-due-box, .discount-amount-box,
-    .pwd-discount-box, .vat-exempt-discount-box {
+    .section-title {
+        font-size: 1rem;
+    }
+    
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .discount-option {
         margin-bottom: 15px;
     }
+    
+    .other-item .col-md-1 {
+        text-align: right;
+    }
 }
-.discount-checkbox-wrapper {
+/* Card Styling */
+.billing-card {
+    border: none;
+    border-radius: 10px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.billing-card .card-header {
+    background-color: var(--primary-color);
+    color: white;
+    border-radius: 10px 10px 0 0 !important;
+    padding: 15px 20px;
+    border-bottom: none;
+}
+
+.billing-card .card-header .card-title {
+    font-weight: 600;
+    margin-bottom: 0;
+}
+
+/* Form Sections */
+.form-section {
+    background-color: white;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    border: 1px solid var(--border-color);
+}
+
+.section-title {
+    color: var(--primary-color);
+    font-weight: 600;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 1.1rem;
+}
+
+/* Form Controls */
+.form-control {
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    padding: 10px 15px;
+    height: calc(2.25rem + 8px);
+    transition: all 0.3s;
+}
+
+.form-control:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(18, 54, 158, 0.1);
+}
+
+select.form-control {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%236c757d' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 16px 12px;
+}
+
+/* Search Container */
+.search-container {
+    position: relative;
+}
+
+.search-results {
+    position: absolute;
+    z-index: 1000;
+    width: 100%;
+    max-height: 250px;
+    overflow-y: auto;
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 0 0 6px 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    display: none;
+}
+
+.search-results .patient-option {
+    padding: 10px 15px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.search-results .patient-option:hover {
+    background-color: #12369e;
+    color: white;
+}
+
+/* Charge Groups */
+.charge-group {
+    margin-bottom: 25px;
+}
+
+.charge-group h5 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-color);
+    margin-bottom: 15px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+/* Tables */
+.table {
+    width: 100%;
+    margin-bottom: 1rem;
+    color: var(--text-color);
+    border-collapse: separate;
+    border-spacing: 0;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.table thead th {
+    background-color: #CCCCCC;
+    color: var(--text-color);
+    font-weight: 600;
+    border: none;
+    padding: 12px 15px;
+}
+
+.table tbody tr:nth-child(even) {
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+.table tbody tr:hover {
+    background-color: rgba(0, 0, 0, 0.04);
+}
+
+.table td {
+    padding: 12px 15px;
+    vertical-align: middle;
+    border-top: 1px solid var(--border-color);
+}
+
+/* Additional Fees */
+.additional-fees {
+    background-color: var(--light-gray);
+    padding: 15px;
+    border-radius: 6px;
+    margin-top: 20px;
+}
+
+.additional-fees h5 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 15px;
+}
+
+/* Other Items */
+.other-items {
+    margin-top: 20px;
+}
+
+.other-item {
+    background-color: white;
+    padding: 10px;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    border: 1px solid var(--border-color);
+}
+
+.remove-item {
+    width: 30px;
+    height: 30px;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 10px;
-    background: rgb(241, 241, 241);
-    border-radius: 8px;
-    margin: 5px 0;
+    padding: 0;
 }
 
-.checkbox-label {
+/* Discount Options */
+.discount-option {
+    background-color: var(--light-gray);
+    padding: 15px;
+    border-radius: 6px;
+    height: 100%;
+}
+
+.custom-checkbox {
+    margin-bottom: 10px;
+}
+
+.discount-value {
+    font-weight: 600;
+    font-size: 1.1rem;
+    color: var(--primary-color);
+}
+
+/* PhilHealth Section */
+.philhealth-section {
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid var(--border-color);
+}
+
+.philhealth-section h5 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 15px;
+}
+
+/* Summary Section */
+.summary-card {
+    background-color: var(--light-gray);
+    border-radius: 6px;
+    padding: 20px;
+}
+
+.summary-row {
     display: flex;
-    align-items: center;
-    gap: 10px;
-    cursor: pointer;
-    margin: 0;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.summary-row:last-child {
+    border-bottom: none;
+}
+
+.summary-label {
     font-weight: 500;
-    color: #343a40;
 }
 
-.checkbox-label input[type="checkbox"] {
-    width: 20px;
-    height: 20px;
-    margin: 0;
-    cursor: pointer;
-    accent-color: #12369e;
+.summary-value {
+    font-weight: 600;
 }
 
-.checkbox-label span {
-    font-size: 14px;
-}
+.total-due {
+    font-size: 1.2rem;
+    color: #12369e;
+    margin-top: 10px;
+    font-weight: 600;
 
-@media (max-width: 768px) {
-    .discount-checkbox-wrapper {
-        margin: 5px 0;
-    }
 }
-/* Enhanced PhilHealth Box */
-.philhealth-box {
-    padding: 18px; /* Increased padding for better spacing */
-    background-color:rgb(241, 241, 241); /* Lighter background for better contrast */
-    border-radius: 12px; /* Slightly more rounded corners */
-    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15); /* Deeper shadow for better depth */
-    margin-bottom: 25px;
-    border: 1px solid #e0e4e8;
-    transition: box-shadow 0.3s ease, transform 0.3s ease;
-}
-
-/* Hover Effect */
-.philhealth-box:hover {
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2); /* More prominent shadow on hover */
-    transform: translateY(-4px); /* Slight lift for interactivity */
-}
-
-
-.philhealth-box h4 {
-    font-size: 18px;
-    color: #343a40;
-    margin-bottom: 15px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid #e0e4e8;
-}
-
-.philhealth-box select,
-.philhealth-box input {
-    border: 2px solid #e0e4e8;
-    transition: all 0.3s ease;
-}
-
-.philhealth-box select:focus,
-.philhealth-box input:focus {
+.custom-control-input:checked ~ .custom-control-label::before {
+    background-color:#12369e;
     border-color: #12369e;
-    box-shadow: 0 0 0 3px rgba(18,54,158,0.1);
-}
-/* Enhanced Checkbox Container */
-.checkbox-container {
-    padding: 18px;
-    background-color: rgb(241, 241, 241);
-    border-radius: 12px;
-    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
-    margin-bottom: 25px;
-    border: 1px solid #e0e4e8;
-    transition: box-shadow 0.3s ease, transform 0.3s ease;
+    box-shadow: 0 0 0 0.2rem rgba(18, 54, 158, 0.1);
 }
 
-/* Hover Effect */
-.checkbox-container:hover {
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
-    transform: translateY(-4px);
+.custom-control-label {
+    cursor: pointer;
+    user-select: none;
 }
-
-.checkbox-container h4 {
-    font-size: 18px;
-    color: #343a40;
-    margin-bottom: 15px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid #e0e4e8;
-}
+</style>

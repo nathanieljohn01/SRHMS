@@ -144,7 +144,7 @@ if (isset($_POST['update-housekeeping-schedule'])) {
                         <textarea class="form-control" name="task_description" rows="4" required><?php echo $row['task_description']; ?></textarea>
                     </div>
                     <div class="m-t-20 text-center">
-                        <button class="btn btn-primary submit-btn" name="update-housekeeping-schedule">Update Housekeeping Schedule</button>
+                        <button class="btn btn-primary submit-btn" name="update-housekeeping-schedule"><i class="fas fa-save mr-2"></i>Save</button>
                     </div>
                 </form>
             </div>

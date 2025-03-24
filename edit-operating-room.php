@@ -123,23 +123,8 @@ if (isset($_REQUEST['edit-operating-room'])) {
                     <div class="row">
                         <div class="col-md-12">
                             <div class="form-group">
-                                <label>Patient Name</label>
-                                <select class="form-control" name="patient_id" required>
-                                    <option value="">Select Patient</option>
-                                    <?php
-                                    // Fetch patients from tbl_patient
-                                    $fetch_query = mysqli_query($connection, "SELECT patient_id, CONCAT(first_name, ' ', last_name) AS patient_name FROM tbl_patient WHERE deleted = 0");
-                                    if (!$fetch_query) {
-                                        echo '<option value="">Error fetching patients</option>';
-                                    } else {
-                                        while ($row = mysqli_fetch_array($fetch_query)) {
-                                            // Pre-select the current patient
-                                            $selected = ($row['patient_id'] == $operating_room['patient_id']) ? 'selected' : '';
-                                            echo '<option value="' . htmlspecialchars($row['patient_id']) . '" ' . $selected . '>' . htmlspecialchars($row['patient_name']) . '</option>';
-                                        }
-                                    }
-                                    ?>
-                                </select>
+                                <label>Patient Name <span class="text-danger">*</span></label>
+                                <input class="form-control" type="text" name="patient_name" value="<?php echo htmlspecialchars($operating_room['patient_name']); ?>" disabled>
                             </div>
                         </div>
                     </div>
@@ -223,7 +208,7 @@ if (isset($_REQUEST['edit-operating-room'])) {
 
                     <!-- Submit Button -->
                     <div class="m-t-20 text-center">
-                        <button name="edit-operating-room" class="btn btn-primary submit-btn">Save</button>
+                        <button name="edit-operating-room" class="btn btn-primary submit-btn"><i class="fas fa-save mr-2"></i>Save</button>
                     </div>
                 </form>
             </div>

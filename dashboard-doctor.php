@@ -19,7 +19,7 @@ include('includes/connection.php');
                     ?>
                     <div class="dash-widget-info text-right">
                         <h3><?php echo $patient[0]; ?></h3>
-                        <span class="widget-title1">Patients <i class="fa fa-check" aria-hidden="true"></i></span>
+                        <span class="widget-title1">Patients</span>
                     </div>
                 </div>
             </div>
@@ -33,7 +33,7 @@ include('includes/connection.php');
                     ?>
                     <div class="dash-widget-info text-right">
                         <h3><?php echo $outpatient[0]; ?></h3>
-                        <span class="widget-title2">Out Patients <i class="fa fa-check" aria-hidden="true"></i></span>
+                        <span class="widget-title2">Outpatient</span>
                     </div>
                 </div>
             </div>
@@ -46,7 +46,7 @@ include('includes/connection.php');
                     ?>
                     <div class="dash-widget-info text-right">
                         <h3><?php echo $inpatient[0]; ?></h3>
-                        <span class="widget-title3">In Patients <i class="fa fa-check" aria-hidden="true"></i></span>
+                        <span class="widget-title3">Inpatient</span>
                     </div>
                 </div>
             </div>
@@ -59,7 +59,7 @@ include('includes/connection.php');
                     ?>
                     <div class="dash-widget-info text-right">
                         <h3><?php echo $hemodialysis[0]; ?></h3>
-                        <span class="widget-title4">Hemodialysis <i class="fa fa-check" aria-hidden="true"></i></span>
+                        <span class="widget-title4">Hemodialysis</span>
                     </div>
                 </div>
             </div>
@@ -260,10 +260,154 @@ for ($i = $current_month; $i <= 12; $i++) {
 }
 .btn-primary:hover {
     background: #05007E;
+}.dash-widget {
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    transition: all 0.3s ease;
+    height: 80%;
+}
+
+.dash-widget:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+}   
+.dash-widget-bg1, 
+.dash-widget-bg2,
+.dash-widget-bg3,
+.dash-widget-bg4 {
+    width: 80px;
+    height: 80px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 28px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.dash-widget-info {
+    padding: 20px;
+}
+
+.dash-widget-info h3 {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 5px;
+    color: #2c3e50;
+}
+
+.widget-title1, 
+.widget-title2, 
+.widget-title3, 
+.widget-title4 {
+    font-size: 14px;
+    color: #7f8c8d;
+}      
+/* Updated CSS for doctor name */
+.contact-name {
+    font-size: 1.1em; /* Slightly larger text */
+    font-weight: bold; /* Bold text */
+    color: #3c3c3c; /* Highlight color */
+}
+.contact-info {
+    padding: 10px;
+    border-bottom: 1px solid #ddd; /* Optional: Adds a bottom border for separation */
 }
 canvas {
     width: 100% !important;
     height: 300px !important; /* Palitan depende sa gusto mong height */
+}
+
+
+.contact-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.doctor-card {
+    padding: 15px;
+    border-bottom: 1px solid #eee;
+    transition: all 0.3s ease;
+}
+
+.doctor-card:hover {
+    background-color: #f8f9fa;
+}
+
+.contact-info {
+    display: flex;
+    align-items: center;
+}
+
+.doctor-image img {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid #fff;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+.doctor-details {
+    margin-left: 20px;
+}
+
+.doctor-name {
+    margin: 0;
+    color: #333;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.card {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    transition: all 0.3s ease;
+    margin-bottom: 24px;
+    overflow: hidden;
+}
+
+.card:hover {
+    box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+}
+
+.card-header {
+    background: white;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.card-header h4 {
+    font-weight: 600;
+    color: #2c3e50;
+    margin: 0;
+}
+
+.card-body {
+    padding: 20px;
+}
+.specialization {
+    color: rgba(15, 54, 159, 1);
+    margin: 5px 0;
+    font-weight: 500;
+}
+
+.schedule {
+    color: #666;
+    margin: 5px 0;
+    font-size: 14px;
+}
+
+.schedule i {
+    margin-right: 5px;
+    color: gray;
 }
 .card {
     box-shadow: 0 2px 10px rgba(0,0,0,0.1);
@@ -279,4 +423,9 @@ canvas {
 .card-body {
     padding: 25px;
 }
+/* Delayed animations for widgets */
+.dash-widget:nth-child(1) { animation-delay: 0.1s; }
+.dash-widget:nth-child(2) { animation-delay: 0.2s; }
+.dash-widget:nth-child(3) { animation-delay: 0.3s; }
+.dash-widget:nth-child(4) { animation-delay: 0.4s; }
 </style>

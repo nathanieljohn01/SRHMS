@@ -452,18 +452,19 @@ function showLoading(message) {
     color: #aaa; /* Adjust color as needed */
 }
 select.form-control {
-            border-radius: .375rem; /* Rounded corners */
-            border: 1px solid; /* Border color */
-            border-color: #ced4da; /* Border color */
-            background-color: #f8f9fa; /* Background color */
-            padding: .375rem 2.5rem .375rem .75rem; /* Adjust padding to make space for the larger arrow */
-            font-size: 1rem; /* Font size */
-            line-height: 1.5; /* Line height */
-            height: calc(2.25rem + 2px); /* Adjust height */
-            -webkit-appearance: none; /* Remove default styling on WebKit browsers */
-            -moz-appearance: none; /* Remove default styling on Mozilla browsers */
-            appearance: none; /* Remove default styling on other browsers */
-            background: url('data:image/svg+xml;charset=UTF-8,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20"%3E%3Cpath d="M7 10l5 5 5-5z" fill="%23aaa"/%3E%3C/svg%3E') no-repeat right 0.75rem center;
-            background-size: 20px; /* Size of the custom arrow */
-        }
+    border-radius: .375rem; /* Rounded corners */
+    border: 1px solid; /* Border color */
+    border-color: #ced4da; /* Border color */
+    background-color: #f8f9fa; /* Background color */
+    padding: .375rem 2.5rem .375rem .75rem; /* Adjust padding to make space for the larger arrow */
+    font-size: 1rem; /* Font size */
+    line-height: 1.5; /* Line height */
+    height: calc(2.25rem + 2px); /* Adjust height */
+    -webkit-appearance: none; /* Remove default styling on WebKit browsers */
+    -moz-appearance: none; /* Remove default styling on Mozilla browsers */
+    appearance: none; /* Remove default styling on other browsers */
+    background: url('data:image/svg+xml;charset=UTF-8,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20"%3E%3Cpath d="M7 10l5 5 5-5z" fill="%23aaa"/%3E%3C/svg%3E') no-repeat right 0.75rem center;
+    background-size: 20px; /* Size of the custom arrow */
+}
+
 </style>

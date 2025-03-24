@@ -37,12 +37,11 @@ if (isset($_REQUEST['update-newborn'])) {
     $gender = sanitize($connection, $_REQUEST['gender']);
     $birth_weight = sanitize($connection, $_REQUEST['birth_weight']);
     $birth_height = sanitize($connection, $_REQUEST['birth_height']);
-    $gestational_age = sanitize($connection, $_REQUEST['gestational_age']);
     $physician = sanitize($connection, $_REQUEST['physician']);
 
     // Prepare the update statement
-    $update_query = mysqli_prepare($connection, "UPDATE tbl_newborn SET first_name = ?, last_name = ?, dob = ?, tob = ?, gender = ?, birth_weight = ?, birth_height = ?, gestational_age = ?, physician = ? WHERE id = ?");
-    mysqli_stmt_bind_param($update_query, "ssssssssss", $first_name, $last_name, $dob, $tob, $gender, $birth_weight, $birth_height, $gestational_age, $physician, $id);
+    $update_query = mysqli_prepare($connection, "UPDATE tbl_newborn SET first_name = ?, last_name = ?, dob = ?, tob = ?, gender = ?, birth_weight = ?, birth_height = ?, physician = ? WHERE id = ?");
+    mysqli_stmt_bind_param($update_query, "sssssssss", $first_name, $last_name, $dob, $tob, $gender, $birth_weight, $birth_height, $physician, $id);
 
     // Execute the update query and check if it was successful
     if (mysqli_stmt_execute($update_query)) {
@@ -173,18 +172,12 @@ mysqli_stmt_close($fetch_query);
                         </div>
                         <div class="col-sm-6">
                             <div class="form-group">
-                                <label>Gestational Age (weeks)</label>
-                                <input class="form-control" type="text" name="gestational_age" value="<?php echo htmlspecialchars($row['gestational_age']); ?>" required>
-                            </div>
-                        </div>
-                        <div class="col-sm-6">
-                            <div class="form-group">
                                 <label>Physician</label>
                                 <input class="form-control" type="text" name="physician" value="<?php echo htmlspecialchars($row['physician']); ?>" required>
                             </div>
                         </div>
                         <div class="col-12 mt-3 text-center">
-                            <button class="btn btn-primary submit-btn" name="update-newborn">Update</button>
+                            <button class="btn btn-primary submit-btn" name="update-newborn"><i class="fas fa-save mr-2"></i>Save</button>
                         </div>
                     </div>
                 </form>

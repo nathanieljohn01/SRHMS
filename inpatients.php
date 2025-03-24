@@ -169,7 +169,7 @@ ob_end_flush(); // Flush output buffer
                                 <div class="dropdown dropdown-action">
                                     <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><i class="fa fa-ellipsis-v"></i></a>
                                     <div class="dropdown-menu dropdown-menu-right">
-                                        <?php if ($_SESSION['role'] == 1): ?>
+                                        <?php if ($_SESSION['role'] == 1 || $_SESSION['role'] == 10): ?>
                                             <!-- Insert Room Link Disabled based on conditions -->
                                             <?php if (empty($row['room_type']) && empty($row['room_number']) && empty($row['bed_number'])): ?>
                                                 <a class="dropdown-item" href="insert-room.php?id=<?php echo $row['id']; ?>"><i class="fa fa-pencil m-r-5"></i> Insert Room</a>

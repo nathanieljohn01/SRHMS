@@ -118,12 +118,12 @@ if (isset($_REQUEST['save-outpatient'])) {
                         <label>Patient Name <span class="text-danger">*</span></label>
                         <input class="form-control" type="text" name="patient_name" value="<?php echo $row['patient_name']; ?>" disabled>
                     </div>
-                        <div class="form-group">
-                                <label>Diagnosis</label>
-                                <textarea cols="30" rows="4" class="form-control" name="diagnosis"> <?php  echo $row['diagnosis'];  ?></textarea>
-                        </div>        
+                    <div class="form-group">
+                            <label>Diagnosis</label>
+                            <textarea cols="30" rows="4" class="form-control" name="diagnosis"> <?php  echo $row['diagnosis'];  ?></textarea>
+                    </div>        
                     <div class="m-t-20 text-center">
-                        <button name="save-outpatient" class="btn btn-primary submit-btn">Save</button>
+                        <button name="save-outpatient" class="btn btn-primary submit-btn"><i class="fas fa-save mr-2"></i>Save</button>
                     </div>
                 </form>
             </div>

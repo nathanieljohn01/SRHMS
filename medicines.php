@@ -94,21 +94,23 @@ $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_medicines WHERE dele
                                 <?php echo $weight_measure . ' ' . $unit_measure; ?>
                             </td>
                             <td>
-                                <div style="display: flex; flex-direction: column; align-items: center;">
-                                    <span><?php echo $row['quantity']; ?></span>
+                                <div class="d-flex flex-column align-items-center">
+                                    <span class="quantity-value"><?php echo $row['quantity']; ?></span>
                                     <?php if ($is_low_stock) { ?>
-                                        <span class="badge badge-warning" style="font-size: 12px; margin-top: 5px;">Low Stock</span>
+                                        <span class="badge <?php echo $row['quantity'] <= 10 ? 'badge-critical' : 'badge-low-stock'; ?> mt-1">
+                                            <?php echo $row['quantity'] <= 10 ? 'Critical' : 'Low Stock'; ?>
+                                        </span>
                                     <?php } ?>
                                 </div>
                             </td>
                             <td><?php echo date('F d, Y', strtotime($row['expiration_date'])); ?></td>
                             <td>
                                 <?php if ($days_to_expire <= 30 && $days_to_expire > 0): ?>
-                                    <span class="badge badge-danger" style="font-size: 12px;"><?php echo $days_to_expire . ' Days'; ?></span>
+                                    <span class="badge badge-expiring"><?php echo $days_to_expire == 1 ? 'Tomorrow' : $days_to_expire.' Days'; ?></span>
                                 <?php elseif ($days_to_expire <= 0): ?>
-                                    <span class="badge badge-danger" style="font-size: 12px; background-color: #e74c3c; color: #fff;">Expired</span>
+                                    <span class="badge badge-expired">Expired</span>
                                 <?php else: ?>
-                                    <span><?php echo $days_to_expire . ' Days'; ?></span>
+                                    <span class="badge badge-stock"><?php echo $days_to_expire.' Days'; ?></span>
                                 <?php endif; ?>
                             </td>
                             <td><?php echo $price; ?></td>
@@ -275,41 +277,56 @@ include('footer.php');
     border: 1px solid rgb(228, 228, 228);
     color: gray;
 }
-    .btn-primary {
-        background: #12369e;
-        border: none;
-    }
-    .btn-primary:hover {
-        background: #05007E;
-    }
-    .custom-badge {
-        border-radius: 4px;
-        display: inline-block;
-        font-size: 12px;
-        min-width: 95px;
-        padding: 1px 10px;
-        text-align: center;
-    }
-    .status-red,
-    a.status-red {
-        background-color: #ffe5e6;
-        border: 1px solid #fe0000;
-        color: #fe0000;
-    }
-
-    .low-stock {
-    background-color:#f62d51; /* Light red background for low stock */
-    color: #721c24; /* Dark red text color */
-    }
-
-    .low-stock-warning {
-        color: #d9534f; /* Red color for low stock text */
-        font-weight: bold;
-        margin-left: 10px;
-        font-size: 13px;
-    }
-    .badge-danger {
-    color: #ECECEC;
-    background-color: #a6131b !important;
+.btn-primary {
+    background: #12369e;
+    border: none;
 }
+.btn-primary:hover {
+    background: #05007E;
+}
+.badge {
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    padding: 5px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 70px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+/* Stock Status Badges */
+.badge-stock {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    color: #495057;
+}
+
+.badge-low-stock {
+    background-color: #fff3cd;
+    border: 1px solid #ffecb5;
+    color:rgb(173, 133, 0);
+}
+
+.badge-critical {
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    color: #a6131b;
+}
+
+.badge-expired {
+    background-color: #a6131b;
+    border: 1px solid #a6131b;
+    color: white;
+}
+
+.badge-expiring {
+    background-color: #fd7e14;
+    border: 1px solid #fd7e14;
+    color: white;
+}
+
 </style>

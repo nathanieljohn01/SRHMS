@@ -109,7 +109,7 @@ function sanitize($connection, $input) {
                         <input class="form-control" type="text" name="bed_number" value="<?php echo $row['bed_number']; ?>" required>
                     </div>
                     <div class="m-t-20 text-center">
-                        <button name="save-bed-allotment" class="btn btn-primary submit-btn">Save</button>
+                        <button name="save-bed-allotment" class="btn btn-primary submit-btn"><i class="fas fa-save mr-2"></i>Save</button>
                     </div>
                 </form>
             </div>

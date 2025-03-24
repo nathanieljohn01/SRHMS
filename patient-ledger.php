@@ -147,35 +147,92 @@ function updatePaymentTable(data) {
     var tbody = $('#ledgerTable tbody');
     tbody.empty();
     
+    if(data.length === 0) {
+        tbody.append(`
+            <tr>
+                <td colspan="8" class="text-center py-4 text-muted">
+                    <i class="fas fa-search mr-2"></i>No matching records found
+                </td>
+            </tr>
+        `);
+        return;
+    }
+    
     data.forEach(function(row) {
-        const statusClass = row.status === 'Fully Paid' ? 'status-green' : 'status-orange';
-        // Format patient ID display for newborns
-        const patientIdDisplay = row.patient_type === 'Newborn' ? 
-            `Newborn ID (${row.patient_id})` : 
-            row.patient_id;
+        const statusClass = getStatusClass(row.status);
+        const balanceClass = parseFloat(row.balance) > 0 ? 'balance-positive' : 'balance-zero';
+        const typeClass = getTypeClass(row.patient_type);
         
         tbody.append(`
             <tr>
-                <td>${patientIdDisplay}</td>
+                <td>${formatPatientId(row)}</td>
                 <td>${row.patient_name}</td>
-                <td>${row.patient_type}</td>
-                <td>₱${row.total_due}</td>
-                <td>₱${row.total_paid}</td>
-                <td>₱${row.balance}</td>
-                <td><span class="custom-badge ${statusClass}">${row.status}</span></td>
+                <td><span class="patient-type-badge ${typeClass}">${row.patient_type}</span></td>
+                <td class="amount-due">₱${formatCurrency(row.total_due)}</td>
+                <td class="amount-paid">₱${formatCurrency(row.total_paid)}</td>
+                <td class="amount-balance ${balanceClass}">₱${formatCurrency(row.balance)}</td>
+                <td>
+                    <span class="status-badge ${statusClass}">
+                        <i class="fas ${getStatusIcon(row.status)}"></i>
+                        ${row.status}
+                    </span>
+                </td>
                 <td class="text-center">
                     <button type="button" 
-                            class="btn btn-outline-primary btn-sm" 
+                            class="btn btn-view-details btn-outline-primary" 
                             onclick="viewPaymentDetails('${row.patient_id}', '${row.patient_name}')"
-                            title="View Payment History">
+                            data-toggle="tooltip" title="View Payment History">
                         <i class="fa fa-eye"></i>
                     </button>
                 </td>
             </tr>
         `);
     });
+    
+    // Initialize tooltips
+    $('[data-toggle="tooltip"]').tooltip();
 }
 
+// Helper functions
+function formatPatientId(row) {
+    if(row.patient_type === 'Newborn') {
+        return `Newborn: ${row.patient_id}</span>`;
+    }
+    return row.patient_id;
+}
+
+function formatCurrency(amount) {
+    return parseFloat(amount).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
+function getStatusClass(status) {
+    switch(status) {
+        case 'Fully Paid': return 'status-fully-paid';
+        case 'Partially Paid': return 'status-partially-paid';
+        case 'Unpaid': return 'status-unpaid';
+        case 'Overdue': return 'status-overdue';
+        default: return 'status-partially-paid';
+    }
+}
+
+function getTypeClass(type) {
+    switch(type) {
+        case 'Inpatient': return 'type-inpatient';
+        case 'Outpatient': return 'type-outpatient';
+        case 'Newborn': return 'type-newborn';
+        default: return '';
+    }
+}
+
+function getStatusIcon(status) {
+    switch(status) {
+        case 'Fully Paid': return 'fa-check-circle';
+        case 'Partially Paid': return 'fa-clock';
+        case 'Unpaid': return 'fa-exclamation-circle';
+        case 'Overdue': return 'fa-exclamation-triangle';
+        default: return 'fa-info-circle';
+    }
+}
 function viewPaymentDetails(patientId, patientName) {
     $.ajax({
         url: 'get-payment-details.php',
@@ -283,19 +340,6 @@ $(document).ready(function() {
     min-width: 80px;
 }
 
-.status-green {
-    background-color: #e8f5e9;
-    color: #43a047;
-    border: 1px solid #43a047;
-}
-
-.status-orange {
-    background-color: #fff3e0;
-    color: #fb8c00;
-    border: 1px solid #fb8c00;
-}
-
-
 .form-control {
     height: 38px;
     border: 1px solid #e3e3e3;
@@ -354,5 +398,64 @@ $(document).ready(function() {
         padding: 4px 8px;
     }
 }
+/* Status Badge System */
+.status-badge {
+    padding: 6px 12px;
+    border-radius: 50px;
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 100px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
 
+.status-badge i {
+    margin-right: 5px;
+    font-size: 10px;
+}
+
+.status-fully-paid {
+    background-color: #e8f5e9;
+    color: #2e7d32;
+    border: 1px solid #c8e6c9;
+}
+
+.status-partially-paid {
+    background-color: #fff3e0;
+    color: #e65100;
+    border: 1px solid #ffe0b2;
+}
+
+.status-unpaid {
+    background-color: #ffebee;
+    color: #c62828;
+    border: 1px solid #ffcdd2;
+}
+
+.status-overdue {
+    background-color: #f3e5f5;
+    color: #6a1b9a;
+    border: 1px solid #e1bee7;
+}
+
+/*Action Button */
+.btn-view-details {
+    width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s;
+}
+
+.btn-view-details:hover {
+    background-color: #12369e;
+    color: white !important;
+    transform: scale(1.1);
+}
 </style>

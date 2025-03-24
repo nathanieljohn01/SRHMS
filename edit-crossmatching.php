@@ -243,7 +243,7 @@ if (isset($_POST['edit-crossmatching'])) {
                         <input class="form-control" type="text" name="minor_crossmatching" id="minor_crossmatching" value="<?php echo htmlspecialchars($crossmatching_data['minor_crossmatching']); ?>">
                     </div>
                     <div class="text-center mt-4">
-                        <button class="btn btn-primary submit-btn" name="edit-crossmatching">Update Crossmatching Result</button>
+                        <button class="btn btn-primary submit-btn" name="edit-crossmatching"><i class="fas fa-save mr-2"></i>Update Result</button>
                     </div>
                 </form>
             </div>

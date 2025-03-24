@@ -479,4 +479,15 @@ function confirmDelete(id) {
     border: none; 
     color: #6c757d; 
     }
+    .page-header {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #e9ecef;
+    }
+    .page-title {
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+        color: #343a40;
+    }
+
 </style>

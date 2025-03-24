@@ -56,16 +56,40 @@ if ($patientType === 'hemodialysis') {
             </div>
             
             <div class="col-md-9">
-                <div class="d-flex justify-content-end">
-                    <div class="btn-group mr-5" role="group">
-                        <button id="inpatient-btn" class="btn btn-primary btn-info <?php echo ($patientType === 'inpatient') ? 'btn btn-black' : ''; ?>" onclick="showTable('inpatient')">Inpatient</button>
-                        <button id="hemodialysis-btn" class="btn btn-primary btn-info <?php echo ($patientType === 'hemodialysis') ? 'btn btn-black' : ''; ?>" onclick="showTable('hemodialysis')">Hemodialysis</button>
-                        <button id="newborn-btn" class="btn btn-primary btn-info <?php echo ($patientType === 'newborn') ? 'btn btn-black' : ''; ?>" onclick="showTable('newborn')">Newborn</button>
-                    </div>
-                    <a href="add-billing.php" class="btn btn-primary"><i class="fa fa-plus"></i> Add Account</a>
+                <div class="d-flex justify-content-end align-items-center">
+                    <!-- Breadcrumb Navigation -->
+                    <nav aria-label="breadcrumb" class="mr-4">
+                        <ol class="breadcrumb bg-transparent p-0 mb-0" style="font-size: 1.1rem;">
+                            <li class="breadcrumb-item">
+                                <a href="javascript:void(0);" onclick="showTable('inpatient')" 
+                                class="<?= ($patientType === 'inpatient') ? 'text-dark font-weight-bold' : 'text-secondary' ?>"
+                                style="padding: 0.08rem 0.15rem; margin: -0.1rem;">
+                                Inpatient
+                                </a>
+                            </li>
+                            <li class="breadcrumb-item">
+                                <a href="javascript:void(0);" onclick="showTable('hemodialysis')" 
+                                class="<?= ($patientType === 'hemodialysis') ? 'text-dark font-weight-bold' : 'text-secondary' ?>"
+                                style="padding: 0.08rem 0.15rem; margin: -0.1rem;">
+                                Hemodialysis
+                                </a>
+                            </li>
+                            <li class="breadcrumb-item">
+                                <a href="javascript:void(0);" onclick="showTable('newborn')" 
+                                class="<?= ($patientType === 'newborn') ? 'text-dark font-weight-bold' : 'text-secondary' ?>"
+                                style="padding: 0.08rem 0.15rem; margin: -0.1rem;">
+                                Newborn
+                                </a>
+                            </li>
+                        </ol>
+                    </nav>
+                    
+                    <a href="add-billing.php" class="btn btn-primary">
+                        <i class="fa fa-plus"></i> Add Account
+                    </a>
                 </div>
-            </div>
-        </div>
+            </div>      
+        </div>  
 
         <div class="table-responsive">
         <h5 class="font-weight-bold mb-2">Search Patient:</h5>
@@ -183,7 +207,7 @@ if ($patientType === 'hemodialysis') {
                 </tbody>
             </table>
             <!-- Charges Details Table -->
-            <h4 class="mt-6">Charges Details</h4>
+            <h4 class="mt-4">Charges Details</h4>
             <table class="datatable table table-bordered table-hover" id="billingTable">
                 <thead style="background-color: #CCCCCC;">
                     <tr>
@@ -584,5 +608,4 @@ $('.dropdown-toggle').on('click', function (e) {
     transform: translateY(0);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
-
 </style>

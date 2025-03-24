@@ -294,7 +294,7 @@ ob_end_flush(); // Flush output buffer
                                     <div class="dropdown-menu dropdown-menu-right">
                                     <?php 
                                     if ($_SESSION['role'] == 1 | $_SESSION['role'] == 3) {
-                                        echo '<a class="dropdown-item" href="edit-hemo.php?id='.$row['id'].'" onclick="return confirmDelete()"><i class="fa fa-pencil m-r-5"></i> Update</a>';
+                                        echo '<a class="dropdown-item" href="edit-hemo.php?id='.$row['id'].'"><i class="fa fa-pencil m-r-5"></i> Update</a>';
                                         echo '<a class="dropdown-item" href="hemodialysis.php?ids='.$row['id'].'" onclick="return confirmDelete()"><i class="fa fa-trash-o m-r-5"></i> Delete</a>';
                                     }
                                     ?>

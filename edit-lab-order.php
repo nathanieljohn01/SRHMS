@@ -103,7 +103,7 @@ if (isset($_POST['save-order'])) {
                         <input class="form-control" type="text" name="price" value="<?php echo $order_row['price']; ?>">
                     </div>
                     <div class="m-t-20 text-center">
-                        <button name="save-order" class="btn btn-primary submit-btn">Save</button>
+                        <button name="save-order" class="btn btn-primary submit-btn"><i class="fas fa-save mr-2"></i>Save</button>
                     </div>
                 </form>
             </div>

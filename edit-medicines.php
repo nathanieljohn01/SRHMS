@@ -135,7 +135,7 @@ if (isset($_POST['save-medicine'])) {
                         <input class="form-control" type="text" name="price" value="<?php echo $row['price']; ?>">
                     </div>
                     <div class="m-t-20 text-center">
-                        <button name="save-medicine" class="btn btn-primary submit-btn">Save</button>
+                        <button name="save-medicine" class="btn btn-primary submit-btn"><i class="fas fa-save mr-2"></i>Save</button>
                     </div>
                 </form>
             </div>

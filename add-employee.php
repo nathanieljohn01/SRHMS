@@ -277,71 +277,71 @@ include('footer.php');
     };
 </script>
 <style>
-    .form-control {
+.form-control {
+    border-radius: .375rem; /* Rounded corners */
+    border-color: #ced4da; /* Border color */
+    background-color: #f8f9fa; /* Background color */
+}
+select.form-control {
         border-radius: .375rem; /* Rounded corners */
+        border: 1px solid; /* Border color */
         border-color: #ced4da; /* Border color */
         background-color: #f8f9fa; /* Background color */
+        padding: .375rem 2.5rem .375rem .75rem; /* Adjust padding to make space for the larger arrow */
+        font-size: 1rem; /* Font size */
+        line-height: 1.5; /* Line height */
+        height: calc(2.25rem + 2px); /* Adjust height */
+        -webkit-appearance: none; /* Remove default styling on WebKit browsers */
+        -moz-appearance: none; /* Remove default styling on Mozilla browsers */
+        appearance: none; /* Remove default styling on other browsers */
+        background: url('data:image/svg+xml;charset=UTF-8,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20"%3E%3Cpath d="M7 10l5 5 5-5z" fill="%23aaa"/%3E%3C/svg%3E') no-repeat right 0.75rem center;
+        background-size: 20px; /* Size of the custom arrow */
     }
-    select.form-control {
-            border-radius: .375rem; /* Rounded corners */
-            border: 1px solid; /* Border color */
-            border-color: #ced4da; /* Border color */
-            background-color: #f8f9fa; /* Background color */
-            padding: .375rem 2.5rem .375rem .75rem; /* Adjust padding to make space for the larger arrow */
-            font-size: 1rem; /* Font size */
-            line-height: 1.5; /* Line height */
-            height: calc(2.25rem + 2px); /* Adjust height */
-            -webkit-appearance: none; /* Remove default styling on WebKit browsers */
-            -moz-appearance: none; /* Remove default styling on Mozilla browsers */
-            appearance: none; /* Remove default styling on other browsers */
-            background: url('data:image/svg+xml;charset=UTF-8,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20"%3E%3Cpath d="M7 10l5 5 5-5z" fill="%23aaa"/%3E%3C/svg%3E') no-repeat right 0.75rem center;
-            background-size: 20px; /* Size of the custom arrow */
-        }
-    .btn-primary.submit-btn {
-        border-radius: 4px; 
-        padding: 10px 20px;
-        font-size: 16px;
-    }    
-    .btn-primary {
-        background: #12369e;
-        border: none;
-    }
-    .btn-primary:hover {
-        background: #05007E;
-    }
+.btn-primary.submit-btn {
+    border-radius: 4px; 
+    padding: 10px 20px;
+    font-size: 16px;
+}    
+.btn-primary {
+    background: #12369e;
+    border: none;
+}
+.btn-primary:hover {
+    background: #05007E;
+}
 
-    .cal-icon {
-        position: relative;
-    }
-
-    .cal-icon input {
-        padding-right: 30px; /* Adjust the padding to make space for the icon */
-    }
-
-    .cal-icon::after {
-        content: '\f073'; /* FontAwesome calendar icon */
-        font-family: 'FontAwesome';
-        position: absolute;
-        right: 10px; /* Adjust this value to align the icon properly */
-        top: 50%;
-        transform: translateY(-50%);
-        pointer-events: none;
-        color: #aaa; /* Adjust color as needed */
-    }
-    .time-icon {
+.cal-icon {
     position: relative;
-    }
+}
 
-    .time-icon input {
-        padding-right: 30px; /* Adjust the padding to make space for the icon */
-    }
+.cal-icon input {
+    padding-right: 30px; /* Adjust the padding to make space for the icon */
+}
 
-    .time-icon::after {
-        position: absolute;
-        right: 10px; /* Adjust this value to align the icon properly */
-        top: 50%;
-        transform: translateY(-50%);
-        pointer-events: none;
-        color: #aaa; /* Adjust color as needed */
-    }
+.cal-icon::after {
+    content: '\f073'; /* FontAwesome calendar icon */
+    font-family: 'FontAwesome';
+    position: absolute;
+    right: 10px; /* Adjust this value to align the icon properly */
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    color: #aaa; /* Adjust color as needed */
+}
+.time-icon {
+position: relative;
+}
+
+.time-icon input {
+    padding-right: 30px; /* Adjust the padding to make space for the icon */
+}
+
+.time-icon::after {
+    position: absolute;
+    right: 10px; /* Adjust this value to align the icon properly */
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    color: #aaa; /* Adjust color as needed */
+}
 </style>

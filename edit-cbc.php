@@ -179,7 +179,7 @@ if (isset($_POST['update-cbc'])) {
                         <input class="form-control" type="number" name="platelets" id="platelets" value="<?php echo htmlspecialchars($cbc_data['platelets']); ?>" step="0.01" min="0" oninput="validateDecimal(this)">
                     </div>
                     <div class="text-center mt-4">
-                        <button class="btn btn-primary submit-btn" name="update-cbc">Update Result</button>
+                       <button class="btn btn-primary submit-btn" name="update-cbc"><i class="fas fa-save mr-2"></i> Update Result</button>
                     </div>
                 </form>
             </div>

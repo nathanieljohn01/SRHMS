@@ -149,7 +149,7 @@ if (isset($_POST['edit-electrolytes'])) {
                             step="0.01" min="1.0" max="3.0" required>
                     </div>
                     <div class="text-center mt-4">
-                        <button class="btn btn-primary submit-btn" name="edit-electrolytes">Update Result</button>
+                        <button class="btn btn-primary submit-btn" name="edit-electrolytes"><i class="fas fa-save mr-2"></i>Update Result</button>
                     </div>
                 </form>
             </div>
