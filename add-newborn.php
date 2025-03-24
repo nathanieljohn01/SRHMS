@@ -34,7 +34,7 @@ if (isset($_REQUEST['save-newborn'])) {
     $gestational_age = sanitize($connection, $_REQUEST['gestational_age']);
     $physician = sanitize($connection, $_REQUEST['physician']);
     $address = sanitize($connection, $_REQUEST['address']); 
-    $diagnosis = sanitize($connection, $_REQUEST['diagnosis']); 
+    $diagnosis = "Newborn";
     
     // Set default value for room_type
     $room_type = "NICU"; 

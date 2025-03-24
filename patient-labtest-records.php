@@ -33,12 +33,6 @@ if (isset($_GET['patient_id'])) {
                 backdrop: 'rgba(0, 0, 0, 0.3)',
                 customClass: {
                     confirmButton: 'swal2-confirm-btn'
-                },
-                showClass: {
-                    popup: 'animate__animated animate__fadeInDown'
-                },
-                hideClass: {
-                    popup: 'animate__animated animate__fadeOutUp'
                 }
             }).then((result) => {
                 if (result.isConfirmed) {

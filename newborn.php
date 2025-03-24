@@ -108,7 +108,7 @@ ob_end_flush();
                 <div class="input-group mb-3">
                     <div class="position-relative w-100">
                         <i class="fa fa-search position-absolute text-secondary" style="top: 50%; left: 12px; transform: translateY(-50%);"></i>
-                        <input class="form-control" type="text" id="newbornSearchInput" onkeyup="filterNewborns()" style="padding-left: 35px; padding-right: 35px;">
+                        <input class="form-control" type="text" id="newbornSearchInput" onkeyup="filterNewborns()" placeholder="Search" style="padding-left: 35px; padding-right: 35px;">
                         <button class="position-absolute border-0 bg-transparent text-secondary" type="button" onclick="clearSearch()" style="top: 50%; right: 10px; transform: translateY(-50%);">
                             <i class="fa fa-times"></i>
                         </button>
@@ -136,7 +136,6 @@ ob_end_flush();
                         <th>Admission Date and Time</th>
                         <th>Discharge Date and Time</th>
                         <th>Physician</th>
-                        <th>Diagnosis</th>
                         <th>Action</th>
                     </tr>
                 </thead>
@@ -203,7 +202,6 @@ ob_end_flush();
                             <td><?= $admission_date; ?></td>
                             <td><?= $discharge_date; ?></td>
                             <td><?= htmlspecialchars($row['physician']); ?></td>
-                            <td><?= htmlspecialchars($row['diagnosis']); ?></td>
                             <td class="text-right">
                                 <div class="dropdown dropdown-action">
                                     <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false">

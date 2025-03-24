@@ -441,17 +441,17 @@ if (isset($_POST['add-billing'])) {
                 </div>
 
                 <div class="fees-container">
-                    <h4 class="fees-title">Additional Fees</h4>
-                        <!-- Supplies Fee Section -->
-                        <div class="form-group row">
-                            <div class="col-sm-12">
-                                <label for="supplies-fee" class="form-label">Supplies</label>
-                                <input type="number" class="form-control" id="supplies-fee" name="supplies_fee" placeholder="Enter supplies fee">
-                            </div>
+                <h4 class="fees-title">Additional Fees</h4>
+                    <!-- Supplies Fee Section -->
+                    <div class="form-group row">
+                        <div class="col-sm-12">
+                            <label for="supplies-fee" class="form-label">Supplies</label>
+                            <input type="number" step="0.01" min="0" class="form-control" id="supplies-fee" name="supplies_fee" placeholder="Enter supplies fee">
                         </div>
+                    </div>
 
-                        <!-- Others Fee Section -->
-                        <div class="form-group row">
+                    <!-- Others Fee Section -->
+                    <div class="form-group row">
                         <div class="col-sm-12">
                             <label>Others:</label>
                             <div id="other-items-container">
@@ -461,7 +461,7 @@ if (isset($_POST['add-billing'])) {
                                         <input type="text" class="form-control mb-2" name="others[0][name]" placeholder="Item Name">
                                     </div>
                                     <div class="col-sm-6">
-                                        <input type="number" class="form-control" name="others[0][cost]" placeholder="Item Cost">
+                                        <input type="number" step="0.01" min="0" class="form-control" name="others[0][cost]" placeholder="Item Cost">
                                     </div>
                                 </div>
                             </div>
@@ -473,16 +473,15 @@ if (isset($_POST['add-billing'])) {
                         </div>
                     </div>
 
-
                     <!-- Professional Fee and Readers Fee -->
                     <div class="form-group row">
                         <div class="col-sm-6">
                             <label for="professional-fee">Professional's Fee</label>
-                            <input type="number" class="form-control" id="professional-fee" name="professional_fee" placeholder="Enter Professional Fee">
+                            <input type="number" step="0.01" min="0" class="form-control" id="professional-fee" name="professional_fee" placeholder="Enter Professional Fee">
                         </div>
                         <div class="col-sm-6">
                             <label for="readers-fee">Reader's Fee</label>
-                            <input type="number" class="form-control" id="readers-fee" name="readers_fee" placeholder="Enter Readers Fee">
+                            <input type="number" step="0.01" min="0" class="form-control" id="readers-fee" name="readers_fee" placeholder="Enter Readers Fee">
                         </div>
                     </div>
                 </div>
@@ -537,22 +536,22 @@ if (isset($_POST['add-billing'])) {
                     <div id="first-case-rate-container" class="form-group row" style="display: none;">
                         <div class="col-sm-6">
                             <label for="professional-fee-discount">Professional Fee Discount</label>
-                            <input type="number" class="form-control" id="professional-fee-discount" name="philhealth_pf" placeholder="Enter Amount" disabled>
+                            <input type="number" step="0.01" min="0" class="form-control" id="professional-fee-discount" name="philhealth_pf" placeholder="Enter Amount" disabled>
                         </div>
                         <div class="col-sm-6">
                             <label for="hospital-bill-discount">Hospital Bill Discount</label>
-                            <input type="number" class="form-control" id="hospital-bill-discount" name="philhealth_hb" placeholder="Enter Amount" disabled>
+                            <input type="number" step="0.01" min="0" class="form-control" id="hospital-bill-discount" name="philhealth_hb" placeholder="Enter Amount" disabled>
                         </div>
                     </div>
                     <!-- Second Case Rate Fields (Hidden) -->
                     <div id="second-case-rate-container" class="form-group row" style="display: none;">
                         <div class="col-sm-6">
                             <label for="professional-fee-discount-second">Professional Fee Discount</label>
-                            <input type="number" class="form-control" id="professional-fee-discount-second" name="philhealth_pf" placeholder="Enter Amount" disabled>
+                            <input type="number" step="0.01" min="0" class="form-control" id="professional-fee-discount-second" name="philhealth_pf" placeholder="Enter Amount" disabled>
                         </div>
                         <div class="col-sm-6">
                             <label for="hospital-bill-discount-second">Hospital Bill Discount</label>
-                            <input type="number" class="form-control" id="hospital-bill-discount-second" name="philhealth_hb" placeholder="Enter Amount" disabled>
+                            <input type="number" step="0.01" min="0" class="form-control" id="hospital-bill-discount-second" name="philhealth_hb" placeholder="Enter Amount" disabled>
                         </div>
                     </div>
                 </div>

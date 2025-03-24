@@ -48,7 +48,7 @@ $fetch_query = mysqli_query($connection, "
                         <!-- Search Icon -->
                         <i class="fa fa-search position-absolute text-secondary" style="top: 50%; left: 12px; transform: translateY(-50%);"></i>
                         <!-- Input Field -->
-                        <input class="form-control" type="text" id="medicineSearchInput" onkeyup="filterMedicines()" style="padding-left: 35px; padding-right: 35px;">
+                        <input class="form-control" type="text" id="medicineSearchInput" onkeyup="filterMedicines()" placeholder="Search" style="padding-left: 35px; padding-right: 35px;">
                         <!-- Clear Button -->
                         <button class="position-absolute border-0 bg-transparent text-secondary" type="button" onclick="clearSearch()" style="top: 50%; right: 10px; transform: translateY(-50%);">
                             <i class="fa fa-times"></i>

@@ -61,6 +61,11 @@ if (isset($_POST['submit_payment'])) {
         mysqli_begin_transaction($connection);
         
         try {
+            $patient_name = mysqli_real_escape_string($connection, $patient_name);
+            $patient_id = mysqli_real_escape_string($connection, $patient_id);
+            $payment_id = mysqli_real_escape_string($connection, $payment_id);
+            $patient_type = mysqli_real_escape_string($connection, $patient_type);
+    
             if ($patient_type == 'Inpatient') {
                 // Get inpatient billing details
                 $total_due_query = mysqli_query($connection, "
@@ -109,7 +114,7 @@ if (isset($_POST['submit_payment'])) {
                 if (!$update_balance) {
                     throw new Exception("Error updating balance: " . mysqli_error($connection));
                 }
-
+    
                 // If payment is complete (remaining balance is 0), update billing_others
                 if ($initial_remaining <= 0) {
                     // Get the billing_id from the latest inpatient billing
@@ -126,7 +131,7 @@ if (isset($_POST['submit_payment'])) {
                     
                     $billing_row = mysqli_fetch_assoc($billing_id_query);
                     if ($billing_row) {
-                        $billing_id = $billing_row['billing_id'];
+                        $billing_id = mysqli_real_escape_string($connection, $billing_row['billing_id']);
                         
                         // Update all related records in billing_others
                         $update_others = mysqli_query($connection, "
@@ -138,7 +143,7 @@ if (isset($_POST['submit_payment'])) {
                         if (!$update_others) {
                             throw new Exception("Error updating billing others: " . mysqli_error($connection));
                         }
-
+    
                         // Update inpatient record
                         $update_inpatient = mysqli_query($connection, "
                             UPDATE tbl_inpatient_record 
@@ -149,7 +154,7 @@ if (isset($_POST['submit_payment'])) {
                         if (!$update_inpatient) {
                             throw new Exception("Error updating inpatient record: " . mysqli_error($connection));
                         }
-
+    
                         // Update operating room record
                         $update_or = mysqli_query($connection, "
                             UPDATE tbl_operating_room 
@@ -160,7 +165,7 @@ if (isset($_POST['submit_payment'])) {
                         if (!$update_or) {
                             throw new Exception("Error updating operating room record: " . mysqli_error($connection));
                         }
-
+    
                         // Update lab orders
                         $update_lab = mysqli_query($connection, "
                             UPDATE tbl_laborder 
@@ -172,7 +177,7 @@ if (isset($_POST['submit_payment'])) {
                         if (!$update_lab) {
                             throw new Exception("Error updating lab orders: " . mysqli_error($connection));
                         }
-
+    
                         // Update radiology orders
                         $update_rad = mysqli_query($connection, "
                             UPDATE tbl_radiology 
@@ -198,6 +203,12 @@ if (isset($_POST['submit_payment'])) {
                     }
                 }
             } else if ($patient_type == 'Outpatient') {
+                // Escape inputs to prevent SQL injection 
+                $patient_name = mysqli_real_escape_string($connection, $patient_name);
+                $patient_id = mysqli_real_escape_string($connection, $patient_id);
+                $payment_id = mysqli_real_escape_string($connection, $payment_id);
+                $patient_type = mysqli_real_escape_string($connection, $patient_type);
+                     
                 // For outpatient, calculate total from lab and radiology
                 $lab_query = mysqli_query($connection, "
                     SELECT COALESCE(SUM(price), 0) as total_lab 
@@ -206,7 +217,7 @@ if (isset($_POST['submit_payment'])) {
                     AND is_billed = 0 
                     AND deleted = 0
                 ");
-                
+            
                 $rad_query = mysqli_query($connection, "
                     SELECT COALESCE(SUM(price), 0) as total_rad 
                     FROM tbl_radiology 
@@ -214,20 +225,21 @@ if (isset($_POST['submit_payment'])) {
                     AND is_billed = 0 
                     AND deleted = 0
                 ");
-                
+            
                 if (!$lab_query || !$rad_query) {
                     throw new Exception("Error calculating fees: " . mysqli_error($connection));
                 }
-                
+            
                 $lab_total = mysqli_fetch_assoc($lab_query)['total_lab'];
                 $rad_total = mysqli_fetch_assoc($rad_query)['total_rad'];
-                
-                // Set all payment values
-                $total_due = $lab_total + $rad_total;
-                $amount_to_pay = $total_due;
-                $amount_paid = $total_due; // For outpatient, always fully paid
-                $initial_remaining = 0;
-                
+            
+                $amount_to_pay = $lab_total + $rad_total;
+                $total_due = $amount_to_pay;
+                $amount_paid = str_replace(',', '', $_POST['amount_paid']); // Get actual amount paid from form
+                $amount_paid = floatval($amount_paid);
+                $initial_remaining = max(0, $amount_to_pay - $amount_paid);
+
+
                 // Insert payment record for outpatient
                 $insert_query = "INSERT INTO tbl_payment (
                     payment_id, patient_id, patient_name, patient_type,
@@ -236,11 +248,11 @@ if (isset($_POST['submit_payment'])) {
                     '$payment_id', '$patient_id', '$patient_name', '$patient_type',
                     $total_due, $amount_to_pay, $amount_paid, $initial_remaining, NOW()
                 )";
-                
+            
                 if (!mysqli_query($connection, $insert_query)) {
                     throw new Exception("Error inserting payment: " . mysqli_error($connection));
                 }
-                
+            
                 // Update lab orders
                 $update_lab = mysqli_query($connection, "
                     UPDATE tbl_laborder 
@@ -249,11 +261,11 @@ if (isset($_POST['submit_payment'])) {
                     AND is_billed = 0
                     AND deleted = 0
                 ");
-                
+            
                 if (!$update_lab) {
                     throw new Exception("Error updating lab orders: " . mysqli_error($connection));
                 }
-
+            
                 // Update radiology orders
                 $update_rad = mysqli_query($connection, "
                     UPDATE tbl_radiology 
@@ -262,11 +274,17 @@ if (isset($_POST['submit_payment'])) {
                     AND is_billed = 0
                     AND deleted = 0
                 ");
-                
+            
                 if (!$update_rad) {
                     throw new Exception("Error updating radiology orders: " . mysqli_error($connection));
-                }
+                }           
             } else if ($patient_type == 'Hemodialysis') {
+                // Escape inputs to prevent SQL injection
+                $patient_name = mysqli_real_escape_string($connection, $patient_name);
+                $payment_id = mysqli_real_escape_string($connection, $payment_id);
+                $patient_id = mysqli_real_escape_string($connection, $patient_id);
+                $patient_type = mysqli_real_escape_string($connection, $patient_type);
+            
                 // Get hemodialysis billing details
                 $total_due_query = mysqli_query($connection, "
                     SELECT total_due, remaining_balance 
@@ -279,9 +297,7 @@ if (isset($_POST['submit_payment'])) {
                     throw new Exception("Error fetching billing details: " . mysqli_error($connection));
                 }
                 
-                $total_due_row = mysqli_fetch_assoc($total_due_query);
-                $total_due = $total_due_row ? $total_due_row['total_due'] : 0;
-                $amount_to_pay = $total_due_row ? $total_due_row['remaining_balance'] : 0;
+                $amount_to_pay = $lab_total + $rad_total;
                 $amount_paid = str_replace(',', '', $_POST['amount_paid']);
                 $amount_paid = floatval($amount_paid);
                 $initial_remaining = max(0, $amount_to_pay - $amount_paid);
@@ -294,7 +310,7 @@ if (isset($_POST['submit_payment'])) {
                     '$payment_id', '$patient_id', '$patient_name', '$patient_type',
                     $total_due, $amount_to_pay, $amount_paid, $initial_remaining, NOW()
                 )";
-                
+            
                 if (!mysqli_query($connection, $insert_query)) {
                     throw new Exception("Error inserting payment: " . mysqli_error($connection));
                 }
@@ -314,7 +330,7 @@ if (isset($_POST['submit_payment'])) {
                 if (!$update_balance) {
                     throw new Exception("Error updating balance: " . mysqli_error($connection));
                 }
-
+            
                 // If payment is complete (remaining balance is 0), update related records
                 if ($initial_remaining <= 0) {
                     // Get the billing_id from the latest hemodialysis billing
@@ -331,7 +347,7 @@ if (isset($_POST['submit_payment'])) {
                     
                     $billing_row = mysqli_fetch_assoc($billing_id_query);
                     if ($billing_row) {
-                        $billing_id = $billing_row['billing_id'];
+                        $billing_id = mysqli_real_escape_string($connection, $billing_row['billing_id']);
                         
                         // Update all related records in billing_others
                         $update_others = mysqli_query($connection, "
@@ -343,7 +359,7 @@ if (isset($_POST['submit_payment'])) {
                         if (!$update_others) {
                             throw new Exception("Error updating billing others: " . mysqli_error($connection));
                         }
-
+            
                         // Update hemodialysis record
                         $update_hemodialysis = mysqli_query($connection, "
                             UPDATE tbl_hemodialysis 
@@ -354,7 +370,7 @@ if (isset($_POST['submit_payment'])) {
                         if (!$update_hemodialysis) {
                             throw new Exception("Error updating hemodialysis record: " . mysqli_error($connection));
                         }
-
+            
                         // Update lab orders
                         $update_lab = mysqli_query($connection, "
                             UPDATE tbl_laborder 
@@ -366,7 +382,7 @@ if (isset($_POST['submit_payment'])) {
                         if (!$update_lab) {
                             throw new Exception("Error updating lab orders: " . mysqli_error($connection));
                         }
-
+            
                         // Update radiology orders
                         $update_rad = mysqli_query($connection, "
                             UPDATE tbl_radiology 
@@ -378,7 +394,7 @@ if (isset($_POST['submit_payment'])) {
                         if (!$update_rad) {
                             throw new Exception("Error updating radiology orders: " . mysqli_error($connection));
                         }
-
+            
                         // Update treatment records
                         $update_treatment = mysqli_query($connection, "
                             UPDATE tbl_treatment 
@@ -389,10 +405,15 @@ if (isset($_POST['submit_payment'])) {
                         if (!$update_treatment) {
                             throw new Exception("Error updating treatment records: " . mysqli_error($connection));
                         }
-                        
                     }
-                }
+                }            
             } else if ($patient_type == 'Newborn') {
+                // Escape user inputs to prevent SQL injection
+                $patient_name = mysqli_real_escape_string($connection, $patient_name);
+                $patient_id = mysqli_real_escape_string($connection, $patient_id);
+                $payment_id = mysqli_real_escape_string($connection, $payment_id);
+                $patient_type = mysqli_real_escape_string($connection, $patient_type);
+            
                 // Get newborn billing details
                 $total_due_query = mysqli_query($connection, "
                     SELECT total_due, remaining_balance 
@@ -400,18 +421,22 @@ if (isset($_POST['submit_payment'])) {
                     WHERE patient_name = '$patient_name' 
                     ORDER BY id DESC LIMIT 1
                 ");
-                
+            
                 if (!$total_due_query) {
                     throw new Exception("Error fetching billing details: " . mysqli_error($connection));
                 }
-                
+            
                 $total_due_row = mysqli_fetch_assoc($total_due_query);
                 $total_due = $total_due_row ? $total_due_row['total_due'] : 0;
                 $amount_to_pay = $total_due_row ? $total_due_row['remaining_balance'] : 0;
-                $amount_paid = str_replace(',', '', $_POST['amount_paid']);
-                $amount_paid = floatval($amount_paid);
-                $initial_remaining = max(0, $amount_to_pay - $amount_paid);
                 
+                // Escape and sanitize the amount paid input
+                $amount_paid = isset($_POST['amount_paid']) ? $_POST['amount_paid'] : '0';
+                $amount_paid = str_replace(',', '', $amount_paid);
+                $amount_paid = floatval($amount_paid);
+                
+                $initial_remaining = max(0, $amount_to_pay - $amount_paid);
+            
                 // Insert payment record using newborn_id as patient_id
                 $insert_query = "INSERT INTO tbl_payment (
                     payment_id, patient_id, patient_name, patient_type,
@@ -420,11 +445,11 @@ if (isset($_POST['submit_payment'])) {
                     '$payment_id', '$patient_id', '$patient_name', '$patient_type',
                     $total_due, $amount_to_pay, $amount_paid, $initial_remaining, NOW()
                 )";
-
+            
                 if (!mysqli_query($connection, $insert_query)) {
                     throw new Exception("Error inserting payment record: " . mysqli_error($connection));
                 }
-                
+            
                 // Update newborn billing status and remaining balance
                 $update_balance = mysqli_query($connection, "
                     UPDATE tbl_billing_newborn 
@@ -436,101 +461,94 @@ if (isset($_POST['submit_payment'])) {
                     WHERE patient_name = '$patient_name' 
                     ORDER BY id DESC LIMIT 1
                 ");
-            }
-
-            if (!$update_balance) {
-                throw new Exception("Error updating balance: " . mysqli_error($connection));
-            }
-
-            // If payment is complete (remaining balance is 0), update billing_others
-            if ($initial_remaining <= 0) {
-                // Get the billing_id from the latest inpatient billing
-                $billing_id_query = mysqli_query($connection, "
-                    SELECT billing_id 
-                    FROM tbl_billing_newborn 
-                    WHERE patient_name = '$patient_name' 
-                    ORDER BY id DESC LIMIT 1
-                ");
-                
-                if (!$billing_id_query) {
-                    throw new Exception("Error getting billing ID: " . mysqli_error($connection));
+            
+                if (!$update_balance) {
+                    throw new Exception("Error updating balance: " . mysqli_error($connection));
                 }
-                
-                $billing_row = mysqli_fetch_assoc($billing_id_query);
-                if ($billing_row) {
-                    $billing_id = $billing_row['billing_id'];
-                    
-                    // Update all related records in billing_others
-                    $update_others = mysqli_query($connection, "
-                        UPDATE tbl_billing_others 
-                        SET is_billed = 1 
-                        WHERE billing_id = '$billing_id'
+            
+                // If payment is complete (remaining balance is 0), update related records
+                if ($initial_remaining <= 0) {
+                    // Get the billing_id from the latest newborn billing
+                    $billing_id_query = mysqli_query($connection, "
+                        SELECT billing_id 
+                        FROM tbl_billing_newborn 
+                        WHERE patient_name = '$patient_name' 
+                        ORDER BY id DESC LIMIT 1
                     ");
-                    
-                    if (!$update_others) {
-                        throw new Exception("Error updating billing others: " . mysqli_error($connection));
+            
+                    if (!$billing_id_query) {
+                        throw new Exception("Error getting billing ID: " . mysqli_error($connection));
                     }
-
-                    // Update inpatient record
-                    $update_inpatient = mysqli_query($connection, "
-                        UPDATE tbl_newborn
-                        SET is_billed = 1 
-                        WHERE patient_name = '$patient_name'
-                    ");
-                    
-                    if (!$update_inpatient) {
-                        throw new Exception("Error updating inpatient record: " . mysqli_error($connection));
-                    }
-
-                    // Update operating room record
-                    $update_or = mysqli_query($connection, "
-                        UPDATE tbl_operating_room 
-                        SET is_billed = 1 
-                        WHERE patient_name = '$patient_name'
-                    ");
-                    
-                    if (!$update_or) {
-                        throw new Exception("Error updating operating room record: " . mysqli_error($connection));
-                    }
-
-                    // Update lab orders
-                    $update_lab = mysqli_query($connection, "
-                        UPDATE tbl_laborder 
-                        SET is_billed = 1 
-                        WHERE patient_name = '$patient_name'
-                        AND deleted = 0
-                    ");
-                    
-                    if (!$update_lab) {
-                        throw new Exception("Error updating lab orders: " . mysqli_error($connection));
-                    }
-
-                    // Update radiology orders
-                    $update_rad = mysqli_query($connection, "
-                        UPDATE tbl_radiology 
-                        SET is_billed = 1 
-                        WHERE patient_name = '$patient_name'
-                        AND deleted = 0
-                    ");
-                    
-                    if (!$update_rad) {
-                        throw new Exception("Error updating radiology orders: " . mysqli_error($connection));
-                    }
-              
-                    // Update treatment records
-                    $update_treatment = mysqli_query($connection, "
-                        UPDATE tbl_treatment 
-                        SET is_billed = 1 
-                        WHERE patient_name = '$patient_name'
-                    ");
-                  
-                    if (!$update_treatment) {
-                        throw new Exception("Error updating treatment records: " . mysqli_error($connection));
+            
+                    $billing_row = mysqli_fetch_assoc($billing_id_query);
+                    if ($billing_row) {
+                        $billing_id = mysqli_real_escape_string($connection, $billing_row['billing_id']);
+            
+                        // Update all related records in billing_others
+                        $update_others = mysqli_query($connection, "
+                            UPDATE tbl_billing_others 
+                            SET is_billed = 1 
+                            WHERE billing_id = '$billing_id'
+                        ");
+            
+                        if (!$update_others) {
+                            throw new Exception("Error updating billing others: " . mysqli_error($connection));
+                        }
+            
+                        // Update newborn record
+                        $update_newborn = mysqli_query($connection, "
+                            UPDATE tbl_newborn
+                            SET is_billed = 1 
+                            WHERE CONCAT(first_name, ' ', last_name) = '$patient_name'
+                        ");
+            
+                        if (!$update_newborn) {
+                            throw new Exception("Error updating newborn record: " . mysqli_error($connection));
+                        }
+            
+                        // Update lab orders
+                        $update_lab = mysqli_query($connection, "
+                            UPDATE tbl_laborder 
+                            SET is_billed = 1 
+                            WHERE patient_name = '$patient_name'
+                            AND deleted = 0
+                        ");
+            
+                        if (!$update_lab) {
+                            throw new Exception("Error updating lab orders: " . mysqli_error($connection));
+                        }
+            
+                        // Update radiology orders  
+                        $update_rad = mysqli_query($connection, "
+                            UPDATE tbl_radiology 
+                            SET is_billed = 1 
+                            WHERE patient_name = '$patient_name'
+                            AND deleted = 0
+                        ");
+            
+                        if (!$update_rad) {
+                            throw new Exception("Error updating radiology orders: " . mysqli_error($connection));
+                        }
+            
+                        // Update treatment records
+                        $update_treatment = mysqli_query($connection, "
+                            UPDATE tbl_treatment 
+                            SET is_billed = 1 
+                            WHERE patient_name = '$patient_name'
+                        ");
+            
+                        if (!$update_treatment) {
+                            throw new Exception("Error updating treatment records: " . mysqli_error($connection));
+                        }
                     }
                 }
+            
+                // Commit transaction after all queries are successful
+                if (!mysqli_commit($connection)) {
+                    throw new Exception("Transaction commit failed: " . mysqli_error($connection));
+                }
             }
-            mysqli_commit($connection);
-
+            
             echo "
             <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
             <script>
@@ -609,8 +627,8 @@ if (isset($_POST['submit_payment'])) {
                                 <label>Patient Type</label>
                                 <select class="form-control" name="patient_type" id="patient_type" required onchange="togglePatientSearch()">
                                     <option value="">Select Type</option>
-                                    <option value="Inpatient">Inpatient</option>
                                     <option value="Outpatient">Outpatient</option>
+                                    <option value="Inpatient">Inpatient</option>
                                     <option value="Hemodialysis">Hemodialysis</option>
                                     <option value="Newborn">Newborn</option>
                                 </select>
@@ -623,7 +641,7 @@ if (isset($_POST['submit_payment'])) {
                             <div class="form-group">
                                 <label>Patient Name</label>
                                 <div class="input-group">
-                                    <input type="text" class="form-control" id="patient_search" placeholder="Search patient name" autocomplete="off">
+                                    <input type="text" class="form-control" id="patient_search" placeholder="Search for patient" autocomplete="off">
                                     <input type="hidden" name="patient_name" id="selected_patient_name">
                                     <div class="search-results" id="search_results" style="display:none;"></div>
                                 </div>

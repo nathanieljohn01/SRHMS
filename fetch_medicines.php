@@ -44,7 +44,8 @@ while ($row = mysqli_fetch_assoc($result)) {
         'weight_measure' => htmlspecialchars($row['weight_measure']),
         'unit_measure' => htmlspecialchars($row['unit_measure']),
         'quantity' => $row['quantity'],
-        'expiration_date' => date('F d, Y g:i A', strtotime($row['expiration_date'])),
+        'expiration_date' => date('F d, Y', strtotime($row['expiration_date'])),
+        'new_added_date' => date('F d, Y g:i A', strtotime($row['new_added_date'])),
         'price' => htmlspecialchars($row['price'])
     );
 }

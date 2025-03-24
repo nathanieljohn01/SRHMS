@@ -41,7 +41,7 @@ $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_medicines WHERE dele
                         <!-- Search Icon -->
                         <i class="fa fa-search position-absolute text-secondary" style="top: 50%; left: 12px; transform: translateY(-50%);"></i>
                         <!-- Input Field -->
-                        <input class="form-control" type="text" id="medicineSearchInput" onkeyup="filterMedicines()" style="padding-left: 35px; padding-right: 35px;">
+                        <input class="form-control" type="text" id="medicineSearchInput" onkeyup="filterMedicines()" placeholder="Search" style="padding-left: 35px; padding-right: 35px;">
                         <!-- Clear Button -->
                         <button class="position-absolute border-0 bg-transparent text-secondary" type="button" onclick="clearSearch()" style="top: 50%; right: 10px; transform: translateY(-50%);">
                             <i class="fa fa-times"></i>
@@ -62,6 +62,7 @@ $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_medicines WHERE dele
                         <th>Expiry Date</th>
                         <th>Days to Expire</th>
                         <th>Price</th>
+                        <th>Last Updated</th>
                         <th>Action</th>
                     </tr>
                 </thead>
@@ -77,6 +78,7 @@ $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_medicines WHERE dele
                         $price = htmlspecialchars($row['price'], ENT_QUOTES, 'UTF-8');
                         
                         $expiration_date = strtotime($row['expiration_date']);
+                        $new_added_date = strtotime($row['new_added_date']);
                         $current_date = strtotime(date('Y-m-d'));
                         $days_to_expire = round(($expiration_date - $current_date) / (60 * 60 * 24));
 
@@ -110,6 +112,7 @@ $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_medicines WHERE dele
                                 <?php endif; ?>
                             </td>
                             <td><?php echo $price; ?></td>
+                            <td><?php echo date('F d, Y g:i A', strtotime($row['new_added_date'])); ?></td>
                             <td class="text-right">
                                 <div class="dropdown dropdown-action">
                                     <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
@@ -117,8 +120,8 @@ $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_medicines WHERE dele
                                     </a>
                                     <div class="dropdown-menu dropdown-menu-right">
                                         <?php 
-                                        if ($_SESSION['role'] == 1) {
-                                            echo '<a class="dropdown-item" href="edit-medicines.php?id='.$row['id'].'"><i class="fa fa-pencil m-r-5"></i> Edit</a>';
+                                        if ($_SESSION['role'] == 1 || $_SESSION['role'] == 4) {
+                                            echo '<a class="dropdown-item" href="edit-medicines.php?id='.$row['id'].'"><i class="fa fa-pencil m-r-5"></i> Update</a>';
                                             echo '<a class="dropdown-item" href="#" onclick="return confirmDelete(\''.$row['id'].'\')"><i class="fa fa-trash-o m-r-5"></i> Delete</a>';
                                         }
                                         ?>
@@ -198,6 +201,15 @@ include('footer.php');
                     <td>${formatDate(row.expiration_date)}</td>
                     <td>${formatExpiryBadge(daysToExpire)}</td>
                     <td>${row.price}</td>
+                    <td>${new Date(row.new_added_date).toLocaleString('en-US', { 
+                        month: 'long',
+                        day: 'numeric',
+                        year: 'numeric',
+                        hour: 'numeric',
+                        minute: 'numeric',
+                        hour12: true,
+                        timeZone: 'Asia/Manila'
+                    }).replace(' at ', ' ')}</td>
                     <td class="text-right">
                         <div class="dropdown dropdown-action">
                             <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
@@ -205,7 +217,7 @@ include('footer.php');
                             </a>
                             <div class="dropdown-menu dropdown-menu-right">
                                 <a class="dropdown-item" href="edit-medicines.php?id=${row.id}">
-                                    <i class="fa fa-pencil m-r-5"></i> Edit
+                                    <i class="fa fa-pencil m-r-5"></i> Update
                                 </a>
                                 <a class="dropdown-item" href="#" onclick="return confirmDelete('${row.id}')">
                                     <i class="fa fa-trash-o m-r-5"></i> Delete

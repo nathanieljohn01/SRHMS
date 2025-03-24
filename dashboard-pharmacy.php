@@ -99,7 +99,7 @@ while($row = mysqli_fetch_assoc($fetch_sold_query)) {
             <div class="col-md-6">
                 <div class="card">
                     <div class="card-header">
-                        <h4 class="card-title">New Medicines Added Per Month</h4>
+                        <h4 class="card-title">New Medicines Updated Per Month</h4>
                     </div>
                     <div class="card-body">
                         <canvas id="newMedicineChart"></canvas>
@@ -134,7 +134,7 @@ var newMedicineChart = new Chart(ctx, {
     data: {
         labels: <?php echo json_encode($months); ?>, // Months for new medicines added
         datasets: [{
-            label: 'New Medicines Added',
+            label: 'New Medicines Updated',
             data: <?php echo json_encode($medicine_data); ?>, // New medicine data from the database
             backgroundColor: 'rgba(15, 54, 159, 0.2)',
             borderColor: 'rgba(15, 54, 159, 1)',

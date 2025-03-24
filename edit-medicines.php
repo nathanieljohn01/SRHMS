@@ -30,10 +30,11 @@ if (isset($_POST['save-medicine'])) {
     $unit_measure = sanitize($connection, $_POST['unit_measure']);
     $quantity = sanitize($connection, $_POST['quantity']);
     $expiration_date = sanitize($connection, $_POST['expiration_date']);
+    $new_added_date = sanitize($connection, $_POST['new_added_date']);
     $price = sanitize($connection, $_POST['price']);
 
     // Prepare the update query without bind_param
-    $update_query = "UPDATE tbl_medicines SET medicine_name = '$medicine_name', medicine_brand = '$medicine_brand', category = '$category', weight_measure = '$weight_measure', unit_measure = '$unit_measure', quantity = '$quantity', expiration_date = '$expiration_date', price = '$price' WHERE id = '$id'";
+    $update_query = "UPDATE tbl_medicines SET medicine_name = '$medicine_name', medicine_brand = '$medicine_brand', category = '$category', weight_measure = '$weight_measure', unit_measure = '$unit_measure', quantity = '$quantity', expiration_date = '$expiration_date', new_added_date = NOW(), price = '$price' WHERE id = '$id'";
 
     // Execute the query and check if it was successful
     if (mysqli_query($connection, $update_query)) {
@@ -148,12 +149,6 @@ if (isset($_POST['save-medicine'])) {
 <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/tempusdominus-bootstrap-4/5.39.0/js/tempusdominus-bootstrap-4.min.js"></script>
-
-<?php
-if (isset($msg)) {
-    echo 'swal("' . $msg . '");';
-}
-?>
 
 <script type="text/javascript">
     $(function () {

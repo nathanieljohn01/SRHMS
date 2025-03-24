@@ -11,9 +11,9 @@ $sql = "SELECT
             p.patient_type,
             p.total_due,
             SUM(p.amount_paid) as total_paid,
-            p.remaining_balance as balance,
+            bi.remaining_balance as balance,
             CASE 
-                WHEN p.remaining_balance > 0 THEN 'Partially Paid'
+                WHEN bi.remaining_balance > 0 THEN 'Partially Paid'
                 ELSE 'Fully Paid'
             END as status,
             COALESCE(bi.billing_id, '') as billing_id

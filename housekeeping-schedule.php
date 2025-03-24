@@ -27,14 +27,20 @@ if (isset($_GET['msg'])) {
             </div>
         </div>
         <div class="table-responsive">
-            <div class="input-group">
-            <input class="form-control mb-3" type="text" id="patientSearchInput" onkeyup="filterpatients()" placeholder="Search for Patient">
-                <div class="input-group-append">
-                    <button class="btn btn-outline-primary mb-3" type="button" onclick="clearSearch()">
+        <h5 class="font-weight-bold mb-2">Search Room:</h5>
+            <div class="input-group mb-3">
+                <div class="position-relative w-100">
+                    <!-- Search Icon -->
+                    <i class="fa fa-search position-absolute text-secondary" style="top: 50%; left: 12px; transform: translateY(-50%);"></i>
+                    <!-- Input Field -->
+                    <input class="form-control" type="text" id="patientSearchInput" onkeyup="filterpatients()" placeholder="Search" style="padding-left: 35px; padding-right: 35px;">
+                    <!-- Clear Button -->
+                    <button class="position-absolute border-0 bg-transparent text-secondary" type="button" onclick="clearSearch()" style="top: 50%; right: 10px; transform: translateY(-50%);">
                         <i class="fa fa-times"></i>
                     </button>
                 </div>
             </div>
+        </div>
             <table class="datatable table table-hover" id="patientTable">
                 <thead style="background-color: #CCCCCC;">
                     <tr>

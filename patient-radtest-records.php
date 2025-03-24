@@ -33,6 +33,7 @@ if (isset($_GET['patient_id'])) {
                 backdrop: 'rgba(0, 0, 0, 0.3)',
                 customClass: {
                     confirmButton: 'swal2-confirm-btn'
+                }
             }).then((result) => {
                 if (result.isConfirmed) {
                     window.location.href = 'radiology-patients.php';
