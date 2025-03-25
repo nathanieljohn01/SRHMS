@@ -513,23 +513,25 @@ if (isset($_POST['add-billing'])) {
                             </div>
 
                             <!-- Other Items -->
-                            <div class="other-items">
-                                <label>Other Charges</label>
-                                <div id="other-items-container">
-                                    <div class="row align-items-center other-item mb-2" id="item-row-0">
-                                        <div class="col-md-6">
-                                            <input type="text" class="form-control" name="others[0][name]" placeholder="Item description" required>
-                                        </div>
-                                        <div class="col-md-5">
-                                            <input type="number" step="0.01" class="form-control" name="others[0][cost]" placeholder="Amount" required>
-                                        </div>
-                                        <div class="col-md-1">
-                                            <button type="button" class="btn btn-sm btn-danger remove-item" disabled>
-                                                <i class="fas fa-times"></i>
-                                            </button>
+                            <div class="col-md-12">
+                                <div class="other-items">
+                                    <label>Other Charges</label>
+                                    <div id="other-items-container">
+                                        <div class="row align-items-center other-item mb-2" id="item-row-0">
+                                            <div class="col-md-6">
+                                                <input type="text" class="form-control" name="others[0][name]" placeholder="Item description" required>
+                                            </div>
+                                            <div class="col-md-5">
+                                                <input type="number" step="0.01" class="form-control" name="others[0][cost]" placeholder="Amount" required>
+                                            </div>
+                                            <div class="col-md-1">
+                                                <button type="button" class="btn btn-sm btn-danger remove-item" disabled>
+                                                    <i class="fas fa-times"></i>
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
+                                </div>    
                                 <button type="button" id="add-other-item" class="btn btn-sm btn-primary mt-2">
                                     <i class="fas fa-plus mr-1"></i> Add Item
                                 </button>
@@ -545,7 +547,17 @@ if (isset($_POST['add-billing'])) {
                                         <input type="checkbox" class="custom-control-input" id="vat-exempt-checkbox" name="vat_exempt_checkbox" value="on">
                                         <label class="custom-control-label" for="vat-exempt-checkbox">VAT Exempt (12%)</label>
                                     </div>
-                                    <div class="discount-value" id="vat-exempt-discount">₱0.00</div>
+                                    <div class="discount-value" id="vat-exempt-discount" style="
+                                            font-size: 1.3rem;
+                                            font-weight: 600;
+                                            color: rgb(73, 73, 73);
+                                            background: #ffffff;
+                                            padding: 6px 12px;
+                                            border-radius: 6px;
+                                            display: inline-block;
+                                            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                                        ">₱0.00
+                                    </div>
                                 </div>
                             </div>
                             <div class="col-md-4">
@@ -554,7 +566,17 @@ if (isset($_POST['add-billing'])) {
                                         <input type="checkbox" class="custom-control-input" id="discount-checkbox" name="discount_checkbox" value="on">
                                         <label class="custom-control-label" for="discount-checkbox">Senior Discount (20%)</label>
                                     </div>
-                                    <div class="discount-value" id="discount-amount">₱0.00</div>
+                                    <div class="discount-value" id="discount-amount" style="
+                                            font-size: 1.3rem;
+                                            font-weight: 600;
+                                            color: rgb(60, 60, 60);
+                                            background: #ffffff;
+                                            padding: 6px 12px;
+                                            border-radius: 6px;
+                                            display: inline-block;
+                                            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                                        ">₱0.00
+                                    </div>
                                 </div>
                             </div>
                             <div class="col-md-4">
@@ -563,14 +585,24 @@ if (isset($_POST['add-billing'])) {
                                         <input type="checkbox" class="custom-control-input" id="pwd-discount-checkbox" name="pwd_discount_checkbox" value="on">
                                         <label class="custom-control-label" for="pwd-discount-checkbox">PWD Discount (20%)</label>
                                     </div>
-                                    <div class="discount-value" id="pwd-discount">₱0.00</div>
+                                    <div class="discount-value" id="pwd-discount" style="
+                                            font-size: 1.3rem;
+                                            font-weight: 600;
+                                            color: rgb(55, 55, 55);
+                                            background: #ffffff;
+                                            padding: 6px 12px;
+                                            border-radius: 6px;
+                                            display: inline-block;
+                                            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                                        ">₱0.00
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
                         <!-- PhilHealth Section -->
                         <div class="philhealth-section">
-                            <h5>PhilHealth Deductions</h5>
+                            <h5>PhilHealth Discounts</h5>
                             <div class="form-group">
                                 <select class="form-control" id="case-rate-select" name="case_rate">
                                     <option value="">Select Case Rate</option>
@@ -622,13 +654,16 @@ if (isset($_POST['add-billing'])) {
                                 <span class="summary-label">Total Discounts:</span>
                                 <span class="summary-value" id="total-discounts">₱0.00</span>
                             </div>
+                            <div class="summary-row">
+                                <span class="summary-label">Total PhilHealth Discounts:</span>
+                                <span class="summary-value" id="total-deduction">₱0.00</span>
+                            </div>
                             <div class="summary-row total-due">
                                 <span class="summary-label" style="font-weight: bold;">Total Amount Due:</span>
                                 <span class="summary-value" id="total-due">₱0.00</span>
                             </div>
                         </div>
                     </div>
-
                     <!-- Submit Button -->
                     <div class="form-submit text-center mt-4">
                         <button type="submit" name="add-billing" class="btn btn-primary btn-lg">
@@ -691,6 +726,14 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
 
+        // Calculate non-discounted total (sum of ALL charges)
+        const nonDiscountedTotal = labFeeTotal + radFeeTotal + roomFeeTotal + 
+                                medicationFeeTotal + orFeeTotal + othersFee + 
+                                suppliesFee + professionalFee + readersFee;
+        
+        // Update total charges display (non-discounted amount)
+        document.getElementById('total-charges').innerText = '₱' + nonDiscountedTotal.toFixed(2);
+
         // Get PhilHealth deductions
         const firstPF = parseFloat(firstPFInput.value) || 0;
         const firstHB = parseFloat(firstHBInput.value) || 0;
@@ -699,6 +742,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Calculate total PhilHealth deductions
         const philhealthDeduction = firstPF + firstHB + secondPF + secondHB;
+
+        document.getElementById('total-deduction').innerText = '₱' + philhealthDeduction.toFixed(2);
 
         // Calculate combined fees including the OR fee
         let combinedFees = labFeeTotal + radFeeTotal + roomFeeTotal + medicationFeeTotal + orFeeTotal + othersFee + suppliesFee + professionalFee + readersFee;
@@ -728,6 +773,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Sum up the total discount amount
         discountAmount = pwdDiscountAmount + vatExemptDiscountAmount + seniorPwdDiscountAmount;
+
+        document.getElementById('total-discounts').innerText = '₱' + discountAmount.toFixed(2);
 
         // Update the UI with the calculated amounts
         document.getElementById('total-due').innerText = '₱' + totalDue.toFixed(2);
@@ -1361,49 +1408,6 @@ input[type="checkbox"] {
     color:rgb(49, 49, 49);
 }
 
-/* Enhanced Table Styles */
-.table {
-    border-radius: 10px; /* Slightly larger radius for a smoother, modern look */
-    overflow: hidden;
-    border: 1px solid #e0e4e8;
-    width: 100%; /* Ensure the table spans full width */
-    margin-bottom: 20px; /* Add space below the table */
-    background-color: rgb(241, 241, 241);
-    
-}
-
-/* Table Header Styling */
-table th {
-    background-color: #CCCCCC; /* Darker background for the header */
-    color: black; /* Text color for data cells */
-    font-weight: 500;
-    padding: 14px 18px; /* Increased padding for better readability */
-    border-bottom: 2px solid #e0e4e8;
-    text-align: left; /* Align header text to the left for consistency */
-}
-
-/* Table Row Styling */
-table tr:nth-child(even) {
-    background-color: #ffffff; /* Alternate row color for better readability */
-}
-
-table tr:nth-child(odd) {
-    background-color: #ffffff; /* Light background for odd rows */
-}
-
-/* Table Data Cell Styling */
-table td {
-    padding: 14px 18px; /* Increased padding for readability */
-    border-bottom: 1px solid #e0e4e8;
-    color: #343a40; /* Text color for data cells */
-}
-
-/* Hover Effect on Rows */
-table tr:hover {
-    background-color: #f1f1f1; /* Light background on hover for rows */
-    cursor: pointer; /* Change cursor to indicate interactivity */
-}
-
 /* Optional: Add a custom scrollbar if the table overflows */
 .table::-webkit-scrollbar {
     width: 10px;
@@ -1531,13 +1535,14 @@ table tr:hover {
 
 .billing-card .card-header {
     background-color: var(--primary-color);
-    color: white;
+    color: black;
     border-radius: 10px 10px 0 0 !important;
     padding: 15px 20px;
     border-bottom: none;
 }
 
 .billing-card .card-header .card-title {
+    color: black;
     font-weight: 600;
     margin-bottom: 0;
 }
@@ -1553,7 +1558,7 @@ table tr:hover {
 }
 
 .section-title {
-    color: var(--primary-color);
+    color: black;
     font-weight: 600;
     margin-bottom: 20px;
     padding-bottom: 10px;
@@ -1571,7 +1576,7 @@ table tr:hover {
 }
 
 .form-control:focus {
-    border-color: var(--primary-color);
+    border-color:#12369e;
     box-shadow: 0 0 0 0.2rem rgba(18, 54, 158, 0.1);
 }
 
@@ -1622,7 +1627,7 @@ select.form-control {
 .charge-group h5 {
     font-size: 1rem;
     font-weight: 600;
-    color: var(--text-color);
+    color:rgb(90, 90, 90);
     margin-bottom: 15px;
     padding-bottom: 8px;
     border-bottom: 1px solid var(--border-color);
@@ -1632,7 +1637,7 @@ select.form-control {
 .table {
     width: 100%;
     margin-bottom: 1rem;
-    color: var(--text-color);
+    color: black;
     border-collapse: separate;
     border-spacing: 0;
     border-radius: 6px;
@@ -1641,14 +1646,10 @@ select.form-control {
 
 .table thead th {
     background-color: #CCCCCC;
-    color: var(--text-color);
+    color: black;
     font-weight: 600;
     border: none;
     padding: 12px 15px;
-}
-
-.table tbody tr:nth-child(even) {
-    background-color: rgba(0, 0, 0, 0.02);
 }
 
 .table tbody tr:hover {
@@ -1664,12 +1665,15 @@ select.form-control {
 /* Additional Fees */
 .additional-fees {
     background-color: var(--light-gray);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
     padding: 15px;
     border-radius: 6px;
     margin-top: 20px;
 }
 
 .additional-fees h5 {
+    color : black;
     font-size: 1rem;
     font-weight: 600;
     margin-bottom: 15px;
@@ -1712,7 +1716,7 @@ select.form-control {
 .discount-value {
     font-weight: 600;
     font-size: 1.1rem;
-    color: var(--primary-color);
+    color: #12369e;
 }
 
 /* PhilHealth Section */
@@ -1723,6 +1727,7 @@ select.form-control {
 }
 
 .philhealth-section h5 {
+    color: black;
     font-size: 1rem;
     font-weight: 600;
     margin-bottom: 15px;
@@ -1752,6 +1757,7 @@ select.form-control {
 
 .summary-value {
     font-weight: 600;
+    color:rgb(70, 70, 70);
 }
 
 .total-due {
