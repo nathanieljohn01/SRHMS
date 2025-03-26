@@ -203,76 +203,49 @@ if (isset($_POST['submit_payment'])) {
                     }
                 }
             } else if ($patient_type == 'Outpatient') {
-                // Start explicit transaction
-                mysqli_begin_transaction($connection);
+                // Calculate totals
+                $lab_query = mysqli_query($connection, "SELECT COALESCE(SUM(price), 0) as total_lab FROM tbl_laborder 
+                    WHERE patient_name = '$patient_name' AND is_billed = 0 AND deleted = 0");
+                $rad_query = mysqli_query($connection, "SELECT COALESCE(SUM(price), 0) as total_rad FROM tbl_radiology 
+                    WHERE patient_name = '$patient_name' AND is_billed = 0 AND deleted = 0");
                 
-                try {
-                    // Escape variables for security
-                    $escaped_patient_name = mysqli_real_escape_string($connection, $patient_name);
-                    $escaped_patient_id = mysqli_real_escape_string($connection, $patient_id);
-                    $escaped_payment_id = mysqli_real_escape_string($connection, $payment_id);
-                    $escaped_patient_type = mysqli_real_escape_string($connection, $patient_type);
+                $lab_total = mysqli_fetch_assoc($lab_query)['total_lab'];
+                $rad_total = mysqli_fetch_assoc($rad_query)['total_rad'];
+                
+                $amount_to_pay = $lab_total + $rad_total;
+                $total_due = $amount_to_pay;
+                $amount_paid = $amount_to_pay; // Force full payment
+                $initial_remaining = 0;
+                
+                // Insert payment record
+                $insert_result = mysqli_query($connection, "INSERT INTO tbl_payment (
+                    payment_id, patient_id, patient_name, patient_type,
+                    total_due, amount_to_pay, amount_paid, remaining_balance, payment_datetime
+                ) VALUES (
+                    '$payment_id', '$patient_id', '$patient_name', '$patient_type',
+                    $total_due, $amount_to_pay, $amount_paid, $initial_remaining, NOW()
+                )");
+                
+                if (!$insert_result) {
+                    throw new Exception("Payment insert failed: " . mysqli_error($connection));
+                }
+                
+                // Update lab orders
+                $update_lab = mysqli_query($connection, "UPDATE tbl_laborder SET is_billed = 1 
+                    WHERE patient_name = '$patient_name' AND is_billed = 0 AND deleted = 0");
                     
-                    // Calculate totals
-                    $lab_query = mysqli_query($connection, "SELECT COALESCE(SUM(price), 0) as total_lab FROM tbl_laborder 
-                        WHERE patient_name = '$escaped_patient_name' AND is_billed = 0 AND deleted = 0");
-                    $rad_query = mysqli_query($connection, "SELECT COALESCE(SUM(price), 0) as total_rad FROM tbl_radiology 
-                        WHERE patient_name = '$escaped_patient_name' AND is_billed = 0 AND deleted = 0");
+                if (!$update_lab) {
+                    throw new Exception("Lab update failed: " . mysqli_error($connection));
+                }
+                
+                // Update radiology orders
+                $update_rad = mysqli_query($connection, "UPDATE tbl_radiology SET is_billed = 1 
+                    WHERE patient_name = '$patient_name' AND is_billed = 0 AND deleted = 0");
                     
-                    $lab_total = mysqli_fetch_assoc($lab_query)['total_lab'];
-                    $rad_total = mysqli_fetch_assoc($rad_query)['total_rad'];
-                    
-                    $amount_to_pay = $lab_total + $rad_total;
-                    $total_due = $amount_to_pay;
-                    $amount_paid = $amount_to_pay; // Force full payment
-                    $initial_remaining = 0;
-                    
-                    // Insert payment record
-                    $insert_result = mysqli_query($connection, "INSERT INTO tbl_payment (
-                        payment_id, patient_id, patient_name, patient_type,
-                        total_due, amount_to_pay, amount_paid, remaining_balance, payment_datetime
-                    ) VALUES (
-                        '$escaped_payment_id', '$escaped_patient_id', '$escaped_patient_name', '$escaped_patient_type',
-                        $total_due, $amount_to_pay, $amount_paid, $initial_remaining, NOW()
-                    )");
-                    
-                    if (!$insert_result) {
-                        throw new Exception("Payment insert failed: " . mysqli_error($connection));
-                    }
-                    
-                    // Update lab orders
-                    $update_lab = mysqli_query($connection, "UPDATE tbl_laborder SET is_billed = 1 
-                        WHERE patient_name = '$escaped_patient_name' AND is_billed = 0 AND deleted = 0");
-                        
-                    if (!$update_lab) {
-                        throw new Exception("Lab update failed: " . mysqli_error($connection));
-                    }
-                    
-                    // Update radiology orders
-                    $update_rad = mysqli_query($connection, "UPDATE tbl_radiology SET is_billed = 1 
-                        WHERE patient_name = '$escaped_patient_name' AND is_billed = 0 AND deleted = 0");
-                        
-                    if (!$update_rad) {
-                        throw new Exception("Radiology update failed: " . mysqli_error($connection));
-                    }
-                    
-                    // Commit the transaction
-                    if (!mysqli_commit($connection)) {
-                        throw new Exception("Transaction commit failed: " . mysqli_error($connection));
-                    }
-                    
-                } catch (Exception $e) {
-                    // Roll back on any error
-                    mysqli_rollback($connection);
-                    throw $e;
+                if (!$update_rad) {
+                    throw new Exception("Radiology update failed: " . mysqli_error($connection));
                 }
             } else if ($patient_type == 'Hemodialysis') {
-                // Escape inputs to prevent SQL injection
-                $patient_name = mysqli_real_escape_string($connection, $patient_name);
-                $payment_id = mysqli_real_escape_string($connection, $payment_id);
-                $patient_id = mysqli_real_escape_string($connection, $patient_id);
-                $patient_type = mysqli_real_escape_string($connection, $patient_type);
-            
                 // Get hemodialysis billing details
                 $total_due_query = mysqli_query($connection, "
                     SELECT total_due, remaining_balance 
@@ -285,7 +258,9 @@ if (isset($_POST['submit_payment'])) {
                     throw new Exception("Error fetching billing details: " . mysqli_error($connection));
                 }
                 
-                $amount_to_pay = $lab_total + $rad_total;
+                $total_due_row = mysqli_fetch_assoc($total_due_query);
+                $total_due = $total_due_row ? $total_due_row['total_due'] : 0;
+                $amount_to_pay = $total_due_row ? $total_due_row['remaining_balance'] : 0;
                 $amount_paid = str_replace(',', '', $_POST['amount_paid']);
                 $amount_paid = floatval($amount_paid);
                 $initial_remaining = max(0, $amount_to_pay - $amount_paid);
@@ -396,12 +371,6 @@ if (isset($_POST['submit_payment'])) {
                     }
                 }            
             } else if ($patient_type == 'Newborn') {
-                // Escape user inputs to prevent SQL injection
-                $patient_name = mysqli_real_escape_string($connection, $patient_name);
-                $patient_id = mysqli_real_escape_string($connection, $patient_id);
-                $payment_id = mysqli_real_escape_string($connection, $payment_id);
-                $patient_type = mysqli_real_escape_string($connection, $patient_type);
-            
                 // Get newborn billing details
                 $total_due_query = mysqli_query($connection, "
                     SELECT total_due, remaining_balance 
@@ -530,12 +499,10 @@ if (isset($_POST['submit_payment'])) {
                         }
                     }
                 }
-            
-                // Commit transaction after all queries are successful
-                if (!mysqli_commit($connection)) {
-                    throw new Exception("Transaction commit failed: " . mysqli_error($connection));
-                }
             }
+            
+            // Commit transaction if all queries succeed
+            mysqli_commit($connection);
             
             echo "
             <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
@@ -564,7 +531,7 @@ if (isset($_POST['submit_payment'])) {
                     Swal.fire({
                         icon: 'error',
                         title: 'Error',
-                        text: 'Error details: " . addslashes($e->getMessage()) . "',
+                        text: 'Error processing payment. Please try again.',
                         confirmButtonColor: '#12369e'
                     });
                 });
@@ -660,26 +627,38 @@ if (isset($_POST['submit_payment'])) {
                             </div>
                         </div>
 
-                        <div class="col-md-3">
+                        <div class="col-md-2">
                             <div class="form-group">
                                 <label class="font-weight-bold">Amount to Pay</label>
                                 <div class="input-group">
                                     <div class="input-group-prepend">
                                         <span class="input-group-text bg-light">₱</span>
                                     </div>
-                                    <input type="number" step="0.01" class="form-control" name="amount_to_pay" required readonly>
+                                    <input type="number" step="0.01" class="form-control" name="amount_to_pay" id="amount_to_pay" required readonly>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="col-md-3">
+                        <div class="col-md-2">
                             <div class="form-group">
                                 <label class="font-weight-bold">Amount Paid</label>
                                 <div class="input-group">
                                     <div class="input-group-prepend">
                                         <span class="input-group-text bg-light">₱</span>
                                     </div>
-                                    <input type="number" step="0.01" class="form-control" name="amount_paid" required onchange="calculateRemainingBalance()">
+                                    <input type="number" step="0.01" class="form-control" name="amount_paid" id="amount_paid" required oninput="calculatePayment()">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-2">
+                            <div class="form-group">
+                                <label class="font-weight-bold">Change</label>
+                                <div class="input-group">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text bg-light">₱</span>
+                                    </div>
+                                    <input type="number" step="0.01" class="form-control" name="change" id="change" readonly style="background-color: #e8f5e9; font-weight: bold;">
                                 </div>
                             </div>
                         </div>
@@ -687,35 +666,22 @@ if (isset($_POST['submit_payment'])) {
 
                     <div class="row mt-3">
                         <div class="col-md-12">
-                            <!-- Laboratory Fees Card -->
-                            <div class="card mb-4" id="outpatientLabTable" style="display: none;">
+                            <!-- Combined Outpatient Fees Card -->
+                            <div class="card mb-4" id="outpatientFeesTable" style="display: none;">
                                 <div class="card-header">
-                                    <h5 class="card-title mb-0"><i class="fas fa-flask mr-2"></i>Laboratory Fees</h5>
+                                    <h5 class="card-title mb-0"><i class="fas fa-file-invoice-dollar mr-2"></i>Outpatient Fees</h5>
                                 </div>
                                 <div class="card-body p-0">
                                     <div class="table-responsive">
                                         <table class="table table-hover mb-0">
                                             <thead>
                                                 <tr>
-                                                    <th>Lab Test</th>
+                                                    <th>Laboratory Test</th>
                                                     <th class="text-right">Price</th>
                                                     <th>Request Date</th>
                                                 </tr>
                                             </thead>
-                                            <tbody></tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Radiology Fees Card -->
-                            <div class="card mb-4" id="outpatientRadTable" style="display: none;">
-                                <div class="card-header">
-                                    <h5 class="card-title mb-0"><i class="fas fa-x-ray mr-2"></i>Radiology Fees</h5>
-                                </div>
-                                <div class="card-body p-0">
-                                    <div class="table-responsive">
-                                        <table class="table table-hover mb-0">
+                                            <tbody id="labFeesBody"></tbody>
                                             <thead>
                                                 <tr>
                                                     <th>Radiology Test</th>
@@ -723,7 +689,12 @@ if (isset($_POST['submit_payment'])) {
                                                     <th>Request Date</th>
                                                 </tr>
                                             </thead>
-                                            <tbody></tbody>
+                                            <tbody id="radFeesBody"></tbody>
+                                            <tfoot class="font-weight-bold">
+                                                <tr class="table-primary">
+                                                    <td colspan="4" class="pl-4">Total Amount Due: <span id="outpatientTotalDue" class="float-right">₱0.00</span></td>
+                                                </tr>
+                                            </tfoot>
                                         </table>
                                     </div>
                                 </div>
@@ -911,34 +882,47 @@ if (isset($_POST['submit_payment'])) {
 <script>
 const patientSearch = document.getElementById('patient_search');
 const searchResults = document.getElementById('search_results');
-const outpatientLabTable = document.getElementById('outpatientLabTable');
-const outpatientRadTable = document.getElementById('outpatientRadTable');
+const outpatientFeesTable = document.getElementById('outpatientFeesTable');
 const inpatientBillingTable = document.getElementById('inpatientBillingTable');
 const hemodialysisBillingTable = document.getElementById('hemodialysisBillingTable');
-const newbornBillingTable = document.getElementById('newbornBillingTable'); // Added Newborn Billing Table
+const newbornBillingTable = document.getElementById('newbornBillingTable');
 const patientTypeSelect = document.getElementById('patient_type');
 let currentTotalDue = 0;
+
+function calculatePayment() {
+    const amountPaid = parseFloat(document.getElementById('amount_paid').value) || 0;
+    const amountToPay = parseFloat(document.getElementById('amount_to_pay').value) || 0;
+    const changeInput = document.getElementById('change');
+    
+    if (amountPaid > amountToPay) {
+        const change = amountPaid - amountToPay;
+        changeInput.value = change.toFixed(2);
+        document.getElementById('amount_paid').value = amountToPay.toFixed(2);
+    } else {
+        changeInput.value = '0.00';
+    }
+}
 
 function togglePatientSearch() {
     const selectedType = patientTypeSelect.value;
     patientSearch.parentElement.parentElement.style.display = 'block';
 
     // Clear all tables and amounts
-    outpatientLabTable.style.display = 'none';
-    outpatientRadTable.style.display = 'none';
+    outpatientFeesTable.style.display = 'none';
     inpatientBillingTable.style.display = 'none';
     hemodialysisBillingTable.style.display = 'none';
-    newbornBillingTable.style.display = 'none'; // Hide Newborn Billing Table
+    newbornBillingTable.style.display = 'none';
 
     // Clear table contents
-    outpatientLabTable.querySelector('tbody').innerHTML = '';
-    outpatientRadTable.querySelector('tbody').innerHTML = '';
+    document.getElementById('labFeesBody').innerHTML = '';
+    document.getElementById('radFeesBody').innerHTML = '';
     inpatientBillingTable.querySelector('tbody').innerHTML = '';
     hemodialysisBillingTable.querySelector('tbody').innerHTML = '';
-    newbornBillingTable.querySelector('tbody').innerHTML = ''; // Clear Newborn Billing Table
+    newbornBillingTable.querySelector('tbody').innerHTML = '';
 
     // Clear all amounts and spans
     const fieldsToReset = [
+        'outpatientTotalDue',
         'inpatientGrossAmount', 'inpatientPhilhealthPF', 'inpatientPhilhealthHB', 'inpatientVatExempt', 
         'inpatientSeniorDiscount', 'inpatientPWDDiscount', 'inpatientAmountPaid', 
         'inpatientAmountDue', 'inpatientRemainingBalance',
@@ -949,7 +933,7 @@ function togglePatientSearch() {
 
         'newbornGrossAmount', 'newbornPhilhealthPF', 'newbornPhilhealthHB', 'newbornVatExempt', 
         'newbornSeniorDiscount', 'newbornPWDDiscount', 'newbornAmountPaid', 
-        'newbornAmountDue', 'newbornRemainingBalance' // Reset Newborn Billing Amounts
+        'newbornAmountDue', 'newbornRemainingBalance'
     ];
 
     fieldsToReset.forEach(id => document.getElementById(id).textContent = '₱0.00');
@@ -958,35 +942,21 @@ function togglePatientSearch() {
 
     // Show appropriate table based on type
     if (selectedType === 'Outpatient') {
-        outpatientLabTable.style.display = 'table';
-        outpatientRadTable.style.display = 'table';
+        outpatientFeesTable.style.display = 'block';
     } else if (selectedType === 'Inpatient') {
-        inpatientBillingTable.style.display = 'table';
+        inpatientBillingTable.style.display = 'block';
     } else if (selectedType === 'Hemodialysis') {
-        hemodialysisBillingTable.style.display = 'table';
-    } else if (selectedType === 'Newborn') { // Show Newborn Billing Table
-        newbornBillingTable.style.display = 'table';
+        hemodialysisBillingTable.style.display = 'block';
+    } else if (selectedType === 'Newborn') {
+        newbornBillingTable.style.display = 'block';
     }
 
     // Clear search and amounts
     patientSearch.value = '';
     document.getElementById('selected_patient_name').value = '';
-    document.querySelector('input[name="amount_to_pay"]').value = '';
-    document.querySelector('input[name="amount_paid"]').value = '';
-}
-
-function calculateRemainingBalance() {
-    const amountPaidInput = document.querySelector('input[name="amount_paid"]');
-    const amountToPayInput = document.querySelector('input[name="amount_to_pay"]');
-    const amountPaid = parseFloat(amountPaidInput.value) || 0;
-    
-    if (amountPaid > currentTotalDue) {
-        amountPaidInput.value = currentTotalDue.toFixed(2);
-        amountToPayInput.value = '0.00';
-    } else {
-        const remainingBalance = currentTotalDue - amountPaid;
-        amountToPayInput.value = remainingBalance.toFixed(2);
-    }
+    document.getElementById('amount_to_pay').value = '';
+    document.getElementById('amount_paid').value = '';
+    document.getElementById('change').value = '0.00';
 }
 
 patientSearch.addEventListener('keyup', function() {
@@ -996,7 +966,7 @@ patientSearch.addEventListener('keyup', function() {
         const searchEndpoint = selectedType === 'Outpatient' ? 'search-opt.php' : 
                              selectedType === 'Inpatient' ? 'search-ipt-payment.php' : 
                              selectedType === 'Hemodialysis' ? 'search-hemodialysis-payment.php' : 
-                             selectedType === 'Newborn' ? 'search-nb-payment.php' : ''; // Newborn case
+                             selectedType === 'Newborn' ? 'search-nb-payment.php' : '';
 
         if (searchEndpoint) {
             fetch(searchEndpoint + '?search=' + encodeURIComponent(this.value))
@@ -1004,11 +974,11 @@ patientSearch.addEventListener('keyup', function() {
                 .then(data => {
                     searchResults.style.display = 'block';
                     searchResults.innerHTML = data.map(patient => {
-                        const id = selectedType === 'Newborn' ? patient.newborn_id : patient.patient_id; // Ensure newborn_id is used
+                        const id = selectedType === 'Newborn' ? patient.newborn_id : patient.patient_id;
                         return `<li class="search-result" data-id="${id}">${patient.patient_name}</li>`;
                     }).join('');
                 })
-                .catch(error => console.error('Error fetching data:', error)); // Debugging
+                .catch(error => console.error('Error fetching data:', error));
         }
     } else {
         searchResults.style.display = 'none';
@@ -1026,47 +996,72 @@ document.addEventListener('click', function(e) {
         let totalAmount = 0;
 
         if (selectedType === 'Outpatient') {
-            // Fetch laboratory fees
-            fetch('opt-lab-fee.php?patient_name=' + patientName)
-                .then(response => response.json())
-                .then(data => {
-                    outpatientLabTable.style.display = 'table';
-                    const tbody = outpatientLabTable.querySelector('tbody');
-                    tbody.innerHTML = '';
+            outpatientFeesTable.style.display = 'block';
+            
+            // Clear previous results
+            document.getElementById('labFeesBody').innerHTML = '';
+            document.getElementById('radFeesBody').innerHTML = '';
+            document.getElementById('outpatientTotalDue').textContent = '₱0.00';
 
-                    data.forEach(bill => {
+            // Fetch both lab and radiology fees in parallel
+            Promise.all([
+                fetch('opt-lab-fee.php?patient_name=' + encodeURIComponent(patientName))
+                    .then(response => {
+                        if (!response.ok) throw new Error('Lab fees fetch failed');
+                        return response.json();
+                    }),
+                fetch('opt-rad-fee.php?patient_name=' + encodeURIComponent(patientName))
+                    .then(response => {
+                        if (!response.ok) throw new Error('Radiology fees fetch failed');
+                        return response.json();
+                    })
+            ])
+            .then(([labData, radData]) => {
+                const labFeesBody = document.getElementById('labFeesBody');
+                const radFeesBody = document.getElementById('radFeesBody');
+                
+                // Process lab fees
+                if (labData && labData.length > 0) {
+                    labData.forEach(bill => {
                         const row = document.createElement('tr');
                         row.innerHTML = `
-                            <td>${bill.lab_test}</td>
-                            <td>₱${bill.lab_price}</td>
-                            <td>${bill.lab_requested_date}</td>
+                            <td>${bill.lab_test || 'N/A'}</td>
+                            <td class="text-right">₱${parseFloat(bill.lab_price || 0).toFixed(2)}</td>
+                            <td>${bill.lab_requested_date || 'N/A'}</td>
                         `;
-                        tbody.appendChild(row);
-                        totalAmount += parseFloat(bill.lab_price);
+                        labFeesBody.appendChild(row);
+                        totalAmount += parseFloat(bill.lab_price || 0);
                     });
-                    updateAmountToPay(totalAmount);
-                });
+                } else {
+                    labFeesBody.innerHTML = '<tr><td colspan="3" class="text-center">No laboratory fees found</td></tr>';
+                }
 
-            // Fetch radiology fees
-            fetch('opt-rad-fee.php?patient_name=' + patientName)
-                .then(response => response.json())
-                .then(data => {
-                    outpatientRadTable.style.display = 'table';
-                    const tbody = outpatientRadTable.querySelector('tbody');
-                    tbody.innerHTML = '';
-
-                    data.forEach(bill => {
+                // Process radiology fees
+                if (radData && radData.length > 0) {
+                    radData.forEach(bill => {
                         const row = document.createElement('tr');
                         row.innerHTML = `
-                            <td>${bill.test_type}</td>
-                            <td>₱${bill.price}</td>
-                            <td>${bill.requested_date}</td>
+                            <td>${bill.test_type || 'N/A'}</td>
+                            <td class="text-right">₱${parseFloat(bill.price || 0).toFixed(2)}</td>
+                            <td>${bill.requested_date || 'N/A'}</td>
                         `;
-                        tbody.appendChild(row);
-                        totalAmount += parseFloat(bill.price);
+                        radFeesBody.appendChild(row);
+                        totalAmount += parseFloat(bill.price || 0);
                     });
-                    updateAmountToPay(totalAmount);
-                });
+                } else {
+                    radFeesBody.innerHTML = '<tr><td colspan="3" class="text-center">No radiology fees found</td></tr>';
+                }
+
+                // Update total amount
+                document.getElementById('outpatientTotalDue').textContent = `₱${totalAmount.toFixed(2)}`;
+                updateAmountToPay(totalAmount);
+            })
+            .catch(error => {
+                console.error('Error fetching outpatient fees:', error);
+                // Show error messages in the tables
+                document.getElementById('labFeesBody').innerHTML = '<tr><td colspan="3" class="text-center text-danger">Error loading laboratory fees</td></tr>';
+                document.getElementById('radFeesBody').innerHTML = '<tr><td colspan="3" class="text-center text-danger">Error loading radiology fees</td></tr>';
+            });
         } else if (selectedType === 'Inpatient') {
             // For inpatients, fetch their billing data
             fetch('ipt-billing-fee.php?patient_name=' + patientName)
@@ -1074,7 +1069,7 @@ document.addEventListener('click', function(e) {
                 .then(data => {
                     const tbody = inpatientBillingTable.querySelector('tbody');
                     tbody.innerHTML = '';
-                    inpatientBillingTable.style.display = 'table';
+                    inpatientBillingTable.style.display = 'block';
 
                     // Add rows for each fee type
                     const fees = [
@@ -1090,13 +1085,13 @@ document.addEventListener('click', function(e) {
                     ];
 
                     fees.forEach(item => {
-                        if (parseFloat(item.fee || 0) > 0) {  // Only show rows with fees
+                        if (parseFloat(item.fee || 0) > 0) {
                             const row = document.createElement('tr');
                             row.innerHTML = `
                                 <td>${item.name}</td>
-                                <td>₱${parseFloat(item.fee || 0).toFixed(2)}</td>
-                                <td>₱${parseFloat(item.discount || 0).toFixed(2)}</td>
-                                <td>₱${parseFloat(item.net || 0).toFixed(2)}</td>
+                                <td class="text-right">₱${parseFloat(item.fee || 0).toFixed(2)}</td>
+                                <td class="text-right">₱${parseFloat(item.discount || 0).toFixed(2)}</td>
+                                <td class="text-right">₱${parseFloat(item.net || 0).toFixed(2)}</td>
                             `;
                             tbody.appendChild(row);
                         }
@@ -1144,7 +1139,7 @@ document.addEventListener('click', function(e) {
                 .then(data => {
                     const tbody = hemodialysisBillingTable.querySelector('tbody');
                     tbody.innerHTML = '';
-                    hemodialysisBillingTable.style.display = 'table';
+                    hemodialysisBillingTable.style.display = 'block';
 
                     // Add rows for each fee type
                     const fees = [
@@ -1157,13 +1152,13 @@ document.addEventListener('click', function(e) {
                     ];
 
                     fees.forEach(item => {
-                        if (parseFloat(item.fee || 0) > 0) {  // Only show rows with fees
+                        if (parseFloat(item.fee || 0) > 0) {
                             const row = document.createElement('tr');
                             row.innerHTML = `
                                 <td>${item.name}</td>
-                                <td>₱${parseFloat(item.fee || 0).toFixed(2)}</td>
-                                <td>₱${parseFloat(item.discount || 0).toFixed(2)}</td>
-                                <td>₱${parseFloat(item.net || 0).toFixed(2)}</td>
+                                <td class="text-right">₱${parseFloat(item.fee || 0).toFixed(2)}</td>
+                                <td class="text-right">₱${parseFloat(item.discount || 0).toFixed(2)}</td>
+                                <td class="text-right">₱${parseFloat(item.net || 0).toFixed(2)}</td>
                             `;
                             tbody.appendChild(row);
                         }
@@ -1210,7 +1205,7 @@ document.addEventListener('click', function(e) {
                 .then(data => {
                     const tbody = newbornBillingTable.querySelector('tbody');
                     tbody.innerHTML = '';
-                    newbornBillingTable.style.display = 'table';
+                    newbornBillingTable.style.display = 'block';
 
                     // Add rows for each fee type
                     const fees = [
@@ -1223,13 +1218,13 @@ document.addEventListener('click', function(e) {
                     ];
 
                     fees.forEach(item => {
-                        if (parseFloat(item.fee || 0) > 0) {  // Only show rows with fees
+                        if (parseFloat(item.fee || 0) > 0) {
                             const row = document.createElement('tr');
                             row.innerHTML = `
                                 <td>${item.name}</td>
-                                <td>₱${parseFloat(item.fee || 0).toFixed(2)}</td>
-                                <td>₱${parseFloat(item.discount || 0).toFixed(2)}</td>
-                                <td>₱${parseFloat(item.net || 0).toFixed(2)}</td>
+                                <td class="text-right">₱${parseFloat(item.fee || 0).toFixed(2)}</td>
+                                <td class="text-right">₱${parseFloat(item.discount || 0).toFixed(2)}</td>
+                                <td class="text-right">₱${parseFloat(item.net || 0).toFixed(2)}</td>
                             `;
                             tbody.appendChild(row);
                         }
@@ -1275,29 +1270,30 @@ document.addEventListener('click', function(e) {
 });
 
 function updateAmountToPay(total) {
-    document.querySelector('input[name="amount_to_pay"]').value = total.toFixed(2);
+    document.getElementById('amount_to_pay').value = total.toFixed(2);
+    document.getElementById('amount_paid').value = '';
+    document.getElementById('change').value = '0.00';
 }
 
 $('.dropdown-toggle').on('click', function (e) {
-        var $el = $(this).next('.dropdown-menu');
-        var isVisible = $el.is(':visible');
-        
-        // Hide all dropdowns
-        $('.dropdown-menu').slideUp('400');
-        
-        // If this wasn't already visible, slide it down
-        if (!isVisible) {
-            $el.stop(true, true).slideDown('400');
-        }
-        
-        // Close the dropdown if clicked outside of it
-        $(document).on('click', function (e) {
-            if (!$(e.target).closest('.dropdown').length) {
-                $('.dropdown-menu').slideUp('400');
-            }
-        });
-    });
+    var $el = $(this).next('.dropdown-menu');
+    var isVisible = $el.is(':visible');
     
+    // Hide all dropdowns
+    $('.dropdown-menu').slideUp('400');
+    
+    // If this wasn't already visible, slide it down
+    if (!isVisible) {
+        $el.stop(true, true).slideDown('400');
+    }
+    
+    // Close the dropdown if clicked outside of it
+    $(document).on('click', function (e) {
+        if (!$(e.target).closest('.dropdown').length) {
+            $('.dropdown-menu').slideUp('400');
+        }
+    });
+});
 </script>
 <style>
 .btn-primary.submit-btn {
@@ -1420,5 +1416,21 @@ select.form-control {
 .input-group-text {
     background-color: #f8f9fa;
     border-color: #ced4da;
+}
+
+/* Change field styling */
+#change {
+    background-color: #f8f9fa !important;
+    font-weight: bold;
+    color: #2e7d32;
+}
+
+/* Section headers in tables */
+.bg-light {
+    background-color: #f8f9fa !important;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    letter-spacing: 0.5px;
 }
 </style>

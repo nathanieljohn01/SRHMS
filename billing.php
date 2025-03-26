@@ -193,6 +193,7 @@ if ($patientType === 'hemodialysis') {
                                 <div class="dropdown-menu dropdown-menu-right">
                                     <?php
                                     if ($_SESSION['role'] == 1) {
+                                        echo '<a class="dropdown-item" href="generate-soa.php?id='.$row['billing_id'].'"><i class="fa fa-file-pdf-o m-r-5"></i> Generate SOA</a>';
                                         echo '<a class="dropdown-item" href="edit-billing.php?id='.$row['id'].'"><i class="fa fa-pencil m-r-5"></i> Edit</a>';
                                         echo '<a class="dropdown-item" href="#" onclick="return confirmDelete(\''.$row['id'].'\', \''.$patientType.'\')">
                                                 <i class="fa fa-trash-o m-r-5"></i> Delete

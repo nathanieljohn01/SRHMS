@@ -40,8 +40,10 @@ include('includes/connection.php');
                             <div class="form-group mb-md-0">
                                 <select class="form-control" id="patientTypeFilter">
                                     <option value="">All Patient Types</option>
-                                    <option value="Inpatient">Inpatient</option>
                                     <option value="Outpatient">Outpatient</option>
+                                    <option value="Inpatient">Inpatient</option>
+                                    <option value="Hemodialysis">Hemodialysis</option>
+                                    <option value="Newborn">Newborn</option>
                                 </select>
                             </div>
                         </div>
@@ -202,7 +204,9 @@ function formatPatientId(row) {
 }
 
 function formatCurrency(amount) {
-    return parseFloat(amount).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    // Alisin ang lahat ng non-numeric characters maliban sa decimal point
+    const numericValue = String(amount).replace(/[^0-9.]/g, '');
+    return parseFloat(numericValue).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
 
 function getStatusClass(status) {
