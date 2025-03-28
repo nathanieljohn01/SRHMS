@@ -56,19 +56,48 @@ elseif (!array_key_exists($patient_type, $billing_tables)) {
 $table = $billing_tables[$patient_type];
 
 // Get the billing data
-$query = "
-    SELECT b.*, 
-           CONCAT(p.first_name, ' ', p.last_name) AS patient_name,
-           p.dob, p.gender, p.address,
-           GROUP_CONCAT(o.item_name ORDER BY o.date_time DESC SEPARATOR ', ') AS other_items,
-           GROUP_CONCAT(o.item_cost ORDER BY o.date_time DESC SEPARATOR ', ') AS other_costs
-    FROM $table b
-    LEFT JOIN tbl_patient p ON b.patient_id = p.patient_id
-    LEFT JOIN tbl_billing_others o ON b.billing_id = o.billing_id
-    WHERE b.billing_id = '$billing_id' AND b.deleted = 0
-    GROUP BY b.billing_id
-";
-
+// Get the billing data with patient type-specific queries
+if ($patient_type === 'hemodialysis') {
+    $query = "
+        SELECT b.*, 
+            CONCAT(p.first_name, ' ', p.last_name) AS patient_name,
+            p.dob, p.gender, p.address,
+            GROUP_CONCAT(o.item_name ORDER BY o.date_time DESC SEPARATOR ', ') AS other_items,
+            GROUP_CONCAT(o.item_cost ORDER BY o.date_time DESC SEPARATOR ', ') AS other_costs
+        FROM $table b
+        LEFT JOIN tbl_patient p ON b.patient_id = p.patient_id
+        LEFT JOIN tbl_billing_others o ON b.billing_id = o.billing_id
+        WHERE b.billing_id = '$billing_id' AND b.deleted = 0
+        GROUP BY b.billing_id
+    ";
+} elseif ($patient_type === 'newborn') {
+    $query = "
+        SELECT b.*, 
+            CONCAT(n.first_name, ' ', n.last_name) AS patient_name,
+            b.dob, b.gender, b.address,
+            GROUP_CONCAT(o.item_name ORDER BY o.date_time DESC SEPARATOR ', ') AS other_items,
+            GROUP_CONCAT(o.item_cost ORDER BY o.date_time DESC SEPARATOR ', ') AS other_costs
+        FROM $table b
+        LEFT JOIN tbl_newborn n ON b.newborn_id = n.newborn_id
+        LEFT JOIN tbl_billing_others o ON b.billing_id = o.billing_id
+        WHERE b.billing_id = '$billing_id' AND b.deleted = 0
+        GROUP BY b.billing_id
+    ";
+} else {
+    // Default inpatient query
+    $query = "
+        SELECT b.*, 
+            CONCAT(p.first_name, ' ', p.last_name) AS patient_name,
+            p.dob, p.gender, p.address,
+            GROUP_CONCAT(o.item_name ORDER BY o.date_time DESC SEPARATOR ', ') AS other_items,
+            GROUP_CONCAT(o.item_cost ORDER BY o.date_time DESC SEPARATOR ', ') AS other_costs
+        FROM $table b
+        LEFT JOIN tbl_patient p ON b.patient_id = p.patient_id
+        LEFT JOIN tbl_billing_others o ON b.billing_id = o.billing_id
+        WHERE b.billing_id = '$billing_id' AND b.deleted = 0
+        GROUP BY b.billing_id
+    ";
+}
 $result = mysqli_query($connection, $query);
 if (!$result) {
     die("Database error: " . mysqli_error($connection));
@@ -93,6 +122,39 @@ try {
     $dobDate = new DateTime($dob);
     $now = new DateTime();
     $age = $now->diff($dobDate)->y;
+} catch (Exception $e) {
+    $age = 'N/A';
+}
+
+// Format dates with proper handling
+$dob = $billing_data['dob'];
+if (strpos($dob, '/') !== false) {
+    // Handle DD/MM/YYYY format
+    $dateParts = explode('/', $dob);
+    if (count($dateParts) === 3) {
+        $dob = $dateParts[2].'-'.$dateParts[1].'-'.$dateParts[0]; // Convert to YYYY-MM-DD
+    }
+}
+
+try {
+    $dobDate = new DateTime($dob);
+    $now = new DateTime();
+    
+    if ($patient_type === 'newborn') {
+        // For newborns, calculate age in days if less than 1 month, or months if less than 1 year
+        $diff = $now->diff($dobDate);
+        
+        if ($diff->y > 0) {
+            $age = $diff->y;
+        } elseif ($diff->m > 0) {
+            $age = $diff->m . ' month' . ($diff->m > 1 ? 's' : '');
+        } else {
+            $age = $diff->d . ' day' . ($diff->d > 1 ? 's' : '');
+        }
+    } else {
+        // For regular patients, show age in years
+        $age = $now->diff($dobDate)->y;
+    }
 } catch (Exception $e) {
     $age = 'N/A';
 }
@@ -178,7 +240,7 @@ $left_column = [
     'Billing ID' => $billing_data['billing_id'],
     'Patient ID' => $patient_id,
     'Patient Name' => $billing_data['patient_name'],
-    'Age' =>  $billing_data['dob'],
+    'Age' => $age,
     'Gender' => $billing_data['gender'],
     'Address' => $billing_data['address']
 ];

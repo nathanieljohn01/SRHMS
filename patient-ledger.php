@@ -415,6 +415,8 @@ $(document).ready(function() {
     text-transform: uppercase;
     letter-spacing: 0.5px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    transition: all 0.3s ease;
+    border: 1px solid transparent;
 }
 
 .status-badge i {
@@ -444,6 +446,11 @@ $(document).ready(function() {
     background-color: #f3e5f5;
     color: #6a1b9a;
     border: 1px solid #e1bee7;
+}
+
+.status-badge:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
 
 /*Action Button */

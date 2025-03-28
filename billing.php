@@ -130,7 +130,7 @@ if ($patientType === 'hemodialysis') {
                     <?php
                     if(isset($_GET['ids'])) {
                         $id = intval($_GET['ids']);
-                        $type = $_GET['type'] ?? ''; // Add type parameter
+                        $type = $_GET['type'] ?? '';
                         
                         if ($type == 'inpatient') {
                             $stmt = $connection->prepare("UPDATE tbl_billing_inpatient SET deleted = 1 WHERE id = ?");
@@ -144,19 +144,44 @@ if ($patientType === 'hemodialysis') {
                             $stmt->execute(); 
                             $stmt->close();
                         } 
-                        else if ($type == 'newborn') { // Added condition for newborn billing
+                        else if ($type == 'newborn') {
                             $stmt = $connection->prepare("UPDATE tbl_billing_newborn SET deleted = 1 WHERE id = ?");
                             $stmt->bind_param("i", $id);
                             $stmt->execute(); 
                             $stmt->close();
                         }                        
                     }
-                     $patient_query = mysqli_query($connection, $query);
-                     while ($row = mysqli_fetch_array($patient_query)) {
+                    
+                    $patient_query = mysqli_query($connection, $query);
+                    while ($row = mysqli_fetch_array($patient_query)) {
+                        // Calculate age with proper format for newborns
                         $dob = $row['dob'];
-                        $date = str_replace('/', '-', $dob);
-                        $dob = date('Y-m-d', strtotime($date));
-                        $year = (date('Y') - date('Y', strtotime($dob)));
+                        if (strpos($dob, '/') !== false) {
+                            $dateParts = explode('/', $dob);
+                            if (count($dateParts) === 3) {
+                                $dob = $dateParts[2].'-'.$dateParts[1].'-'.$dateParts[0];
+                            }
+                        }
+                        
+                        try {
+                            $dobDate = new DateTime($dob);
+                            $now = new DateTime();
+                            
+                            if ($patientType === 'newborn') {
+                                $diff = $now->diff($dobDate);
+                                if ($diff->y > 0) {
+                                    $age = $diff->y;
+                                } elseif ($diff->m > 0) {
+                                    $age = $diff->m . ' month' . ($diff->m > 1 ? 's' : '');
+                                } else {
+                                    $age = $diff->d . ' day' . ($diff->d > 1 ? 's' : '');
+                                }
+                            } else {
+                                $age = $now->diff($dobDate)->y;
+                            }
+                        } catch (Exception $e) {
+                            $age = 'N/A';
+                        }
                     ?>
                     <tr data-billing-id="<?php echo $row['billing_id']; ?>">
                         <td><?php echo $row['billing_id']; ?></td>
@@ -170,21 +195,32 @@ if ($patientType === 'hemodialysis') {
                             ?>
                         </td>
                         <td><?php echo $row['patient_name']; ?></td>
-                        <td><?php echo $year; ?></td>
+                        <td><?php echo $age; ?></td> <!-- Updated to use the calculated age -->
                         <td><?php echo $row['gender']; ?></td>
                         <td><?php echo $row['address']; ?></td>
                         <td><?php echo $row['diagnosis']; ?></td>
                         <td>
                             <?php 
-                            echo !empty($row['admission_date']) ? date('F d, Y g:i A', strtotime($row['admission_date'])) : ''; 
+                            if (!empty($row['admission_date'])) {
+                                $admissionDate = str_replace('/', '-', $row['admission_date']);
+                                echo date('F d, Y g:i A', strtotime($admissionDate));
+                            }
                             ?>
                         </td>
                         <td>
                             <?php 
-                            echo !empty($row['discharge_date']) ? date('F d, Y g:i A', strtotime($row['discharge_date'])) : ''; 
+                            if (!empty($row['discharge_date'])) {
+                                $dischargeDate = str_replace('/', '-', $row['discharge_date']);
+                                echo date('F d, Y g:i A', strtotime($dischargeDate));
+                            }
                             ?>
                         </td>
-                        <td><?php echo date('F d, Y g:i A', strtotime($row['transaction_datetime'])); ?></td>
+                        <td>
+                            <?php 
+                            $transactionDate = str_replace('/', '-', $row['transaction_datetime']);
+                            echo date('F d, Y g:i A', strtotime($transactionDate));
+                            ?>
+                        </td>
                         <td class="text-right">
                             <div class="dropdown dropdown-action">
                                 <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
@@ -194,7 +230,7 @@ if ($patientType === 'hemodialysis') {
                                     <?php
                                     if ($_SESSION['role'] == 1) {
                                         echo '<a class="dropdown-item" href="generate-soa.php?id='.$row['billing_id'].'"><i class="fa fa-file-pdf-o m-r-5"></i> Generate SOA</a>';
-                                        echo '<a class="dropdown-item" href="edit-billing.php?id='.$row['id'].'"><i class="fa fa-pencil m-r-5"></i> Edit</a>';
+                                        echo '<a class="dropdown-item" href="edit-billing.php?id='.$row['billing_id'].'"><i class="fa fa-pencil m-r-5"></i> Edit</a>';
                                         echo '<a class="dropdown-item" href="#" onclick="return confirmDelete(\''.$row['id'].'\', \''.$patientType.'\')">
                                                 <i class="fa fa-trash-o m-r-5"></i> Delete
                                             </a>';

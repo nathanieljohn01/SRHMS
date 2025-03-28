@@ -61,7 +61,7 @@ include('includes/connection.php');
                         }
                     }
                       
-                    $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_employee WHERE deleted = 0 ORDER BY id DESC");
+                    $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_employee WHERE deleted = 0");
                     while ($row = mysqli_fetch_array($fetch_query)) {
                     ?>
                     <tr>
@@ -74,17 +74,27 @@ include('includes/connection.php');
                         <td><?php echo $row['joining_date']; ?></td>
                         <td>
                             <?php 
-                            switch ($row['role']) {
-                                case "3": echo '<span class="custom-badge status-green">Nurse 1</span>'; break;
-                                case "10": echo '<span class="custom-badge status-green">Nurse 2</span>'; break;
-                                case "2": echo '<span class="custom-badge status-red">Doctor</span>'; break;
-                                case "1": echo '<span class="custom-badge status-grey">Admin</span>'; break;
-                                case "4": echo '<span class="custom-badge status-blue">Pharmacist</span>'; break;
-                                case "5": echo '<span class="custom-badge status-purple">Medtech</span>'; break;
-                                case "6": echo '<span class="custom-badge status-orange">Radtech</span>'; break;
-                                case "7": echo '<span class="custom-badge status-purple">Billing Clerk</span>'; break;
-                                case "8": echo '<span class="custom-badge status-pink">Cashier</span>'; break;
-                                case "9": echo '<span class="custom-badge status-grey">Housekeeping Attendant</span>'; break;
+                            $roleBadges = [
+                                "3" => ['text' => 'Nurse 1', 'color' => 'emp-nurse', 'icon' => 'fa-user-nurse'],
+                                "10" => ['text' => 'Nurse 2', 'color' => 'emp-nurse-alt', 'icon' => 'fa-user-nurse'],
+                                "2" => ['text' => 'Doctor', 'color' => 'emp-doctor', 'icon' => 'fa-user-md'],
+                                "1" => ['text' => 'Admin', 'color' => 'emp-admin', 'icon' => 'fa-user-cog'],
+                                "4" => ['text' => 'Pharmacist', 'color' => 'emp-pharma', 'icon' => 'fa-prescription-bottle'],
+                                "5" => ['text' => 'Medtech', 'color' => 'emp-medtech', 'icon' => 'fa-microscope'],
+                                "6" => ['text' => 'Radtech', 'color' => 'emp-radtech', 'icon' => 'fa-x-ray'],
+                                "7" => ['text' => 'Billing Clerk', 'color' => 'emp-billing', 'icon' => 'fa-file-invoice-dollar'],
+                                "8" => ['text' => 'Cashier', 'color' => 'emp-cashier', 'icon' => 'fa-cash-register'],
+                                "9" => ['text' => 'Housekeeping', 'color' => 'emp-housekeeping', 'icon' => 'fa-broom']
+                            ];
+                            
+                            if (isset($roleBadges[$row['role']])) {
+                                $badge = $roleBadges[$row['role']];
+                                echo '<span class="emp-badge '.$badge['color'].'">';
+                                echo '<i class="fas '.$badge['icon'].'"></i> ';
+                                echo $badge['text'];
+                                echo '</span>';
+                            } else {
+                                echo '<span class="emp-badge emp-default">Unknown Role</span>';
                             }
                             ?>
                         </td>
@@ -249,5 +259,113 @@ $('.dropdown-toggle').on('click', function (e) {
 .input-group-text {
     background-color:rgb(255, 255, 255);
     border: 1px solid rgb(228, 228, 228);
+}
+/* Employee Badge System */
+.emp-badge {
+    padding: 6px 12px;
+    border-radius: 50px;
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 100px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    transition: all 0.3s ease;
+    border: 1px solid transparent;
+}
+
+.emp-badge i {
+    margin-right: 6px;
+    font-size: 12px;
+}
+
+/* Specific role colors */
+.emp-nurse {
+    background-color: #e8f5e9;
+    color: #2e7d32;
+    border-color: #c8e6c9;
+}
+
+.emp-nurse-alt {
+    background-color: #e0f7fa;
+    color: #00838f;
+    border-color: #b2ebf2;
+}
+
+.emp-doctor {
+    background-color: #e3f2fd;
+    color: #1565c0;
+    border-color: #bbdefb;
+}
+
+.emp-admin {
+    background-color: #f5f5f5;
+    color: #616161;
+    border-color: #e0e0e0;
+}
+
+.emp-pharma {
+    background-color: #fff8e1;
+    color: #ff8f00;
+    border-color: #ffecb3;
+}
+
+.emp-medtech {
+    background-color: #f3e5f5; 
+    color: #8e24aa;       
+    border-color: #e1bee7;    
+}
+
+.emp-radtech {
+    background-color: #e8eaf6;
+    color: #3949ab;
+    border-color: #c5cae9;
+}
+
+.emp-billing {
+    background-color: #fff3e0;
+    color: #ef6c00;
+    border-color: #ffe0b2;
+}
+
+.emp-cashier {
+    background-color: #fce4ec;
+    color: #c2185b;
+    border-color: #f8bbd0;
+}
+
+.emp-housekeeping {
+    background-color: #e0f2f1;
+    color: #00796b;
+    border-color: #b2dfdb;
+}
+
+.emp-default {
+    background-color: #f5f5f5;
+    color: #616161;
+    border-color: #e0e0e0;
+}
+
+/* Hover effects */
+.emp-badge:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+/* Responsive adjustments */
+@media (max-width: 767.98px) {
+    .emp-badge {
+        min-width: 70px;
+        padding: 4px 8px;
+        font-size: 10px;
+    }
+    
+    .emp-badge i {
+        font-size: 10px;
+        margin-right: 4px;
+    }
 }
 </style>

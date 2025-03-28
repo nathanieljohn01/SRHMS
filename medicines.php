@@ -285,19 +285,24 @@ include('footer.php');
     background: #05007E;
 }
 .badge {
-    font-weight: 500;
-    letter-spacing: 0.5px;
-    padding: 5px 10px;
-    border-radius: 12px;
+    padding: 6px 12px;
+    border-radius: 50px;
     font-size: 12px;
-    line-height: 1;
+    font-weight: 600;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 70px;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    min-width: 100px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    transition: all 0.3s ease;
+    border: 1px solid transparent;
 }
-
+.badge:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
 /* Stock Status Badges */
 .badge-stock {
     background-color: #f8f9fa;

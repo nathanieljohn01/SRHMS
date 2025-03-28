@@ -636,49 +636,58 @@ $('.dropdown-toggle').on('click', function (e) {
 });
 </script>
 <style>   
+/* Minimalist Dropdown */
 .custom-dropdown {
-    background-color: #f9f9f9; /* Slightly lighter background */
-    border: 1px solid #ddd; /* Softer border color */
-    border-radius: 5px; /* Rounded corners */
-    padding: 5px; /* Padding inside the dropdown */
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
-    min-width: 150px; /* Set minimum width to keep the dropdown compact */
+    background-color: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 6px 0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    min-width: 160px;
+    opacity: 0;
+    transform: translateY(2px);
+    animation: dropdownFadeIn 0.25s ease-out forwards;
+}
+
+@keyframes dropdownFadeIn {
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .custom-dropdown .dropdown-item {
-    padding: 9px 12px; /* Adjust padding for a balanced look */
-    font-size: 14px; /* Keep a clean font size */
-    color: #333; /* Darker text color for readability */
-    background-color: #fff; /* White background for the items */
-    border-radius: 4px; /* Subtle rounded corners for each item */
-    transition: background-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease; /* Smooth transitions for hover effects */
+    padding: 8px 16px;
+    color: #333;
+    transition: background-color 0.2s ease;
 }
 
 .custom-dropdown .dropdown-item:hover {
-    background-color: #e0e0e0; /* Soft gray hover background */
-    color: #000; /* Darker text on hover */
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1); /* Add a slight shadow on hover */
-    border-radius: 5px; /* Slight rounding on hover */
-    cursor: pointer; /* Change cursor on hover */
+    background-color: #f8f8f8;
+    color: #12369e;
 }
 
 .custom-dropdown .dropdown-item:active {
-    background-color: #CCCCCC; /* Darker gray when clicked */
-    color: #000; /* Keep the text color dark */
-    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1); /* Inner shadow for pressed effect */
-}
-.sidebar-menu .active a {
-    background-color: #12369e; /* Change this to your desired highlight color */
-    color: white; /* Change text color if needed */
+    background-color: #f0f0f0;
 }
 
+/* Minimalist Sidebar Menu */
 .sidebar-menu a {
-    color: #333; /* Default text color */
-    text-decoration: none; /* Remove underline */
+    display: block;
+    padding: 12px 16px;
+    color: #333;
+    transition: all 0.2s ease;
 }
 
 .sidebar-menu a:hover {
-    background-color: #f0f0f0; /* Change this to your desired hover color */
+    background-color: #f8f8f8;
+    color: #12369e;
+}
+
+.sidebar-menu .active a {
+    background-color: #12369e;
+    color: white;
+}
+
+.sidebar-menu .active a:hover {
+    background-color: #f5f5f5;
 }
 </style>
 </html>
