@@ -4,6 +4,7 @@ include('includes/connection.php');
 if (isset($_GET['patient_name'])) {
     $patient_name = $_GET['patient_name'];
     
+    // First, get the hemodialysis billing details
     $query = "SELECT 
         room_fee, medication_fee, lab_fee, rad_fee, operating_room_fee,
         supplies_fee, others_fee, professional_fee, readers_fee,
@@ -33,16 +34,40 @@ if (isset($_GET['patient_name'])) {
     FROM tbl_billing_hemodialysis 
     WHERE patient_name = ? 
     AND deleted = 0 
-    AND (status IS NULL OR status = '')";
+    ORDER BY id DESC 
+    LIMIT 1";
               
     $stmt = $connection->prepare($query);
     $stmt->bind_param("s", $patient_name);
     $stmt->execute();
     
     $result = $stmt->get_result();
-    $row = $result->fetch_assoc();
+    $billingData = $result->fetch_assoc();
+    
+    // Get total payments made by this patient for hemodialysis
+    $paymentQuery = "SELECT COALESCE(SUM(amount_paid), 0) as total_paid 
+                    FROM tbl_payment 
+                    WHERE patient_name = ?
+                    AND patient_type = 'Hemodialysis'";
+    $paymentStmt = $connection->prepare($paymentQuery);
+    $paymentStmt->bind_param("s", $patient_name);
+    $paymentStmt->execute();
+    $paymentResult = $paymentStmt->get_result();
+    $paymentData = $paymentResult->fetch_assoc();
+    
+    // Calculate remaining balance if not already set in billing data
+    if (!isset($billingData['remaining_balance']) || $billingData['remaining_balance'] === null) {
+        $totalAmount = $billingData['total_amount'];
+        $totalDiscount = $billingData['total_discount'];
+        $totalPaid = $paymentData['total_paid'];
+        
+        $billingData['remaining_balance'] = $totalAmount - $totalDiscount - $totalPaid;
+    }
+    
+    // Ensure remaining balance is not negative
+    $billingData['remaining_balance'] = max(0, $billingData['remaining_balance']);
     
     header('Content-Type: application/json');
-    echo json_encode($row);
+    echo json_encode($billingData);
 }
 ?>

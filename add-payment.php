@@ -67,9 +67,9 @@ if (isset($_POST['submit_payment'])) {
             $patient_type = mysqli_real_escape_string($connection, $patient_type);
     
             if ($patient_type == 'Inpatient') {
-                // Get inpatient billing details
+                // Get inpatient billing details including billing_id
                 $total_due_query = mysqli_query($connection, "
-                    SELECT total_due, remaining_balance 
+                    SELECT id, billing_id, total_due, remaining_balance 
                     FROM tbl_billing_inpatient 
                     WHERE patient_name = '$patient_name' 
                     ORDER BY id DESC LIMIT 1
@@ -82,6 +82,9 @@ if (isset($_POST['submit_payment'])) {
                 $total_due_row = mysqli_fetch_assoc($total_due_query);
                 $total_due = $total_due_row ? $total_due_row['total_due'] : 0;
                 $amount_to_pay = $total_due_row ? $total_due_row['remaining_balance'] : 0;
+                $billing_id = $total_due_row ? $total_due_row['billing_id'] : null;
+                $billing_inpatient_id = $total_due_row ? $total_due_row['id'] : null;
+                
                 $amount_paid = str_replace(',', '', $_POST['amount_paid']);
                 $amount_paid = floatval($amount_paid);
                 $initial_remaining = max(0, $amount_to_pay - $amount_paid);
@@ -99,110 +102,42 @@ if (isset($_POST['submit_payment'])) {
                     throw new Exception("Error inserting payment: " . mysqli_error($connection));
                 }
                 
-                // Update inpatient billing
+                // Update inpatient billing - force status update
                 $update_balance = mysqli_query($connection, "
                     UPDATE tbl_billing_inpatient 
                     SET remaining_balance = $initial_remaining,
                         status = CASE 
                             WHEN $initial_remaining <= 0 THEN 'Paid'
-                            ELSE status 
+                            ELSE 'Partial' 
                         END
-                    WHERE patient_name = '$patient_name' 
-                    ORDER BY id DESC LIMIT 1
+                    WHERE id = $billing_inpatient_id
                 ");
                 
                 if (!$update_balance) {
                     throw new Exception("Error updating balance: " . mysqli_error($connection));
                 }
     
-                // If payment is complete (remaining balance is 0), update billing_others
-                if ($initial_remaining <= 0) {
-                    // Get the billing_id from the latest inpatient billing
-                    $billing_id_query = mysqli_query($connection, "
-                        SELECT billing_id 
-                        FROM tbl_billing_inpatient 
-                        WHERE patient_name = '$patient_name' 
-                        ORDER BY id DESC LIMIT 1
-                    ");
+                // If payment is complete (remaining balance is 0), update all related records
+                if ($initial_remaining <= 0 && $billing_id) {
+                    // Prepare all update queries
+                    $update_queries = [
+                        "UPDATE tbl_billing_others SET is_billed = 1 WHERE billing_id = '$billing_id'",
+                        "UPDATE tbl_inpatient_record SET is_billed = 1 WHERE patient_name = '$patient_name'",
+                        "UPDATE tbl_operating_room SET is_billed = 1 WHERE patient_name = '$patient_name'",
+                        "UPDATE tbl_laborder SET is_billed = 1 WHERE patient_name = '$patient_name' AND deleted = 0",
+                        "UPDATE tbl_radiology SET is_billed = 1 WHERE patient_name = '$patient_name' AND deleted = 0",
+                        "UPDATE tbl_treatment SET is_billed = 1 WHERE patient_name = '$patient_name'"
+                    ];
                     
-                    if (!$billing_id_query) {
-                        throw new Exception("Error getting billing ID: " . mysqli_error($connection));
-                    }
-                    
-                    $billing_row = mysqli_fetch_assoc($billing_id_query);
-                    if ($billing_row) {
-                        $billing_id = mysqli_real_escape_string($connection, $billing_row['billing_id']);
-                        
-                        // Update all related records in billing_others
-                        $update_others = mysqli_query($connection, "
-                            UPDATE tbl_billing_others 
-                            SET is_billed = 1 
-                            WHERE billing_id = '$billing_id'
-                        ");
-                        
-                        if (!$update_others) {
-                            throw new Exception("Error updating billing others: " . mysqli_error($connection));
-                        }
-    
-                        // Update inpatient record
-                        $update_inpatient = mysqli_query($connection, "
-                            UPDATE tbl_inpatient_record 
-                            SET is_billed = 1 
-                            WHERE patient_name = '$patient_name'
-                        ");
-                        
-                        if (!$update_inpatient) {
-                            throw new Exception("Error updating inpatient record: " . mysqli_error($connection));
-                        }
-    
-                        // Update operating room record
-                        $update_or = mysqli_query($connection, "
-                            UPDATE tbl_operating_room 
-                            SET is_billed = 1 
-                            WHERE patient_name = '$patient_name'
-                        ");
-                        
-                        if (!$update_or) {
-                            throw new Exception("Error updating operating room record: " . mysqli_error($connection));
-                        }
-    
-                        // Update lab orders
-                        $update_lab = mysqli_query($connection, "
-                            UPDATE tbl_laborder 
-                            SET is_billed = 1 
-                            WHERE patient_name = '$patient_name'
-                            AND deleted = 0
-                        ");
-                        
-                        if (!$update_lab) {
-                            throw new Exception("Error updating lab orders: " . mysqli_error($connection));
-                        }
-    
-                        // Update radiology orders
-                        $update_rad = mysqli_query($connection, "
-                            UPDATE tbl_radiology 
-                            SET is_billed = 1 
-                            WHERE patient_name = '$patient_name'
-                            AND deleted = 0
-                        ");
-                        
-                        if (!$update_rad) {
-                            throw new Exception("Error updating radiology orders: " . mysqli_error($connection));
-                        }
-                  
-                        // Update treatment records
-                        $update_treatment = mysqli_query($connection, "
-                            UPDATE tbl_treatment 
-                            SET is_billed = 1 
-                            WHERE patient_name = '$patient_name'
-                        ");
-                      
-                        if (!$update_treatment) {
-                            throw new Exception("Error updating treatment records: " . mysqli_error($connection));
+                    // Execute all updates
+                    foreach ($update_queries as $query) {
+                        if (!mysqli_query($connection, $query)) {
+                            throw new Exception("Error updating records: " . mysqli_error($connection));
                         }
                     }
                 }
-            } else if ($patient_type == 'Outpatient') {
+            } 
+            else if ($patient_type == 'Outpatient') {
                 // Calculate totals
                 $lab_query = mysqli_query($connection, "SELECT COALESCE(SUM(price), 0) as total_lab FROM tbl_laborder 
                     WHERE patient_name = '$patient_name' AND is_billed = 0 AND deleted = 0");
@@ -245,10 +180,11 @@ if (isset($_POST['submit_payment'])) {
                 if (!$update_rad) {
                     throw new Exception("Radiology update failed: " . mysqli_error($connection));
                 }
-            } else if ($patient_type == 'Hemodialysis') {
-                // Get hemodialysis billing details
+            } 
+            else if ($patient_type == 'Hemodialysis') {
+                // Get hemodialysis billing details including billing_id
                 $total_due_query = mysqli_query($connection, "
-                    SELECT total_due, remaining_balance 
+                    SELECT id, billing_id, total_due, remaining_balance 
                     FROM tbl_billing_hemodialysis 
                     WHERE patient_name = '$patient_name' 
                     ORDER BY id DESC LIMIT 1
@@ -261,6 +197,9 @@ if (isset($_POST['submit_payment'])) {
                 $total_due_row = mysqli_fetch_assoc($total_due_query);
                 $total_due = $total_due_row ? $total_due_row['total_due'] : 0;
                 $amount_to_pay = $total_due_row ? $total_due_row['remaining_balance'] : 0;
+                $billing_id = $total_due_row ? $total_due_row['billing_id'] : null;
+                $billing_hemodialysis_id = $total_due_row ? $total_due_row['id'] : null;
+                
                 $amount_paid = str_replace(',', '', $_POST['amount_paid']);
                 $amount_paid = floatval($amount_paid);
                 $initial_remaining = max(0, $amount_to_pay - $amount_paid);
@@ -278,102 +217,44 @@ if (isset($_POST['submit_payment'])) {
                     throw new Exception("Error inserting payment: " . mysqli_error($connection));
                 }
                 
-                // Update hemodialysis billing
+                // Update hemodialysis billing - force status update
                 $update_balance = mysqli_query($connection, "
                     UPDATE tbl_billing_hemodialysis 
                     SET remaining_balance = $initial_remaining,
                         status = CASE 
                             WHEN $initial_remaining <= 0 THEN 'Paid'
-                            ELSE status 
+                            ELSE 'Partial' 
                         END
-                    WHERE patient_name = '$patient_name' 
-                    ORDER BY id DESC LIMIT 1
+                    WHERE id = $billing_hemodialysis_id
                 ");
                 
                 if (!$update_balance) {
                     throw new Exception("Error updating balance: " . mysqli_error($connection));
                 }
             
-                // If payment is complete (remaining balance is 0), update related records
-                if ($initial_remaining <= 0) {
-                    // Get the billing_id from the latest hemodialysis billing
-                    $billing_id_query = mysqli_query($connection, "
-                        SELECT billing_id 
-                        FROM tbl_billing_hemodialysis 
-                        WHERE patient_name = '$patient_name' 
-                        ORDER BY id DESC LIMIT 1
-                    ");
+                // If payment is complete (remaining balance is 0), update all related records
+                if ($initial_remaining <= 0 && $billing_id) {
+                    // Prepare all update queries
+                    $update_queries = [
+                        "UPDATE tbl_billing_others SET is_billed = 1 WHERE billing_id = '$billing_id'",
+                        "UPDATE tbl_hemodialysis SET is_billed = 1 WHERE patient_name = '$patient_name'",
+                        "UPDATE tbl_laborder SET is_billed = 1 WHERE patient_name = '$patient_name' AND deleted = 0",
+                        "UPDATE tbl_radiology SET is_billed = 1 WHERE patient_name = '$patient_name' AND deleted = 0",
+                        "UPDATE tbl_treatment SET is_billed = 1 WHERE patient_name = '$patient_name'"
+                    ];
                     
-                    if (!$billing_id_query) {
-                        throw new Exception("Error getting billing ID: " . mysqli_error($connection));
-                    }
-                    
-                    $billing_row = mysqli_fetch_assoc($billing_id_query);
-                    if ($billing_row) {
-                        $billing_id = mysqli_real_escape_string($connection, $billing_row['billing_id']);
-                        
-                        // Update all related records in billing_others
-                        $update_others = mysqli_query($connection, "
-                            UPDATE tbl_billing_others 
-                            SET is_billed = 1 
-                            WHERE billing_id = '$billing_id'
-                        ");
-                        
-                        if (!$update_others) {
-                            throw new Exception("Error updating billing others: " . mysqli_error($connection));
-                        }
-            
-                        // Update hemodialysis record
-                        $update_hemodialysis = mysqli_query($connection, "
-                            UPDATE tbl_hemodialysis 
-                            SET is_billed = 1 
-                            WHERE patient_name = '$patient_name'
-                        ");
-                        
-                        if (!$update_hemodialysis) {
-                            throw new Exception("Error updating hemodialysis record: " . mysqli_error($connection));
-                        }
-            
-                        // Update lab orders
-                        $update_lab = mysqli_query($connection, "
-                            UPDATE tbl_laborder 
-                            SET is_billed = 1 
-                            WHERE patient_name = '$patient_name'
-                            AND deleted = 0
-                        ");
-                        
-                        if (!$update_lab) {
-                            throw new Exception("Error updating lab orders: " . mysqli_error($connection));
-                        }
-            
-                        // Update radiology orders
-                        $update_rad = mysqli_query($connection, "
-                            UPDATE tbl_radiology 
-                            SET is_billed = 1 
-                            WHERE patient_name = '$patient_name'
-                            AND deleted = 0
-                        ");
-                        
-                        if (!$update_rad) {
-                            throw new Exception("Error updating radiology orders: " . mysqli_error($connection));
-                        }
-            
-                        // Update treatment records
-                        $update_treatment = mysqli_query($connection, "
-                            UPDATE tbl_treatment 
-                            SET is_billed = 1 
-                            WHERE patient_name = '$patient_name'
-                        ");
-                        
-                        if (!$update_treatment) {
-                            throw new Exception("Error updating treatment records: " . mysqli_error($connection));
+                    // Execute all updates
+                    foreach ($update_queries as $query) {
+                        if (!mysqli_query($connection, $query)) {
+                            throw new Exception("Error updating records: " . mysqli_error($connection));
                         }
                     }
-                }            
-            } else if ($patient_type == 'Newborn') {
-                // Get newborn billing details
+                }
+            } 
+            else if ($patient_type == 'Newborn') {
+                // Get newborn billing details including billing_id
                 $total_due_query = mysqli_query($connection, "
-                    SELECT total_due, remaining_balance 
+                    SELECT id, billing_id, total_due, remaining_balance 
                     FROM tbl_billing_newborn 
                     WHERE patient_name = '$patient_name' 
                     ORDER BY id DESC LIMIT 1
@@ -386,15 +267,16 @@ if (isset($_POST['submit_payment'])) {
                 $total_due_row = mysqli_fetch_assoc($total_due_query);
                 $total_due = $total_due_row ? $total_due_row['total_due'] : 0;
                 $amount_to_pay = $total_due_row ? $total_due_row['remaining_balance'] : 0;
+                $billing_id = $total_due_row ? $total_due_row['billing_id'] : null;
+                $billing_newborn_id = $total_due_row ? $total_due_row['id'] : null;
                 
-                // Escape and sanitize the amount paid input
                 $amount_paid = isset($_POST['amount_paid']) ? $_POST['amount_paid'] : '0';
                 $amount_paid = str_replace(',', '', $amount_paid);
                 $amount_paid = floatval($amount_paid);
                 
                 $initial_remaining = max(0, $amount_to_pay - $amount_paid);
             
-                // Insert payment record using newborn_id as patient_id
+                // Insert payment record
                 $insert_query = "INSERT INTO tbl_payment (
                     payment_id, patient_id, patient_name, patient_type,
                     total_due, amount_to_pay, amount_paid, remaining_balance, payment_datetime
@@ -407,95 +289,36 @@ if (isset($_POST['submit_payment'])) {
                     throw new Exception("Error inserting payment record: " . mysqli_error($connection));
                 }
             
-                // Update newborn billing status and remaining balance
+                // Update newborn billing - force status update
                 $update_balance = mysqli_query($connection, "
                     UPDATE tbl_billing_newborn 
                     SET remaining_balance = $initial_remaining,
                         status = CASE 
                             WHEN $initial_remaining <= 0 THEN 'Paid'
-                            ELSE status 
+                            ELSE 'Partial' 
                         END
-                    WHERE patient_name = '$patient_name' 
-                    ORDER BY id DESC LIMIT 1
+                    WHERE id = $billing_newborn_id
                 ");
             
                 if (!$update_balance) {
                     throw new Exception("Error updating balance: " . mysqli_error($connection));
                 }
             
-                // If payment is complete (remaining balance is 0), update related records
-                if ($initial_remaining <= 0) {
-                    // Get the billing_id from the latest newborn billing
-                    $billing_id_query = mysqli_query($connection, "
-                        SELECT billing_id 
-                        FROM tbl_billing_newborn 
-                        WHERE patient_name = '$patient_name' 
-                        ORDER BY id DESC LIMIT 1
-                    ");
-            
-                    if (!$billing_id_query) {
-                        throw new Exception("Error getting billing ID: " . mysqli_error($connection));
-                    }
-            
-                    $billing_row = mysqli_fetch_assoc($billing_id_query);
-                    if ($billing_row) {
-                        $billing_id = mysqli_real_escape_string($connection, $billing_row['billing_id']);
-            
-                        // Update all related records in billing_others
-                        $update_others = mysqli_query($connection, "
-                            UPDATE tbl_billing_others 
-                            SET is_billed = 1 
-                            WHERE billing_id = '$billing_id'
-                        ");
-            
-                        if (!$update_others) {
-                            throw new Exception("Error updating billing others: " . mysqli_error($connection));
-                        }
-            
-                        // Update newborn record
-                        $update_newborn = mysqli_query($connection, "
-                            UPDATE tbl_newborn
-                            SET is_billed = 1 
-                            WHERE CONCAT(first_name, ' ', last_name) = '$patient_name'
-                        ");
-            
-                        if (!$update_newborn) {
-                            throw new Exception("Error updating newborn record: " . mysqli_error($connection));
-                        }
-            
-                        // Update lab orders
-                        $update_lab = mysqli_query($connection, "
-                            UPDATE tbl_laborder 
-                            SET is_billed = 1 
-                            WHERE patient_name = '$patient_name'
-                            AND deleted = 0
-                        ");
-            
-                        if (!$update_lab) {
-                            throw new Exception("Error updating lab orders: " . mysqli_error($connection));
-                        }
-            
-                        // Update radiology orders  
-                        $update_rad = mysqli_query($connection, "
-                            UPDATE tbl_radiology 
-                            SET is_billed = 1 
-                            WHERE patient_name = '$patient_name'
-                            AND deleted = 0
-                        ");
-            
-                        if (!$update_rad) {
-                            throw new Exception("Error updating radiology orders: " . mysqli_error($connection));
-                        }
-            
-                        // Update treatment records
-                        $update_treatment = mysqli_query($connection, "
-                            UPDATE tbl_treatment 
-                            SET is_billed = 1 
-                            WHERE patient_name = '$patient_name'
-                        ");
-            
-                        if (!$update_treatment) {
-                            throw new Exception("Error updating treatment records: " . mysqli_error($connection));
+                // If payment is complete (remaining balance is 0), update all related records
+                if ($initial_remaining <= 0 && $billing_id) {
+                    // Prepare all update queries
+                    $update_queries = [
+                        "UPDATE tbl_billing_others SET is_billed = 1 WHERE billing_id = '$billing_id'",
+                        "UPDATE tbl_newborn SET is_billed = 1 WHERE CONCAT(first_name, ' ', last_name) = '$patient_name'",
+                        "UPDATE tbl_laborder SET is_billed = 1 WHERE patient_name = '$patient_name' AND deleted = 0",
+                        "UPDATE tbl_radiology SET is_billed = 1 WHERE patient_name = '$patient_name' AND deleted = 0",
+                        "UPDATE tbl_treatment SET is_billed = 1 WHERE patient_name = '$patient_name'"
+                    ];
+                    
+                    // Execute all updates
+                    foreach ($update_queries as $query) {
+                        if (!mysqli_query($connection, $query)) {
+                            throw new Exception("Error updating records: " . mysqli_error($connection));
                         }
                     }
                 }
@@ -1064,9 +887,14 @@ document.addEventListener('click', function(e) {
             });
         } else if (selectedType === 'Inpatient') {
             // For inpatients, fetch their billing data
-            fetch('ipt-billing-fee.php?patient_name=' + patientName)
-                .then(response => response.json())
+            fetch('ipt-billing-fee.php?patient_name=' + encodeURIComponent(patientName))
+                .then(response => {
+                    if (!response.ok) throw new Error('Failed to fetch inpatient billing data');
+                    return response.json();
+                })
                 .then(data => {
+                    if (!data) throw new Error('No data returned for inpatient billing');
+                    
                     const tbody = inpatientBillingTable.querySelector('tbody');
                     tbody.innerHTML = '';
                     inpatientBillingTable.style.display = 'block';
@@ -1115,28 +943,51 @@ document.addEventListener('click', function(e) {
                     document.getElementById('inpatientPWDDiscount').textContent = `₱${pwdDiscount.toFixed(2)}`;
                     
                     // Get amount paid from tbl_payment
-                    fetch('get-total-payments.php?patient_name=' + patientName)
-                        .then(response => response.json())
+                    fetch('get-total-payments.php?patient_name=' + encodeURIComponent(patientName))
+                        .then(response => {
+                            if (!response.ok) throw new Error('Failed to fetch payment data');
+                            return response.json();
+                        })
                         .then(paymentData => {
                             const amountPaid = parseFloat(paymentData.total_paid || 0);
                             document.getElementById('inpatientAmountPaid').textContent = `₱${amountPaid.toFixed(2)}`;
+                            
+                            // Calculate final amount due
+                            const totalDue = subTotal - vatExempt - seniorDiscount - pwdDiscount - philHealthPF - philHealthHB;
+                            document.getElementById('inpatientAmountDue').textContent = `₱${totalDue.toFixed(2)}`;
+                            currentTotalDue = totalDue;
+                            
+                            // Show remaining balance and set as amount_to_pay
+                            const remainingBalance = parseFloat(data.remaining_balance || totalDue - amountPaid);
+                            document.getElementById('inpatientRemainingBalance').textContent = `₱${remainingBalance.toFixed(2)}`;
+                            updateAmountToPay(remainingBalance > 0 ? remainingBalance : 0);
+                        })
+                        .catch(error => {
+                            console.error('Error fetching payment data:', error);
+                            // Calculate without payment data
+                            const totalDue = subTotal - vatExempt - seniorDiscount - pwdDiscount - philHealthPF - philHealthHB;
+                            document.getElementById('inpatientAmountDue').textContent = `₱${totalDue.toFixed(2)}`;
+                            currentTotalDue = totalDue;
+                            document.getElementById('inpatientRemainingBalance').textContent = `₱${totalDue.toFixed(2)}`;
+                            updateAmountToPay(totalDue);
                         });
-                    
-                    // Calculate final amount due
-                    const totalDue = subTotal - vatExempt - seniorDiscount - pwdDiscount - philHealthPF - philHealthHB;
-                    document.getElementById('inpatientAmountDue').textContent = `₱${totalDue.toFixed(2)}`;
-                    currentTotalDue = totalDue;
-                    
-                    // Show remaining balance and set as amount_to_pay
-                    const remainingBalance = parseFloat(data.remaining_balance || 0);
-                    document.getElementById('inpatientRemainingBalance').textContent = `₱${remainingBalance.toFixed(2)}`;
-                    updateAmountToPay(remainingBalance);
+                })
+                .catch(error => {
+                    console.error('Error fetching inpatient billing data:', error);
+                    // Show error in the table
+                    const tbody = inpatientBillingTable.querySelector('tbody');
+                    tbody.innerHTML = '<tr><td colspan="4" class="text-center text-danger">Error loading billing data</td></tr>';
                 });
         } else if (selectedType === 'Hemodialysis') {
             // For hemodialysis patients, fetch their billing data
-            fetch('hemodialysis-billing-fee.php?patient_name=' + patientName)
-                .then(response => response.json())
+            fetch('hemodialysis-billing-fee.php?patient_name=' + encodeURIComponent(patientName))
+                .then(response => {
+                    if (!response.ok) throw new Error('Failed to fetch hemodialysis billing data');
+                    return response.json();
+                })
                 .then(data => {
+                    if (!data) throw new Error('No data returned for hemodialysis billing');
+                    
                     const tbody = hemodialysisBillingTable.querySelector('tbody');
                     tbody.innerHTML = '';
                     hemodialysisBillingTable.style.display = 'block';
@@ -1182,27 +1033,50 @@ document.addEventListener('click', function(e) {
                     document.getElementById('hemodialysisPWDDiscount').textContent = `₱${pwdDiscount.toFixed(2)}`;
                     
                     // Get amount paid from tbl_payment
-                    fetch('get-total-payments.php?patient_name=' + patientName)
-                        .then(response => response.json())
+                    fetch('get-total-payments.php?patient_name=' + encodeURIComponent(patientName))
+                        .then(response => {
+                            if (!response.ok) throw new Error('Failed to fetch payment data');
+                            return response.json();
+                        })
                         .then(paymentData => {
                             const amountPaid = parseFloat(paymentData.total_paid || 0);
                             document.getElementById('hemodialysisAmountPaid').textContent = `₱${amountPaid.toFixed(2)}`;
+                            
+                            // Calculate final amount due
+                            const totalDue = subTotal - vatExempt - seniorDiscount - pwdDiscount - philHealthPF - philHealthHB;
+                            document.getElementById('hemodialysisAmountDue').textContent = `₱${totalDue.toFixed(2)}`;
+                            currentTotalDue = totalDue;
+                            
+                            // Show remaining balance and set as amount_to_pay
+                            const remainingBalance = parseFloat(data.remaining_balance || totalDue - amountPaid);
+                            document.getElementById('hemodialysisRemainingBalance').textContent = `₱${remainingBalance.toFixed(2)}`;
+                            updateAmountToPay(remainingBalance > 0 ? remainingBalance : 0);
+                        })
+                        .catch(error => {
+                            console.error('Error fetching payment data:', error);
+                            // Calculate without payment data
+                            const totalDue = subTotal - vatExempt - seniorDiscount - pwdDiscount - philHealthPF - philHealthHB;
+                            document.getElementById('hemodialysisAmountDue').textContent = `₱${totalDue.toFixed(2)}`;
+                            currentTotalDue = totalDue;
+                            document.getElementById('hemodialysisRemainingBalance').textContent = `₱${totalDue.toFixed(2)}`;
+                            updateAmountToPay(totalDue);
                         });
-                    
-                    // Calculate final amount due
-                    const totalDue = subTotal - vatExempt - seniorDiscount - pwdDiscount - philHealthPF - philHealthHB;
-                    document.getElementById('hemodialysisAmountDue').textContent = `₱${totalDue.toFixed(2)}`;
-                    currentTotalDue = totalDue;
-                    
-                    // Show remaining balance and set as amount_to_pay
-                    const remainingBalance = parseFloat(data.remaining_balance || 0);
-                    document.getElementById('hemodialysisRemainingBalance').textContent = `₱${remainingBalance.toFixed(2)}`;
-                    updateAmountToPay(remainingBalance);
+                })
+                .catch(error => {
+                    console.error('Error fetching hemodialysis billing data:', error);
+                    // Show error in the table
+                    const tbody = hemodialysisBillingTable.querySelector('tbody');
+                    tbody.innerHTML = '<tr><td colspan="4" class="text-center text-danger">Error loading billing data</td></tr>';
                 });
         } else if (selectedType === 'Newborn') {
-            fetch('newborn-billing-fee.php?patient_name=' + patientName)
-                .then(response => response.json())
+            fetch('newborn-billing-fee.php?patient_name=' + encodeURIComponent(patientName))
+                .then(response => {
+                    if (!response.ok) throw new Error('Failed to fetch newborn billing data');
+                    return response.json();
+                })
                 .then(data => {
+                    if (!data) throw new Error('No data returned for newborn billing');
+                    
                     const tbody = newbornBillingTable.querySelector('tbody');
                     tbody.innerHTML = '';
                     newbornBillingTable.style.display = 'block';
@@ -1233,37 +1107,55 @@ document.addEventListener('click', function(e) {
                     // Show total fees
                     const subTotal = parseFloat(data.total_amount || 0);
                     document.getElementById('newbornGrossAmount').textContent = `₱${subTotal.toFixed(2)}`;
-
+                    
                     // Show all discounts
                     const philHealthPF = parseFloat(data.philhealth_pf || 0);
                     const philHealthHB = parseFloat(data.philhealth_hb || 0);
                     const vatExempt = parseFloat(data.vat_exempt_discount_amount || 0);
                     const seniorDiscount = parseFloat(data.discount_amount || 0);
                     const pwdDiscount = parseFloat(data.pwd_discount_amount || 0);
-
+                    
                     document.getElementById('newbornPhilhealthPF').textContent = `₱${philHealthPF.toFixed(2)}`;
                     document.getElementById('newbornPhilhealthHB').textContent = `₱${philHealthHB.toFixed(2)}`;
                     document.getElementById('newbornVatExempt').textContent = `₱${vatExempt.toFixed(2)}`;
                     document.getElementById('newbornSeniorDiscount').textContent = `₱${seniorDiscount.toFixed(2)}`;
                     document.getElementById('newbornPWDDiscount').textContent = `₱${pwdDiscount.toFixed(2)}`;
-
+                    
                     // Get amount paid from tbl_payment
-                    fetch('get-total-payments.php?patient_name=' + patientName)
-                        .then(response => response.json())
+                    fetch('get-total-payments.php?patient_name=' + encodeURIComponent(patientName))
+                        .then(response => {
+                            if (!response.ok) throw new Error('Failed to fetch payment data');
+                            return response.json();
+                        })
                         .then(paymentData => {
                             const amountPaid = parseFloat(paymentData.total_paid || 0);
                             document.getElementById('newbornAmountPaid').textContent = `₱${amountPaid.toFixed(2)}`;
+                            
+                            // Calculate final amount due
+                            const totalDue = subTotal - vatExempt - seniorDiscount - pwdDiscount - philHealthPF - philHealthHB;
+                            document.getElementById('newbornAmountDue').textContent = `₱${totalDue.toFixed(2)}`;
+                            currentTotalDue = totalDue;
+                            
+                            // Show remaining balance and set as amount_to_pay
+                            const remainingBalance = parseFloat(data.remaining_balance || totalDue - amountPaid);
+                            document.getElementById('newbornRemainingBalance').textContent = `₱${remainingBalance.toFixed(2)}`;
+                            updateAmountToPay(remainingBalance > 0 ? remainingBalance : 0);
+                        })
+                        .catch(error => {
+                            console.error('Error fetching payment data:', error);
+                            // Calculate without payment data
+                            const totalDue = subTotal - vatExempt - seniorDiscount - pwdDiscount - philHealthPF - philHealthHB;
+                            document.getElementById('newbornAmountDue').textContent = `₱${totalDue.toFixed(2)}`;
+                            currentTotalDue = totalDue;
+                            document.getElementById('newbornRemainingBalance').textContent = `₱${totalDue.toFixed(2)}`;
+                            updateAmountToPay(totalDue);
                         });
-
-                    // Calculate final amount due
-                    const totalDue = subTotal - vatExempt - seniorDiscount - pwdDiscount - philHealthPF - philHealthHB;
-                    document.getElementById('newbornAmountDue').textContent = `₱${totalDue.toFixed(2)}`;
-                    currentTotalDue = totalDue;
-
-                    // Show remaining balance and set as amount_to_pay
-                    const remainingBalance = parseFloat(data.remaining_balance || 0);
-                    document.getElementById('newbornRemainingBalance').textContent = `₱${remainingBalance.toFixed(2)}`;
-                    updateAmountToPay(remainingBalance);
+                })
+                .catch(error => {
+                    console.error('Error fetching newborn billing data:', error);
+                    // Show error in the table
+                    const tbody = newbornBillingTable.querySelector('tbody');
+                    tbody.innerHTML = '<tr><td colspan="4" class="text-center text-danger">Error loading billing data</td></tr>';
                 });
         }
     }
