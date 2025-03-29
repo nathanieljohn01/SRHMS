@@ -76,8 +76,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['patientId'])) {
         // Prepare the query to insert PT/PTT results
         $insert_query = $connection->prepare("INSERT INTO tbl_ptptt (
             ptptt_id, patient_id, patient_name, gender, dob, 
-            pt_control, pt_test, pt_inr, pt_activity, pt_result, pt_normal_values,
-            ptt_control, ptt_patient_result, ptt_normal_values, ptt_remarks, date_time
+            pt_control, pt_test, pt_inr, pt_activity, ptt_control, ptt_patient_result, ptt_remarks, date_time
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
         
         // Bind parameters

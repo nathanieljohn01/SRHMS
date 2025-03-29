@@ -254,7 +254,7 @@ ob_end_flush();
                                     </form>
                                     <?php endif; ?>
                                     <?php if ($editable): ?>
-                                        <a class="dropdown-item" href="edit-chemistry.php?id=<?php echo $row['chem_id']; ?>"><i class="fa fa-pencil m-r-5"></i> Insert and Edit</a>
+                                        <a class="dropdown-item" href="edit-chemistry-panel.php?id=<?php echo $row['chem_id']; ?>"><i class="fa fa-pencil m-r-5"></i> Insert and Edit</a>
                                         <a class="dropdown-item" href="#" onclick="return confirmDelete('<?php echo $row['chem_id']; ?>')"><i class="fa fa-trash-o m-r-5"></i> Delete</a>
                                     <?php else: ?>
                                         <a class="dropdown-item disabled" href="#">
