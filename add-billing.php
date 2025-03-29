@@ -8,6 +8,7 @@ if (empty($_SESSION['name'])) {
 include('header.php');
 include('includes/connection.php');
 
+// Secure the query to fetch max billing ID
 $fetch_max_billing_id = mysqli_query($connection, "
     SELECT MAX(CAST(SUBSTRING(billing_id, 4) AS UNSIGNED)) AS max_billing_id FROM (
         SELECT billing_id FROM tbl_billing_inpatient 
@@ -25,7 +26,7 @@ $highest_id = isset($row_max_billing_id['max_billing_id']) ? (int)$row_max_billi
 $bl_id = $highest_id + 1;
 $billing_id = 'BL-' . $bl_id;
 
-// Add input validation function
+// Input validation function
 function validateInput($data) {
     $data = trim($data);
     $data = stripslashes($data);
@@ -50,73 +51,72 @@ if (isset($_POST['add-billing'])) {
         exit();
     }
 
-    // Fetch patient details based on patient type
+    // Fetch patient details based on patient type with proper escaping
+    $patient_name_escaped = mysqli_real_escape_string($connection, $patient_name);
+    
     if ($patient_type == 'inpatient') {
-        $patient_name_escaped = mysqli_real_escape_string($connection, $patient_name);
         $patient_result = mysqli_query($connection, "
             SELECT ipr.patient_id, ipr.patient_name, ipr.dob, ipr.gender, ipr.admission_date, ipr.discharge_date, ipr.diagnosis, p.address
             FROM tbl_inpatient_record AS ipr
             JOIN tbl_patient AS p
             ON ipr.patient_id = p.patient_id
-            WHERE ipr.patient_name = '$patient_name_escaped'");
+            WHERE ipr.patient_name = '".$patient_name_escaped."'");
     
     } else if ($patient_type == 'hemodialysis') {
-        $patient_name_escaped = mysqli_real_escape_string($connection, $patient_name);
         $patient_result = mysqli_query($connection, "
             SELECT h.patient_id, h.patient_name, h.dob, h.gender, p.address
             FROM tbl_hemodialysis AS h
             JOIN tbl_patient AS p
             ON h.patient_id = p.patient_id
-            WHERE h.patient_name = '$patient_name_escaped'");
+            WHERE h.patient_name = '".$patient_name_escaped."'");
     
     } else if ($patient_type == 'newborn') {
-        $patient_name_escaped = mysqli_real_escape_string($connection, $patient_name);
         $patient_result = mysqli_query($connection, "
             SELECT newborn_id, CONCAT(first_name, ' ', last_name) AS patient_name, dob, gender, admission_date, discharge_date, diagnosis, address
             FROM tbl_newborn
-            WHERE CONCAT(first_name, ' ', last_name) = '$patient_name_escaped'");
+            WHERE CONCAT(first_name, ' ', last_name) = '".$patient_name_escaped."'");
     }
     
     $patient = mysqli_fetch_array($patient_result, MYSQLI_ASSOC);
 
     if ($patient) {
-        // Retrieve patient details and handle NULL values
-        $patient_id = !empty($patient['patient_id']) ? $patient['patient_id'] : "NULL";
-        $newborn_id = !empty($patient['newborn_id']) ? $patient['newborn_id'] : "NULL";
-        $dob = !empty($patient['dob']) ? "'" . $patient['dob'] . "'" : "NULL";
-        $gender = !empty($patient['gender']) ? "'" . $patient['gender'] . "'" : "NULL";
-        $admission_date = !empty($patient['admission_date']) ? "'" . $patient['admission_date'] . "'" : "NULL";
-        $discharge_date = !empty($patient['discharge_date']) ? "'" . $patient['discharge_date'] . "'" : "NULL";
-        $diagnosis = !empty($patient['diagnosis']) ? "'" . $patient['diagnosis'] . "'" : "NULL";
-        $address = !empty($patient['address']) ? "'" . $patient['address'] . "'" : "NULL";
+        // Retrieve patient details with proper escaping
+        $patient_id = !empty($patient['patient_id']) ? mysqli_real_escape_string($connection, $patient['patient_id']) : "NULL";
+        $newborn_id = !empty($patient['newborn_id']) ? mysqli_real_escape_string($connection, $patient['newborn_id']) : "NULL";
+        $dob = !empty($patient['dob']) ? "'" . mysqli_real_escape_string($connection, $patient['dob']) . "'" : "NULL";
+        $gender = !empty($patient['gender']) ? "'" . mysqli_real_escape_string($connection, $patient['gender']) . "'" : "NULL";
+        $admission_date = !empty($patient['admission_date']) ? "'" . mysqli_real_escape_string($connection, $patient['admission_date']) . "'" : "NULL";
+        $discharge_date = !empty($patient['discharge_date']) ? "'" . mysqli_real_escape_string($connection, $patient['discharge_date']) . "'" : "NULL";
+        $diagnosis = !empty($patient['diagnosis']) ? "'" . mysqli_real_escape_string($connection, $patient['diagnosis']) . "'" : "NULL";
+        $address = !empty($patient['address']) ? "'" . mysqli_real_escape_string($connection, $patient['address']) . "'" : "NULL";
 
-        // PhilHealth fields
+        // PhilHealth fields with proper escaping
         $first_case = isset($_POST['first_case']) ? mysqli_real_escape_string($connection, $_POST['first_case']) : '';
         $second_case = isset($_POST['second_case']) ? mysqli_real_escape_string($connection, $_POST['second_case']) : '';
-        $philhealth_pf = isset($_POST['philhealth_pf']) ? mysqli_real_escape_string($connection, $_POST['philhealth_pf']) : '';
-        $philhealth_hb = isset($_POST['philhealth_hb']) ? mysqli_real_escape_string($connection, $_POST['philhealth_hb']) : '';
+        $philhealth_pf = isset($_POST['philhealth_pf']) ? mysqli_real_escape_string($connection, $_POST['philhealth_pf']) : '0';
+        $philhealth_hb = isset($_POST['philhealth_hb']) ? mysqli_real_escape_string($connection, $_POST['philhealth_hb']) : '0';
 
-        // Default values for fees
-        $room_fee = isset($_POST['room_fee']) && $_POST['room_fee'] !== '' ? $_POST['room_fee'] : 0;
-        $lab_fee = isset($_POST['lab_fee']) && $_POST['lab_fee'] !== '' ? $_POST['lab_fee'] : 0;
-        $rad_fee = isset($_POST['rad_fee']) && $_POST['rad_fee'] !== '' ? $_POST['rad_fee'] : 0;
-        $medication_fee = 0;
-        $operating_room_fee = isset($_POST['operating_room_fee']) && $_POST['operating_room_fee'] !== '' ? $_POST['operating_room_fee'] : 0;
-        $supplies_fee = isset($_POST['supplies_fee']) && $_POST['supplies_fee'] !== '' ? $_POST['supplies_fee'] : 0;
-        $professional_fee = isset($_POST['professional_fee']) && $_POST['professional_fee'] !== '' ? $_POST['professional_fee'] : 0;
-        $readers_fee = isset($_POST['readers_fee']) && $_POST['readers_fee'] !== '' ? $_POST['readers_fee'] : 0;
-        $others_fee = isset($_POST['others_fee']) && $_POST['others_fee'] !== '' ? $_POST['others_fee'] : 0;
+        // Numeric fields with validation
+        $room_fee = isset($_POST['room_fee']) && is_numeric($_POST['room_fee']) ? mysqli_real_escape_string($connection, $_POST['room_fee']) : '0';
+        $lab_fee = isset($_POST['lab_fee']) && is_numeric($_POST['lab_fee']) ? mysqli_real_escape_string($connection, $_POST['lab_fee']) : '0';
+        $rad_fee = isset($_POST['rad_fee']) && is_numeric($_POST['rad_fee']) ? mysqli_real_escape_string($connection, $_POST['rad_fee']) : '0';
+        $medication_fee = '0';
+        $operating_room_fee = isset($_POST['operating_room_fee']) && is_numeric($_POST['operating_room_fee']) ? mysqli_real_escape_string($connection, $_POST['operating_room_fee']) : '0';
+        $supplies_fee = isset($_POST['supplies_fee']) && is_numeric($_POST['supplies_fee']) ? mysqli_real_escape_string($connection, $_POST['supplies_fee']) : '0';
+        $professional_fee = isset($_POST['professional_fee']) && is_numeric($_POST['professional_fee']) ? mysqli_real_escape_string($connection, $_POST['professional_fee']) : '0';
+        $readers_fee = isset($_POST['readers_fee']) && is_numeric($_POST['readers_fee']) ? mysqli_real_escape_string($connection, $_POST['readers_fee']) : '0';
+        $others_fee = isset($_POST['others_fee']) && is_numeric($_POST['others_fee']) ? mysqli_real_escape_string($connection, $_POST['others_fee']) : '0';
         
-        // Calculate medication fee
+        // Calculate medication fee using prepared statement
         $medication_query = $connection->prepare("SELECT SUM(total_price) AS medication_fee FROM tbl_treatment WHERE patient_name = ? AND deleted = 0");
         $medication_query->bind_param("s", $patient_name);
         $medication_query->execute();
         $medication_result = $medication_query->get_result();
         if ($medication = $medication_result->fetch_assoc()) {
-            $medication_fee = $medication['medication_fee'] ?? 0;
+            $medication_fee = mysqli_real_escape_string($connection, $medication['medication_fee'] ?? '0');
         }
 
-        // Handle others fees
+        // Handle others fees with proper escaping
         if (isset($_POST['others']) && !empty($_POST['others'])) {
             foreach ($_POST['others'] as $item) {
                 $item_name = mysqli_real_escape_string($connection, $item['name']);
@@ -124,7 +124,10 @@ if (isset($_POST['add-billing'])) {
 
                 $insert_query = "
                     INSERT INTO tbl_billing_others (billing_id, item_name, item_cost, date_time)
-                    VALUES ('$billing_id', '$item_name', '$item_cost', NOW())
+                    VALUES ('".mysqli_real_escape_string($connection, $billing_id)."', 
+                            '".$item_name."', 
+                            '".$item_cost."', 
+                            NOW())
                 ";
                 mysqli_query($connection, $insert_query);
             }
@@ -132,20 +135,20 @@ if (isset($_POST['add-billing'])) {
             $others_fee_query = "
             SELECT SUM(item_cost) AS others_fee
             FROM tbl_billing_others
-            WHERE billing_id = '$billing_id' AND deleted = 0
+            WHERE billing_id = '".mysqli_real_escape_string($connection, $billing_id)."' AND deleted = 0
             ";
 
             $others_fee_result = mysqli_query($connection, $others_fee_query);
             $others_fee_row = mysqli_fetch_assoc($others_fee_result);
-            $others_fee = $others_fee_row['others_fee'] ?? 0;
+            $others_fee = mysqli_real_escape_string($connection, $others_fee_row['others_fee'] ?? '0');
         }
 
         // Get checkbox states
-        $vat_exempt_checkbox = isset($_POST['vat_exempt_checkbox']) ? $_POST['vat_exempt_checkbox'] : 'off';
-        $discount_checkbox = isset($_POST['discount_checkbox']) ? $_POST['discount_checkbox'] : 'off';
-        $pwd_discount_checkbox = isset($_POST['pwd_discount_checkbox']) ? $_POST['pwd_discount_checkbox'] : 'off';
+        $vat_exempt_checkbox = isset($_POST['vat_exempt_checkbox']) ? mysqli_real_escape_string($connection, $_POST['vat_exempt_checkbox']) : 'off';
+        $discount_checkbox = isset($_POST['discount_checkbox']) ? mysqli_real_escape_string($connection, $_POST['discount_checkbox']) : 'off';
+        $pwd_discount_checkbox = isset($_POST['pwd_discount_checkbox']) ? mysqli_real_escape_string($connection, $_POST['pwd_discount_checkbox']) : 'off';
 
-        // First apply VAT Exempt if checked
+        // Calculate discounts (no SQL here, just math)
         if ($vat_exempt_checkbox == 'on') {
             $room_after_vat = $room_fee - ($room_fee * 0.12);
             $lab_after_vat = $lab_fee - ($lab_fee * 0.12);
@@ -168,7 +171,6 @@ if (isset($_POST['add-billing'])) {
             $readers_after_vat = $readers_fee;
         }
 
-        // Then apply Senior/PWD discount if checked
         if ($discount_checkbox == 'on' || $pwd_discount_checkbox == 'on') {
             $room_discount = ($room_fee - $room_after_vat) + ($room_after_vat * 0.20);
             $lab_discount = ($lab_fee - $lab_after_vat) + ($lab_after_vat * 0.20);
@@ -191,16 +193,12 @@ if (isset($_POST['add-billing'])) {
             $readers_discount = $readers_fee - $readers_after_vat;
         }
 
-        // Calculate combined fees before applying any discounts
-        $combined_fees = $room_fee + $lab_fee + $medication_fee + $operating_room_fee + $supplies_fee + $others_fee + $professional_fee + $readers_fee;
-
-        // Calculate non-discounted total first
+        // Calculate totals (just math, no SQL)
         $non_discounted_total = floatval($room_fee) + floatval($lab_fee) + floatval($rad_fee) + 
                             floatval($medication_fee) + floatval($operating_room_fee) + 
                             floatval($supplies_fee) + floatval($professional_fee) + 
                             floatval($readers_fee) + floatval($others_fee);
 
-        // First apply PWD discount (20%)
         if ($pwd_discount_checkbox == 'on') {
             $pwd_discount_amount = $non_discounted_total * 0.20;
             $after_pwd = $non_discounted_total - $pwd_discount_amount;
@@ -209,7 +207,6 @@ if (isset($_POST['add-billing'])) {
             $after_pwd = $non_discounted_total;
         }
 
-        // Then apply VAT Exempt (12%)
         if ($vat_exempt_checkbox == 'on') {
             $vat_exempt_discount_amount = $after_pwd * 0.12;
             $after_vat = $after_pwd - $vat_exempt_discount_amount;
@@ -218,24 +215,19 @@ if (isset($_POST['add-billing'])) {
             $after_vat = $after_pwd;
         }
 
-        // Finally apply Senior discount (20%) on the total amount
         if ($discount_checkbox == 'on') {
             $total_discount = $after_vat * 0.20;
         } else {
             $total_discount = 0;
         }
 
-        // Calculate final total due
         $total_due = $non_discounted_total - $pwd_discount_amount - $vat_exempt_discount_amount - $total_discount - floatval($philhealth_pf) - floatval($philhealth_hb);
+        $remaining_balance = max(0, $total_due);
+
+        // Insert billing details with all values properly escaped
+        $safe_billing_id = mysqli_real_escape_string($connection, $billing_id);
+        $safe_patient_name = mysqli_real_escape_string($connection, $patient_name);
         
-        // Set remaining balance equal to total due for new billing
-        $remaining_balance = $total_due;
-
-        // Ensure values are not negative
-        $total_due = max(0, $total_due);
-        $remaining_balance = max(0, $remaining_balance);
-
-        // Insert billing details
         if ($patient_type == 'inpatient') {
             $query = "INSERT INTO tbl_billing_inpatient
             (billing_id, patient_id, patient_name, dob, gender, admission_date, discharge_date, diagnosis, address, 
@@ -244,13 +236,43 @@ if (isset($_POST['add-billing'])) {
             vat_exempt_discount_amount, first_case, second_case, philhealth_pf, philhealth_hb,
             room_discount, lab_discount, rad_discount, med_discount, or_discount, supplies_discount, 
             other_discount, pf_discount, readers_discount, remaining_balance) 
-            VALUES ('$billing_id', '$patient_id', '$patient_name', $dob, $gender, $admission_date, $discharge_date, 
-            $diagnosis, $address, '$lab_fee', '$room_fee', '$medication_fee', '$operating_room_fee', 
-            '$supplies_fee', '$total_due', '$non_discounted_total', '$total_discount', '$professional_fee', 
-            '$pwd_discount_amount', '$readers_fee', '$others_fee', '$rad_fee', '$vat_exempt_discount_amount', 
-            '$first_case', '$second_case', '$philhealth_pf', '$philhealth_hb', '$room_discount', '$lab_discount', 
-            '$rad_discount', '$med_discount', '$or_discount', '$supplies_discount', '$other_discount', 
-            '$pf_discount', '$readers_discount', '$remaining_balance')";
+            VALUES ('".$safe_billing_id."', 
+                    '".$patient_id."', 
+                    '".$safe_patient_name."', 
+                    ".$dob.", 
+                    ".$gender.", 
+                    ".$admission_date.", 
+                    ".$discharge_date.", 
+                    ".$diagnosis.", 
+                    ".$address.", 
+                    '".$lab_fee."', 
+                    '".$room_fee."', 
+                    '".$medication_fee."', 
+                    '".$operating_room_fee."', 
+                    '".$supplies_fee."', 
+                    '".mysqli_real_escape_string($connection, $total_due)."', 
+                    '".mysqli_real_escape_string($connection, $non_discounted_total)."', 
+                    '".mysqli_real_escape_string($connection, $total_discount)."', 
+                    '".$professional_fee."', 
+                    '".mysqli_real_escape_string($connection, $pwd_discount_amount)."', 
+                    '".$readers_fee."', 
+                    '".$others_fee."', 
+                    '".$rad_fee."', 
+                    '".mysqli_real_escape_string($connection, $vat_exempt_discount_amount)."', 
+                    '".$first_case."', 
+                    '".$second_case."', 
+                    '".$philhealth_pf."', 
+                    '".$philhealth_hb."', 
+                    '".mysqli_real_escape_string($connection, $room_discount)."', 
+                    '".mysqli_real_escape_string($connection, $lab_discount)."', 
+                    '".mysqli_real_escape_string($connection, $rad_discount)."', 
+                    '".mysqli_real_escape_string($connection, $med_discount)."', 
+                    '".mysqli_real_escape_string($connection, $or_discount)."', 
+                    '".mysqli_real_escape_string($connection, $supplies_discount)."', 
+                    '".mysqli_real_escape_string($connection, $other_discount)."', 
+                    '".mysqli_real_escape_string($connection, $pf_discount)."', 
+                    '".mysqli_real_escape_string($connection, $readers_discount)."', 
+                    '".mysqli_real_escape_string($connection, $remaining_balance)."')";
 
         } elseif ($patient_type == 'hemodialysis') {
             $query = "INSERT INTO tbl_billing_hemodialysis
@@ -260,13 +282,43 @@ if (isset($_POST['add-billing'])) {
             vat_exempt_discount_amount, first_case, second_case, philhealth_pf, philhealth_hb,
             room_discount, lab_discount, rad_discount, med_discount, or_discount, supplies_discount,
             other_discount, pf_discount, readers_discount, remaining_balance)
-            VALUES ('$billing_id', '$patient_id', '$patient_name', $dob, $gender, $admission_date, $discharge_date, 
-            $diagnosis, $address, '$lab_fee', '$room_fee', '$medication_fee', '$operating_room_fee', 
-            '$supplies_fee', '$total_due', '$non_discounted_total', '$total_discount', '$professional_fee', 
-            '$pwd_discount_amount', '$readers_fee', '$others_fee', '$rad_fee', '$vat_exempt_discount_amount', 
-            '$first_case', '$second_case', '$philhealth_pf', '$philhealth_hb', '$room_discount', '$lab_discount', 
-            '$rad_discount', '$med_discount', '$or_discount', '$supplies_discount', '$other_discount', 
-            '$pf_discount', '$readers_discount', '$remaining_balance')";
+            VALUES ('".$safe_billing_id."', 
+                    '".$patient_id."', 
+                    '".$safe_patient_name."', 
+                    ".$dob.", 
+                    ".$gender.", 
+                    ".$admission_date.", 
+                    ".$discharge_date.", 
+                    ".$diagnosis.", 
+                    ".$address.", 
+                    '".$lab_fee."', 
+                    '".$room_fee."', 
+                    '".$medication_fee."', 
+                    '".$operating_room_fee."', 
+                    '".$supplies_fee."', 
+                    '".mysqli_real_escape_string($connection, $total_due)."', 
+                    '".mysqli_real_escape_string($connection, $non_discounted_total)."', 
+                    '".mysqli_real_escape_string($connection, $total_discount)."', 
+                    '".$professional_fee."', 
+                    '".mysqli_real_escape_string($connection, $pwd_discount_amount)."', 
+                    '".$readers_fee."', 
+                    '".$others_fee."', 
+                    '".$rad_fee."', 
+                    '".mysqli_real_escape_string($connection, $vat_exempt_discount_amount)."', 
+                    '".$first_case."', 
+                    '".$second_case."', 
+                    '".$philhealth_pf."', 
+                    '".$philhealth_hb."', 
+                    '".mysqli_real_escape_string($connection, $room_discount)."', 
+                    '".mysqli_real_escape_string($connection, $lab_discount)."', 
+                    '".mysqli_real_escape_string($connection, $rad_discount)."', 
+                    '".mysqli_real_escape_string($connection, $med_discount)."', 
+                    '".mysqli_real_escape_string($connection, $or_discount)."', 
+                    '".mysqli_real_escape_string($connection, $supplies_discount)."', 
+                    '".mysqli_real_escape_string($connection, $other_discount)."', 
+                    '".mysqli_real_escape_string($connection, $pf_discount)."', 
+                    '".mysqli_real_escape_string($connection, $readers_discount)."', 
+                    '".mysqli_real_escape_string($connection, $remaining_balance)."')";
 
         } elseif ($patient_type == 'newborn') {
             $query = "INSERT INTO tbl_billing_newborn
@@ -276,28 +328,43 @@ if (isset($_POST['add-billing'])) {
             vat_exempt_discount_amount, first_case, second_case, philhealth_pf, philhealth_hb,
             room_discount, lab_discount, rad_discount, med_discount, or_discount, supplies_discount,
             other_discount, pf_discount, readers_discount, remaining_balance)
-            VALUES ('$billing_id', '$newborn_id', '$patient_name', $dob, $gender, $admission_date, $discharge_date, 
-            $diagnosis, $address, '$lab_fee', '$room_fee', '$medication_fee', '$operating_room_fee', 
-            '$supplies_fee', '$total_due', '$non_discounted_total', '$total_discount', '$professional_fee', 
-            '$pwd_discount_amount', '$readers_fee', '$others_fee', '$rad_fee', '$vat_exempt_discount_amount', 
-            '$first_case', '$second_case', '$philhealth_pf', '$philhealth_hb', '$room_discount', '$lab_discount', 
-            '$rad_discount', '$med_discount', '$or_discount', '$supplies_discount', '$other_discount', 
-            '$pf_discount', '$readers_discount', '$remaining_balance')";
-
-        } else {
-            echo "
-            <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
-            <script>
-                document.addEventListener('DOMContentLoaded', function() {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error!',
-                        text: 'Invalid patient type selected.',
-                        confirmButtonColor: '#12369e'
-                    });
-                });
-            </script>";
-            exit();
+            VALUES ('".$safe_billing_id."', 
+                    '".$newborn_id."', 
+                    '".$safe_patient_name."', 
+                    ".$dob.", 
+                    ".$gender.", 
+                    ".$admission_date.", 
+                    ".$discharge_date.", 
+                    ".$diagnosis.", 
+                    ".$address.", 
+                    '".$lab_fee."', 
+                    '".$room_fee."', 
+                    '".$medication_fee."', 
+                    '".$operating_room_fee."', 
+                    '".$supplies_fee."', 
+                    '".mysqli_real_escape_string($connection, $total_due)."', 
+                    '".mysqli_real_escape_string($connection, $non_discounted_total)."', 
+                    '".mysqli_real_escape_string($connection, $total_discount)."', 
+                    '".$professional_fee."', 
+                    '".mysqli_real_escape_string($connection, $pwd_discount_amount)."', 
+                    '".$readers_fee."', 
+                    '".$others_fee."', 
+                    '".$rad_fee."', 
+                    '".mysqli_real_escape_string($connection, $vat_exempt_discount_amount)."', 
+                    '".$first_case."', 
+                    '".$second_case."', 
+                    '".$philhealth_pf."', 
+                    '".$philhealth_hb."', 
+                    '".mysqli_real_escape_string($connection, $room_discount)."', 
+                    '".mysqli_real_escape_string($connection, $lab_discount)."', 
+                    '".mysqli_real_escape_string($connection, $rad_discount)."', 
+                    '".mysqli_real_escape_string($connection, $med_discount)."', 
+                    '".mysqli_real_escape_string($connection, $or_discount)."', 
+                    '".mysqli_real_escape_string($connection, $supplies_discount)."', 
+                    '".mysqli_real_escape_string($connection, $other_discount)."', 
+                    '".mysqli_real_escape_string($connection, $pf_discount)."', 
+                    '".mysqli_real_escape_string($connection, $readers_discount)."', 
+                    '".mysqli_real_escape_string($connection, $remaining_balance)."')";
         }
 
         if (mysqli_query($connection, $query)) {
@@ -329,11 +396,10 @@ if (isset($_POST['add-billing'])) {
                 });
             </script>";
         }
-
-        } else {
-            $msg = "Error: Patient type not selected.";
-        }
+    } else {
+        $msg = "Error: Patient not found.";
     }
+}
 
 ?>
 <div class="page-wrapper">
@@ -519,10 +585,10 @@ if (isset($_POST['add-billing'])) {
                                     <div id="other-items-container">
                                         <div class="row align-items-center other-item mb-2" id="item-row-0">
                                             <div class="col-md-6">
-                                                <input type="text" class="form-control" name="others[0][name]" placeholder="Item description" required>
+                                                <input type="text" class="form-control" name="others[0][name]" placeholder="Item description">
                                             </div>
                                             <div class="col-md-5">
-                                                <input type="number" step="0.01" class="form-control" name="others[0][cost]" placeholder="Amount" required>
+                                                <input type="number" step="0.01" class="form-control" name="others[0][cost]" placeholder="Amount">
                                             </div>
                                             <div class="col-md-1">
                                                 <button type="button" class="btn btn-sm btn-danger remove-item" disabled>
@@ -1630,7 +1696,12 @@ select.form-control {
     color:rgb(90, 90, 90);
     margin-bottom: 15px;
     padding-bottom: 8px;
-    border-bottom: 1px solid var(--border-color);
+}
+
+.charge-group .table {
+    background-color: #f9f9f9;
+    border-radius: 6px;
+    overflow: hidden;
 }
 
 /* Tables */

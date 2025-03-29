@@ -43,39 +43,56 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['patientId'])) {
         $gender = $patient['gender'];
         $dob = $patient['dob'];
     
-        // Fetch the last Dengue Duo ID and generate a new one
-        $last_dd_query = $connection->prepare("SELECT dd_id FROM tbl_dengueduo ORDER BY id DESC LIMIT 1");
-        $last_dd_query->execute();
-        $last_dd_result = $last_dd_query->get_result();
-        $last_dd = $last_dd_result->fetch_array(MYSQLI_ASSOC);
+        // Fetch the last PT/PTT ID and generate a new one
+        $last_pt_query = $connection->prepare("SELECT ptptt_id FROM tbl_ptptt ORDER BY id DESC LIMIT 1");
+        $last_pt_query->execute();
+        $last_pt_result = $last_pt_query->get_result();
+        $last_pt = $last_pt_result->fetch_array(MYSQLI_ASSOC);
     
-        if ($last_dd) {
-            $last_id_number = (int) substr($last_dd['dd_id'], 3);
-            $new_dd_id = 'DD-' . ($last_id_number + 1);
+        if ($last_pt) {
+            $last_id_number = (int) substr($last_pt['ptptt_id'], 3);
+            $new_pt_id = 'PPT-' . ($last_id_number + 1);
         } else {
-            $new_dd_id = 'DD-1';
+            $new_pt_id = 'PPT-1';
         }
     
-        // Assign the generated ID to $dd_id
-        $dd_id = $new_dd_id;
+        // Assign the generated ID to $ptptt_id
+        $ptptt_id = $new_pt_id;
     
-        // Sanitize user inputs and set NULL if empty
-        $ns1ag  = sanitize($connection, $_POST['ns1ag'] ?? NULL);
-        $igg = sanitize($connection, $_POST['igg'] ?? NULL);
-        $igm = sanitize($connection, $_POST['igm'] ?? NULL);
+        // Sanitize user inputs for PT
+        $pt_control = sanitize($connection, $_POST['pt_control'] ?? NULL);
+        $pt_test = sanitize($connection, $_POST['pt_test'] ?? NULL);
+        $pt_inr = sanitize($connection, $_POST['pt_inr'] ?? NULL);
+        $pt_activity = sanitize($connection, $_POST['pt_activity'] ?? NULL);
+        $pt_result = sanitize($connection, $_POST['pt_result'] ?? NULL);
+        $pt_normal_values = sanitize($connection, $_POST['pt_normal_values'] ?? NULL);
+        
+        // Sanitize user inputs for PTT
+        $ptt_control = sanitize($connection, $_POST['ptt_control'] ?? NULL);
+        $ptt_patient_result = sanitize($connection, $_POST['ptt_patient_result'] ?? NULL);
+        $ptt_normal_values = sanitize($connection, $_POST['ptt_normal_values'] ?? NULL);
+        $ptt_remarks = sanitize($connection, $_POST['ptt_remarks'] ?? NULL);
     
-        // Prepare the query to insert with NULL values for empty fields
-        $insert_query = $connection->prepare("INSERT INTO tbl_dengueduo (dd_id, patient_id, patient_name, gender, dob, ns1ag, igg, igm, date_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+        // Prepare the query to insert PT/PTT results
+        $insert_query = $connection->prepare("INSERT INTO tbl_ptptt (
+            ptptt_id, patient_id, patient_name, gender, dob, 
+            pt_control, pt_test, pt_inr, pt_activity, pt_result, pt_normal_values,
+            ptt_control, ptt_patient_result, ptt_normal_values, ptt_remarks, date_time
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
         
         // Bind parameters
-        $insert_query->bind_param("ssssssss", $dd_id, $patient_id, $name, $gender, $dob, $ns1ag, $igg, $igm);
+        $insert_query->bind_param("sssssssssssssss", 
+            $ptptt_id, $patient_id, $name, $gender, $dob,
+            $pt_control, $pt_test, $pt_inr, $pt_activity, $pt_result, $pt_normal_values,
+            $ptt_control, $ptt_patient_result, $ptt_normal_values, $ptt_remarks
+        );
     
         // Execute the query
         if ($insert_query->execute()) {
             echo "<script>
                 Swal.fire({
                     title: 'Processing...',
-                    text: 'Saving Dengue Duo record...',
+                    text: 'Saving PT/PTT record...',
                     allowOutsideClick: false,
                     showConfirmButton: false,
                     willOpen: () => {
@@ -86,11 +103,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['patientId'])) {
                 setTimeout(() => {
                     Swal.fire({
                         title: 'Success!',
-                        text: 'Dengue Duo record added successfully.',
+                        text: 'PT/PTT record added successfully.',
                         icon: 'success',
                         confirmButtonColor: '#12369e'
                     }).then(() => {
-                        window.location.href = 'dengue-duo.php';
+                        window.location.href = 'ptptt.php';
                     });
                 }, 1000);
             </script>";
@@ -98,7 +115,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['patientId'])) {
             echo "<script>
                 Swal.fire({
                     title: 'Error!',
-                    text: 'Failed to add Dengue Duo record. Please try again.',
+                    text: 'Failed to add PT/PTT record. Please try again.',
                     icon: 'error',
                     confirmButtonColor: '#d33'
                 });
@@ -124,11 +141,11 @@ ob_end_flush(); // Flush output buffer
     <div class="content">
         <div class="row">
             <div class="col-sm-4 col-3">
-                <h4 class="page-title">Dengue Duo</h4>
+                <h4 class="page-title">Prothrombin Time (PT) & Partial Thromboplastin Time (PTT)</h4>
             </div>
             <?php if ($role == 1 || $role == 5): ?>
                 <div class="col-sm-10 col-9 m-b-20">
-                    <form method="POST" action="dengue-duo.php" id="addPatientForm" class="form-inline">
+                    <form method="POST" action="ptptt.php" id="addPatientForm" class="form-inline">
                         <div class="input-group w-50">
                             <div class="input-group-prepend">
                                 <span class="input-group-text">
@@ -157,7 +174,7 @@ ob_end_flush(); // Flush output buffer
             <div class="input-group mb-3">
                 <div class="position-relative w-100">
                     <i class="fa fa-search position-absolute text-secondary" style="top: 50%; left: 12px; transform: translateY(-50%);"></i>
-                    <input class="form-control" type="text" id="dengueDuoSearchInput" onkeyup="filterDengueDuo()" placeholder="Search" style="padding-left: 35px; padding-right: 35px;">
+                    <input class="form-control" type="text" id="ptpttSearchInput" onkeyup="filterPtPtt()" placeholder="Search" style="padding-left: 35px; padding-right: 35px;">
                     <button class="position-absolute border-0 bg-transparent text-secondary" type="button" onclick="clearSearch()" style="top: 50%; right: 10px; transform: translateY(-50%);">
                         <i class="fa fa-times"></i>
                     </button>
@@ -165,32 +182,36 @@ ob_end_flush(); // Flush output buffer
             </div>
         </div>
         <div class="table-responsive">
-            <table class="datatable table table-bordered table-hover" id="dengueDuoTable">
+            <table class="datatable table table-bordered table-hover" id="ptpttTable">
                 <thead style="background-color: #CCCCCC;">
                     <tr>
-                        <th>Dengue Duo ID</th>
+                        <th>PT/PTT ID</th>
                         <th>Patient ID</th>
                         <th>Patient Name</th>
                         <th>Gender</th>
                         <th>Age</th>
                         <th>Date and Time</th>
-                        <th>NS1Ag</th>
-                        <th>IgG</th>
-                        <th>IgM</th>
+                        <th>PT Control</th>
+                        <th>PT Test</th>
+                        <th>PT INR</th>
+                        <th>PT Activity</th>
+                        <th>PTT Control</th>
+                        <th>PTT Patient Result</th>
+                        <th>PTT Remarks</th>
                         <th>Action</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php
-                    if (isset($_GET['dd_id'])) {
-                        $dd_id = sanitize($connection, $_GET['dd_id']);
-                        $update_query = $connection->prepare("UPDATE tbl_electrolytes SET deleted = 1 WHERE dd_id = ?");
-                        $update_query->bind_param("s", $dd_id);
+                    if (isset($_GET['ptptt_id'])) {
+                        $ptptt_id = sanitize($connection, $_GET['ptptt_id']);
+                        $update_query = $connection->prepare("UPDATE tbl_ptptt SET deleted = 1 WHERE ptptt_id = ?");
+                        $update_query->bind_param("s", $ptptt_id);
                         $update_query->execute();
                         echo "<script>showSuccess('Record deleted successfully', true);</script>";
                     }
 
-                    $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_dengueduo WHERE deleted = 0 ORDER BY date_time ASC");
+                    $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_ptptt WHERE deleted = 0 ORDER BY date_time ASC");
                     while ($row = mysqli_fetch_array($fetch_query)) {
                         $dob = $row['dob'];
                         $date = str_replace('/', '-', $dob);
@@ -199,22 +220,26 @@ ob_end_flush(); // Flush output buffer
                         $date_time = date('F d, Y g:i A', strtotime($row['date_time']));
                     ?>
                     <tr>
-                        <td><?php echo $row['dd_id']; ?></td>
+                        <td><?php echo $row['ptptt_id']; ?></td>
                         <td><?php echo $row['patient_id']; ?></td>
                         <td><?php echo $row['patient_name']; ?></td>
                         <td><?php echo $row['gender']; ?></td>
                         <td><?php echo $year; ?></td>
                         <td><?php echo $date_time; ?></td>
-                        <td><?php echo $row['ns1ag']; ?></td>
-                        <td><?php echo $row['igg']; ?></td>
-                        <td><?php echo $row['igm']; ?></td>
+                        <td><?php echo $row['pt_control']; ?></td>
+                        <td><?php echo $row['pt_test']; ?></td>
+                        <td><?php echo $row['pt_inr']; ?></td>
+                        <td><?php echo $row['pt_activity']; ?></td>
+                        <td><?php echo $row['ptt_control']; ?></td>
+                        <td><?php echo $row['ptt_patient_result']; ?></td>
+                        <td><?php echo $row['ptt_remarks']; ?></td>
                         <td class="text-right">
                             <div class="dropdown dropdown-action">
                                 <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><i class="fa fa-ellipsis-v"></i></a>
                                 <div class="dropdown-menu dropdown-menu-right">
                                     <?php if ($can_print): ?>
-                                    <form action="generate-dengueduo.php" method="get">
-                                        <input type="hidden" name="id" value="<?php echo $row['dd_id']; ?>">
+                                    <form action="generate-ptptt.php" method="get">
+                                        <input type="hidden" name="id" value="<?php echo $row['ptptt_id']; ?>">
                                         <div class="form-group">
                                             <input type="text" class="form-control" id="filename" name="filename" placeholder="Enter File Name">
                                         </div>
@@ -222,8 +247,8 @@ ob_end_flush(); // Flush output buffer
                                     </form>
                                     <?php endif; ?>
                                     <?php if ($editable): ?>
-                                        <a class="dropdown-item" href="edit-dengue-duo.php?id=<?php echo $row['dd_id']; ?>"><i class="fa fa-pencil m-r-5"></i> Insert and Edit</a>
-                                        <a class="dropdown-item" href="#" onclick="return confirmDelete('<?php echo $row['dd_id']; ?>')"><i class="fa fa-trash-o m-r-5"></i> Delete</a>
+                                        <a class="dropdown-item" href="edit-ptptt.php?id=<?php echo $row['ptptt_id']; ?>"><i class="fa fa-pencil m-r-5"></i> Insert and Edit</a>
+                                        <a class="dropdown-item" href="#" onclick="return confirmDelete('<?php echo $row['ptptt_id']; ?>')"><i class="fa fa-trash-o m-r-5"></i> Delete</a>
                                     <?php else: ?>
                                         <a class="dropdown-item disabled" href="#">
                                             <i class="fa fa-pencil m-r-5"></i> Edit
@@ -269,10 +294,10 @@ document.querySelector('form').addEventListener('submit', function(event) {
 </script>
 
 <script language="JavaScript" type="text/javascript">
-function confirmDelete(dd_id) {
+function confirmDelete(ptptt_id) {
     return Swal.fire({
-        title: 'Delete Dengue Duo Record?',
-        text: 'Are you sure you want to delete this Dengue Duo record? This action cannot be undone!',
+        title: 'Delete PT/PTT Record?',
+        text: 'Are you sure you want to delete this PT/PTT record? This action cannot be undone!',
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#d33',
@@ -280,14 +305,14 @@ function confirmDelete(dd_id) {
         confirmButtonText: 'Yes, delete it!'
     }).then((result) => {
         if (result.isConfirmed) {
-            window.location.href = 'dengue-duo.php?dd_id=' + dd_id;
+            window.location.href = 'ptptt.php?ptptt_id=' + ptptt_id;
         }
     });
 }
 
 function clearSearch() {
-    document.getElementById("dengueDuoSearchInput").value = '';
-    filterDengueDuo();
+    document.getElementById("ptpttSearchInput").value = '';
+    filterPtPtt();
 }
 
 let canPrint, userRole, editable;
@@ -298,16 +323,16 @@ let canPrint, userRole, editable;
         editable = <?php echo $editable ? 'true' : 'false' ?>;
     });
 
-function filterDengueDuo() {
-    var input = document.getElementById("dengueDuoSearchInput").value;
+function filterPtPtt() {
+    var input = document.getElementById("ptpttSearchInput").value;
     
     $.ajax({
-        url: 'fetch_dengueduo.php',
+        url: 'fetch_ptptt.php',
         type: 'GET',
         data: { query: input },
         success: function(response) {
             var data = JSON.parse(response);
-            updateDengueDuoTable(data);
+            updatePtPttTable(data);
         },
         error: function(xhr, status, error) {
             alert('Error fetching data. Please try again.');
@@ -315,28 +340,35 @@ function filterDengueDuo() {
     });
 }
 
-function updateDengueDuoTable(data) {
-    var tbody = $('#dengueDuoTable tbody');
+function updatePtPttTable(data) {
+    var tbody = $('#ptpttTable tbody');
     tbody.empty();
     data.forEach(function(record) {
         tbody.append(`
             <tr>
-                <td>${record.dd_id}</td>  
+                <td>${record.ptptt_id}</td>  
                 <td>${record.patient_id}</td>
                 <td>${record.patient_name}</td>
                 <td>${record.gender}</td>
                 <td>${record.age}</td>
                 <td>${record.date_time}</td>
-                <td>${record.ns1ag}</td>
-                <td>${record.igg}</td>
-                <td>${record.igm}</td>
+                <td>${record.pt_control}</td>
+                <td>${record.pt_test}</td>
+                <td>${record.pt_inr}</td>
+                <td>${record.pt_activity}</td>
+                <td>${record.pt_result}</td>
+                <td>${record.pt_normal_values}</td>
+                <td>${record.ptt_control}</td>
+                <td>${record.ptt_patient_result}</td>
+                <td>${record.ptt_normal_values}</td>
+                <td>${record.ptt_remarks}</td>
                 <td class="text-right">
                     <div class="dropdown dropdown-action">
                         <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
                             <i class="fa fa-ellipsis-v"></i>
                         </a>
                         <div class="dropdown-menu dropdown-menu-right">
-                            ${getActionButtons(record.dd_id)}
+                            ${getActionButtons(record.ptptt_id)}
                         </div>
                     </div>
                 </td>
@@ -345,13 +377,13 @@ function updateDengueDuoTable(data) {
     });
 }
 
-function getActionButtons(ddId) {
+function getActionButtons(ptpttId) {
     let buttons = '';
     
     if (canPrint) {
         buttons += `
-            <form action="generate-dengueduo.php" method="get">
-                <input type="hidden" name="id" value="${ddId}">
+            <form action="generate-ptptt.php" method="get">
+                <input type="hidden" name="id" value="${ptpttId}">
                 <div class="form-group">
                     <input type="text" class="form-control" id="filename" name="filename" placeholder="Enter File Name" aria-label="Enter File Name" aria-describedby="basic-addon2">
                 </div>
@@ -364,10 +396,10 @@ function getActionButtons(ddId) {
     
     if (userRole === 1) {
         buttons += `
-            <a class="dropdown-item" href="edit-dengue-duo.php?id=${ddId}">
+            <a class="dropdown-item" href="edit-ptptt.php?id=${ptpttId}">
                 <i class="fa fa-pencil m-r-5"></i> Insert and Edit
             </a>
-            <a class="dropdown-item" href="dengue-duo.php?ids=${ddId}" onclick="return confirmDelete()">
+            <a class="dropdown-item" href="ptptt.php?ids=${ptpttId}" onclick="return confirmDelete()">
                 <i class="fa fa-trash-o m-r-5"></i> Delete
             </a>
         `;
@@ -393,7 +425,7 @@ function searchPatients() {
         return;
     }
     $.ajax({
-        url: "search-dengue-duo.php",
+        url: "search-ptptt.php",
         method: "GET",
         data: { query: input },
         success: function (data) {
@@ -536,5 +568,4 @@ $('.dropdown-toggle').on('click', function (e) {
 .dropdown-item:hover i {
     color: #12369e;
 }  
-</style> 
-
+</style>
