@@ -64,27 +64,28 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['patientId'])) {
         $pt_test = sanitize($connection, $_POST['pt_test'] ?? NULL);
         $pt_inr = sanitize($connection, $_POST['pt_inr'] ?? NULL);
         $pt_activity = sanitize($connection, $_POST['pt_activity'] ?? NULL);
-        $pt_result = sanitize($connection, $_POST['pt_result'] ?? NULL);
-        $pt_normal_values = sanitize($connection, $_POST['pt_normal_values'] ?? NULL);
         
         // Sanitize user inputs for PTT
         $ptt_control = sanitize($connection, $_POST['ptt_control'] ?? NULL);
         $ptt_patient_result = sanitize($connection, $_POST['ptt_patient_result'] ?? NULL);
-        $ptt_normal_values = sanitize($connection, $_POST['ptt_normal_values'] ?? NULL);
         $ptt_remarks = sanitize($connection, $_POST['ptt_remarks'] ?? NULL);
     
         // Prepare the query to insert PT/PTT results
         $insert_query = $connection->prepare("INSERT INTO tbl_ptptt (
             ptptt_id, patient_id, patient_name, gender, dob, 
-            pt_control, pt_test, pt_inr, pt_activity, ptt_control, ptt_patient_result, ptt_remarks, date_time
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+            pt_control, pt_test, pt_inr, pt_activity, 
+            ptt_control, ptt_patient_result, ptt_remarks, date_time
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+        
         
         // Bind parameters
-        $insert_query->bind_param("sssssssssssssss", 
+        $insert_query->bind_param("ssssssssssss", 
             $ptptt_id, $patient_id, $name, $gender, $dob,
-            $pt_control, $pt_test, $pt_inr, $pt_activity, $pt_result, $pt_normal_values,
-            $ptt_control, $ptt_patient_result, $ptt_normal_values, $ptt_remarks
+            $pt_control, $pt_test, $pt_inr, $pt_activity, 
+            $ptt_control, $ptt_patient_result, $ptt_remarks
         );
+
+
     
         // Execute the query
         if ($insert_query->execute()) {
@@ -195,8 +196,8 @@ ob_end_flush(); // Flush output buffer
                         <th>PT INR</th>
                         <th>PT Activity</th>
                         <th>PTT Control</th>
-                        <th>PTT Patient Result</th>
-                        <th>PTT Remarks</th>
+                        <th>PTT Result</th>
+                        <th>Remarks</th>
                         <th>Action</th>
                     </tr>
                 </thead>
@@ -235,23 +236,31 @@ ob_end_flush(); // Flush output buffer
                         <td class="text-right">
                             <div class="dropdown dropdown-action">
                                 <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><i class="fa fa-ellipsis-v"></i></a>
-                                <div class="dropdown-menu dropdown-menu-right">
+                                <div class="dropdown-menu dropdown-menu-right" style="                                
+                                        min-width: 200px;
+                                        position: absolute;
+                                        top: 50%;
+                                        transform: translateY(-50%);
+                                        right: 50%;
+                                    ">
                                     <?php if ($can_print): ?>
-                                    <form action="generate-ptptt.php" method="get">
-                                        <input type="hidden" name="id" value="<?php echo $row['ptptt_id']; ?>">
-                                        <div class="form-group">
-                                            <input type="text" class="form-control" id="filename" name="filename" placeholder="Enter File Name">
-                                        </div>
-                                        <button class="btn btn-primary btn-sm custom-btn" type="submit"><i class="fa fa-file-pdf-o m-r-5"></i> Generate Result</button>
-                                    </form>
+                                        <div class="dropdown-item">
+                                        <form action="generate-ptptt.php" method="get" class="p-2">
+                                            <input type="hidden" name="id" value="<?php echo $row['ptptt_id']; ?>">
+                                            <div class="form-group mb-2">
+                                                <input type="text" class="form-control" name="filename" placeholder="Filename (required)" required>
+                                            </div>
+                                            <button class="btn btn-primary btn-sm custom-btn" type="submit">
+                                                <i class="fa fa-file-pdf-o m-r-5"></i> Generate PDF
+                                            </button>
+                                        </form>
+                                    </div>
+                                    <div class="dropdown-divider"></div>
                                     <?php endif; ?>
+                                    <a class="dropdown-item" href="edit-ptptt.php?id=<?php echo $row['ptptt_id']; ?>"><i class="fa fa-pencil m-r-5"></i> Insert and Edit</a>
                                     <?php if ($editable): ?>
-                                        <a class="dropdown-item" href="edit-ptptt.php?id=<?php echo $row['ptptt_id']; ?>"><i class="fa fa-pencil m-r-5"></i> Insert and Edit</a>
                                         <a class="dropdown-item" href="#" onclick="return confirmDelete('<?php echo $row['ptptt_id']; ?>')"><i class="fa fa-trash-o m-r-5"></i> Delete</a>
                                     <?php else: ?>
-                                        <a class="dropdown-item disabled" href="#">
-                                            <i class="fa fa-pencil m-r-5"></i> Edit
-                                        </a>
                                         <a class="dropdown-item disabled" href="#">
                                             <i class="fa fa-trash-o m-r-5"></i> Delete
                                         </a>
@@ -467,15 +476,7 @@ $('.dropdown-toggle').on('click', function (e) {
 </script>
 
 <style>
-.dropdown-action .dropdown-menu {
-    position: absolute;
-    left: -100px; /* This moves the box to the left */
-    min-width: 80px;
-    margin-top: -14px;
-    border-radius: 4px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-}    
-.sticky-search {
+..sticky-search {
     position: sticky;
     left: 0;
     z-index: 100;
@@ -504,38 +505,41 @@ $('.dropdown-toggle').on('click', function (e) {
     color: gray;
 }
 .btn-primary {
-            background: #12369e;
-            border: none;
-        }
-        .btn-primary:hover {
-            background: #05007E;
-        }
+    background: #12369e;
+    border: none;
+}
+.btn-primary:hover {
+    background: #05007E;
+}
 
-    #searchResults {
-        max-height: 200px;
-        overflow-y: auto;
-        border: 1px solid #ddd;
-        border-radius: 5px;
-        display: none;
-        background: #fff;
-        position: absolute;
-        z-index: 1000;
-        width: 50%;
-    }
-    #searchResults li {
-        padding: 8px 12px;
-        cursor: pointer;
-        list-style: none;
-        border-bottom: 1px solid #ddd;
-    }
-    #searchResults li:hover {
-        background-color: #12369e;
-        color: white;
-    }
-    .form-inline .input-group {
-        width: 100%;
-    }
-    .dropdown-action .action-icon {
+#searchResults {
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    display: none;
+    background: #fff;
+    position: absolute;
+    z-index: 1000;
+    width: 50%;
+}
+#searchResults li {
+    padding: 8px 12px;
+    cursor: pointer;
+    list-style: none;
+    border-bottom: 1px solid #ddd;
+}
+#searchResults li:hover {
+    background-color: #12369e;
+    color: white;
+}
+.form-inline .input-group {
+    width: 100%;
+}
+#patientTable2_length, #patientTable_paginate .paginate_button {
+    display: none;
+}
+.dropdown-action .action-icon {
     color: #777;
     font-size: 18px;
     display: inline-block;
@@ -566,5 +570,9 @@ $('.dropdown-toggle').on('click', function (e) {
 
 .dropdown-item:hover i {
     color: #12369e;
-}  
+}
+.custom-btn {
+    padding: 5px 27px; /* Adjust padding as needed */
+    font-size: 12px; /* Adjust font size as needed */
+}
 </style>

@@ -74,7 +74,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['patientId'])) {
             ast, alt, alp, remarks, date_time
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
         
-        $insert_query->bind_param("ssssssssssssssssssss", 
+        $insert_query->bind_param("sssssssssssssssssss", 
             $chem_id, $patient_id, $name, $gender, $dob,
             $fbs, $ppbs, $bun, $crea, $bua,
             $tc, $tg, $hdl, $ldl, $vldl,
@@ -242,24 +242,38 @@ ob_end_flush();
                         <td><?php echo $row['remarks']; ?></td>
                         <td class="text-right">
                             <div class="dropdown dropdown-action">
-                                <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><i class="fa fa-ellipsis-v"></i></a>
-                                <div class="dropdown-menu dropdown-menu-right">
+                                <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
+                                    <i class="fa fa-ellipsis-v"></i>
+                                </a>
+                                <div class="dropdown-menu dropdown-menu-right" style="
+                                        min-width: 200px;
+                                        position: absolute;
+                                        top: 50%;
+                                        transform: translateY(-50%);
+                                        right: 50%;
+                                    ">
                                     <?php if ($can_print): ?>
-                                    <form action="generate-chemistry.php" method="get">
-                                        <input type="hidden" name="id" value="<?php echo $row['chem_id']; ?>">
-                                        <div class="form-group">
-                                            <input type="text" class="form-control" id="filename" name="filename" placeholder="Enter File Name">
-                                        </div>
-                                        <button class="btn btn-primary btn-sm custom-btn" type="submit"><i class="fa fa-file-pdf-o m-r-5"></i> Generate Result</button>
-                                    </form>
+                                    <div class="dropdown-item">
+                                        <form action="generate-chemistry.php" method="get" class="p-2">
+                                            <input type="hidden" name="id" value="<?php echo $row['chem_id']; ?>">
+                                            <div class="form-group mb-2">
+                                                <input type="text" class="form-control" name="filename" placeholder="Filename (required)" required>
+                                            </div>
+                                            <button class="btn btn-primary btn-sm custom-btn" type="submit">
+                                                <i class="fa fa-file-pdf-o m-r-5"></i> Generate PDF
+                                            </button>
+                                        </form>
+                                    </div>
+                                    <div class="dropdown-divider"></div>
                                     <?php endif; ?>
-                                    <?php if ($editable): ?>
-                                        <a class="dropdown-item" href="edit-chemistry-panel.php?id=<?php echo $row['chem_id']; ?>"><i class="fa fa-pencil m-r-5"></i> Insert and Edit</a>
-                                        <a class="dropdown-item" href="#" onclick="return confirmDelete('<?php echo $row['chem_id']; ?>')"><i class="fa fa-trash-o m-r-5"></i> Delete</a>
-                                    <?php else: ?>
-                                        <a class="dropdown-item disabled" href="#">
+                                        <a class="dropdown-item" href="edit-chemistry-panel.php?id=<?php echo $row['chem_id']; ?>">
                                             <i class="fa fa-pencil m-r-5"></i> Edit
                                         </a>
+                                    <?php if ($editable): ?>
+                                        <a class="dropdown-item" href="#" onclick="return confirmDelete('<?php echo $row['chem_id']; ?>')">
+                                            <i class="fa fa-trash-o m-r-5"></i> Delete
+                                        </a>
+                                    <?php else: ?>
                                         <a class="dropdown-item disabled" href="#">
                                             <i class="fa fa-trash-o m-r-5"></i> Delete
                                         </a>
@@ -466,14 +480,6 @@ $('.dropdown-toggle').on('click', function (e) {
 </script>
 
 <style>
-.dropdown-action .dropdown-menu {
-    position: absolute;
-    left: -100px;
-    min-width: 80px;
-    margin-top: -14px;
-    border-radius: 4px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-}    
 .sticky-search {
     position: sticky;
     left: 0;
@@ -509,7 +515,10 @@ $('.dropdown-toggle').on('click', function (e) {
 .btn-primary:hover {
     background: #05007E;
 }
-
+.custom-btn {
+    padding: 5px 27px; /* Adjust padding as needed */
+    font-size: 12px; /* Adjust font size as needed */
+}
 #searchResults {
     max-height: 200px;
     overflow-y: auto;

@@ -118,7 +118,7 @@ if (isset($_POST['edit-anti-hbsag'])) {
                 <h4 class="page-title">Edit Anti-HBsAg Result</h4>
             </div>
             <div class="col-sm-8 text-right mb-3">
-                <a href="anti-hbsag.php" class="btn btn-primary"><i class="fa fa-arrow-left"></i> Back</a>
+                <a href="anti-hbs.php" class="btn btn-primary"><i class="fa fa-arrow-left"></i> Back</a>
             </div>
         </div>
         <div class="row">

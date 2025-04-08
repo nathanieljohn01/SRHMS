@@ -138,6 +138,64 @@ if (!empty($cbcResults)) {
     renderLabResultsTable($pdf, 'Complete Blood Count', $cbcResults, ['Test Type', 'Date and Time', 'Results'], [60, 60, 60]);
 }
 
+// Fetch PBS records
+$pbsResults = [];
+$pbsQuery = $connection->prepare("
+    SELECT date_time, 
+           CONCAT(
+               'RBC Morphology: ', rbc_morphology, '\n',
+               'Platelet Count: ', platelet_count, '\n',
+               'Toxic Granules: ', toxic_granules, '\n',
+               'Abnormal Cells: ', abnormal_cells, '\n',
+               'Segmenters: ', segments, '\n',
+               'Lymphocytes: ', lymphocytes, '\n',
+               'Monocytes: ', monocytes, '\n',
+               'Eosinophils: ', eosinophils, '\n',
+               'Bands: ', bands, '\n',
+               'Reticulocyte Count: ', reticulocyte_count, '\n',
+               'Remarks: ', remarks
+           ) AS results
+    FROM tbl_pbs
+    WHERE patient_id = ? AND deleted = 0
+    ORDER BY date_time DESC
+");
+$pbsQuery->bind_param('s', $patient_id);
+$pbsQuery->execute();
+$pbsResult = $pbsQuery->get_result();
+while ($row = $pbsResult->fetch_assoc()) {
+    $pbsResults[] = $row;
+}
+if (!empty($pbsResults)) {
+    renderLabResultsTable($pdf, 'Peripheral Blood Smear', $pbsResults, ['Test Type', 'Date and Time', 'Results'], [60, 60, 60]);
+}
+
+// Fetch PT/PTT records
+$ptpttResults = [];
+$ptpttQuery = $connection->prepare("
+    SELECT date_time, 
+           CONCAT(
+               'PT Control: ', pt_control, '\n',
+               'PT Test: ', pt_test, '\n',
+               'PT INR: ', pt_inr, '\n',
+               'PT Activity: ', pt_activity, '\n',
+               'PTT Control: ', ptt_control, '\n',
+               'PTT Patient Result: ', ptt_patient_result, '\n',
+               'Remarks: ', ptt_remarks
+           ) AS results
+    FROM tbl_ptptt
+    WHERE patient_id = ? AND deleted = 0
+    ORDER BY date_time ASC
+");
+$ptpttQuery->bind_param('s', $patient_id);
+$ptpttQuery->execute();
+$ptpttResult = $ptpttQuery->get_result();
+while ($row = $ptpttResult->fetch_assoc()) {
+    $ptpttResults[] = $row;
+}
+if (!empty($ptpttResults)) {
+    renderLabResultsTable($pdf, 'PT/PTT Test', $ptpttResults, ['Test Type', 'Date and Time', 'Results'], [60, 60, 60]);
+}
+
 // Fetch Macroscopic Urinalysis records
 $macroResults = [];
 $macroQuery = $connection->prepare("

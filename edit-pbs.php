@@ -163,12 +163,28 @@ if (isset($_POST['edit-pbs'])) {
                         <input type="datetime-local" class="form-control" name="date_time" value="<?php echo date('Y-m-d\TH:i', strtotime($pbs_data['date_time'])); ?>">
                     </div>
                     <div class="form-group">
-                        <label for="rbc_morphology">RBC Morphology</label>
-                        <input class="form-control" type="text" name="rbc_morphology" value="<?php echo htmlspecialchars($pbs_data['rbc_morphology']); ?>">
+                        <label for="rbc_morphology">RBC</label>
+                        <select class="form-control" name="rbc_morphology" id="rbc_morphology">
+                            <option value="">Select</option>
+                            <option value="Normocytic, normochromic" <?php echo ($pbs_data['rbc_morphology'] == 'Normocytic, normochromic') ? 'selected' : ''; ?>>Normocytic, normochromic</option>
+                            <option value="Slight hypochromic" <?php echo ($pbs_data['rbc_morphology'] == 'Slight hypochromic') ? 'selected' : ''; ?>>Slight hypochromic</option>
+                            <option value="Slight hypochromic and microcytosis" <?php echo ($pbs_data['rbc_morphology'] == 'Slight hypochromic and microcytosis') ? 'selected' : ''; ?>>Slight hypochromic and microcytosis</option>
+                            <option value="Microcytic, hypochromic" <?php echo ($pbs_data['rbc_morphology'] == 'Microcytic, hypochromic') ? 'selected' : ''; ?>>Microcytic, hypochromic</option>
+                            <option value="With few nucleated RBC 3/125 WBC" <?php echo ($pbs_data['rbc_morphology'] == 'With few nucleated RBC 3/125 WBC') ? 'selected' : ''; ?>>With few nucleated RBC 3/125 WBC</option>
+                            <option value="Slight hypochromic and generally normocytic" <?php echo ($pbs_data['rbc_morphology'] == 'Slight hypochromic and generally normocytic') ? 'selected' : ''; ?>>Slight hypochromic and generally normocytic</option>
+                        </select>
                     </div>
                     <div class="form-group">
                         <label for="platelet_count">Platelet Count</label>
-                        <input class="form-control" type="text" name="platelet_count" value="<?php echo htmlspecialchars($pbs_data['platelet_count']); ?>">
+                        <select class="form-control" name="platelet_count" id="platelet_count">
+                            <option value="">Select</option>
+                            <option value="Adequate and morphologically normal" <?php echo ($pbs_data['platelet_count'] == 'Adequate and morphologically normal') ? 'selected' : ''; ?>>Adequate and morphologically normal</option>
+                            <option value="Moderate thrombocytosis" <?php echo ($pbs_data['platelet_count'] == 'Moderate thrombocytosis') ? 'selected' : ''; ?>>Moderate thrombocytosis</option>
+                            <option value="Marked thrombocytopenia" <?php echo ($pbs_data['platelet_count'] == 'Marked thrombocytopenia') ? 'selected' : ''; ?>>Marked thrombocytopenia</option>
+                            <option value="Slight thrombocytosis" <?php echo ($pbs_data['platelet_count'] == 'Slight thrombocytosis') ? 'selected' : ''; ?>>Slight thrombocytosis</option>
+                            <option value="Slight thrombocytopenia" <?php echo ($pbs_data['platelet_count'] == 'Slight thrombocytopenia') ? 'selected' : ''; ?>>Slight thrombocytopenia</option>
+                            <option value="Moderate thrombocytopenia" <?php echo ($pbs_data['platelet_count'] == 'Moderate thrombocytopenia') ? 'selected' : ''; ?>>Moderate thrombocytopenia</option>
+                        </select>
                     </div>
                     <div class="form-group">
                         <label for="toxic_granules">Toxic Granules</label>
@@ -180,7 +196,11 @@ if (isset($_POST['edit-pbs'])) {
                     </div>
                     <div class="form-group">
                         <label for="abnormal_cells">Abnormal Cells</label>
-                        <input class="form-control" type="text" name="abnormal_cells" value="<?php echo htmlspecialchars($pbs_data['abnormal_cells']); ?>">
+                        <select class="form-control" name="abnormal_cells" id="abnormal_cells">
+                            <option value="">Select</option>
+                            <option value="No blast cells seen" <?php echo ($pbs_data['abnormal_cells'] == 'No blast cells seen') ? 'selected' : ''; ?>>No blast cells seen</option>
+                            <option value="Present of numerous blast cells" <?php echo ($pbs_data['abnormal_cells'] == 'Present of numerous blast cells') ? 'selected' : ''; ?>>Present of numerous blast cells</option>
+                        </select>
                     </div>
                     <div class="form-group">
                         <label for="segments">Segments (%)</label>

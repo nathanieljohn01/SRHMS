@@ -172,7 +172,7 @@ if (isset($_POST['edit-chemistry'])) {
                         <input type="datetime-local" class="form-control" name="date_time" value="<?php echo date('Y-m-d\TH:i', strtotime($chem_data['date_time'])); ?>">
                     </div>
                     
-                    <h5 class="mb-3">Blood Sugar</h5>
+                    <h4 class="mb-3">Blood Sugar</h4>
                     <div class="form-group row">
                         <div class="col-sm-6">
                             <label for="fbs">Fasting Blood Sugar (mg/dL)</label>
@@ -184,7 +184,7 @@ if (isset($_POST['edit-chemistry'])) {
                         </div>
                     </div>
                     
-                    <h5 class="mb-3">Renal Function Tests</h5>
+                    <h4 class="mb-3">Renal Function Tests</h4>
                     <div class="form-group row">
                         <div class="col-sm-4">
                             <label for="bun">Blood Urea Nitrogen (mg/dL)</label>
@@ -200,7 +200,7 @@ if (isset($_POST['edit-chemistry'])) {
                         </div>
                     </div>
                     
-                    <h5 class="mb-3">Lipid Profile</h5>
+                    <h4 class="mb-3">Lipid Profile</h4>
                     <div class="form-group row">
                         <div class="col-sm-4">
                             <label for="tc">Total Cholesterol (mg/dL)</label>
@@ -226,7 +226,7 @@ if (isset($_POST['edit-chemistry'])) {
                         </div>
                     </div>
                     
-                    <h5 class="mb-3">Liver Function Tests</h5>
+                    <h4 class="mb-3">Liver Function Tests</h4>
                     <div class="form-group row">
                         <div class="col-sm-4">
                             <label for="ast">AST/SGOT (U/L)</label>
@@ -288,12 +288,6 @@ include('footer.php');
     border-radius: .375rem;
     border-color: #ced4da;
     background-color: #f8f9fa;
-}
-h5 {
-    color: #12369e;
-    margin-top: 20px;
-    padding-bottom: 5px;
-    border-bottom: 1px solid #eee;
 }
 select.form-control {
     border-radius: .375rem; /* Rounded corners */

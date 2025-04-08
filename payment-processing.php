@@ -154,17 +154,19 @@ function filterPayments() {
         url: 'fetch_payment_process.php',
         method: 'GET',
         data: { query: input },
+        dataType: 'json',
         success: function(response) {
-         
-            updatePaymentTable(response);
+            if (Array.isArray(response)) {
+                updatePaymentTable(response);
+            } else {
+                console.error("Invalid response format");
+            }
         },
         error: function(xhr, status, error) {
             console.error("Error fetching data:", error);
         }
     });
 }
-
-
 
 function updatePaymentTable(data) {
     var tbody = $('#paymentTable tbody');
@@ -176,11 +178,10 @@ function updatePaymentTable(data) {
                 <td>${row.payment_id}</td>
                 <td>${row.patient_name}</td>
                 <td>${row.patient_type}</td>
-                <td>₱${row.total_due}</td>
-                <td>₱${row.amount_to_pay}</td>
-                <td>₱${row.amount_paid}</td>
-                <td>₱${row.remaining_balance}</td>
-                <td>${paymentStatus}</td>
+                <td>${row.total_due}</td>
+                <td>${row.amount_to_pay}</td>
+                <td>${row.amount_paid}</td>
+                <td>${row.remaining_balance}</td>
                 <td>${row.payment_datetime}</td>
                 <td class="text-right">
                     <div class="dropdown dropdown-action">
@@ -191,7 +192,7 @@ function updatePaymentTable(data) {
                             <a class="dropdown-item" href="generate-receipt.php?id=${row.id}">
                                 <i class="fa fa-file-text-o m-r-5"></i> Generate Receipt
                             </a>
-                            <a class="dropdown-item" href="payment-processing.php?ids=${row.id}" onclick="return confirmDelete()">
+                            <a class="dropdown-item" href="#" onclick="return confirmDelete('${row.id}')">
                                 <i class="fa fa-trash-o m-r-5"></i> Delete
                             </a>
                         </div>

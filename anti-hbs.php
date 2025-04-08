@@ -128,7 +128,7 @@ ob_end_flush(); // Flush output buffer
             </div>
             <?php if ($role == 1 || $role == 5): ?>
                 <div class="col-sm-10 col-9 m-b-20">
-                    <form method="POST" action="anti-hbsag.php" id="addPatientForm" class="form-inline">
+                    <form method="POST" action="anti-hbs.php" id="addPatientForm" class="form-inline">
                         <div class="input-group w-50">
                             <div class="input-group-prepend">
                                 <span class="input-group-text">
@@ -211,23 +211,31 @@ ob_end_flush(); // Flush output buffer
                         <td class="text-right">
                             <div class="dropdown dropdown-action">
                                 <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><i class="fa fa-ellipsis-v"></i></a>
-                                <div class="dropdown-menu dropdown-menu-right">
+                                <div class="dropdown-menu dropdown-menu-right" style="                                
+                                        min-width: 200px;
+                                        position: absolute;
+                                        top: 50%;
+                                        transform: translateY(-50%);
+                                        right: 50%;
+                                    ">
                                     <?php if ($can_print): ?>
-                                    <form action="generate-anti-hbsag.php" method="get">
-                                        <input type="hidden" name="id" value="<?php echo $row['anti_id']; ?>">
-                                        <div class="form-group">
-                                            <input type="text" class="form-control" id="filename" name="filename" placeholder="Enter File Name">
-                                        </div>
-                                        <button class="btn btn-primary btn-sm custom-btn" type="submit"><i class="fa fa-file-pdf-o m-r-5"></i> Generate Result</button>
-                                    </form>
+                                        <div class="dropdown-item">
+                                        <form action="generate-anti-hbs.php" method="get" class="p-2">
+                                            <input type="hidden" name="id" value="<?php echo $row['anti_id']; ?>">
+                                            <div class="form-group mb-2">
+                                                <input type="text" class="form-control" name="filename" placeholder="Filename (required)" required>
+                                            </div>
+                                            <button class="btn btn-primary btn-sm custom-btn" type="submit">
+                                                <i class="fa fa-file-pdf-o m-r-5"></i> Generate PDF
+                                            </button>
+                                        </form>
+                                    </div>
+                                    <div class="dropdown-divider"></div>
                                     <?php endif; ?>
+                                    <a class="dropdown-item" href="edit-anti-hbsag.php?id=<?php echo $row['anti_id']; ?>"><i class="fa fa-pencil m-r-5"></i> Insert and Edit</a>
                                     <?php if ($editable): ?>
-                                        <a class="dropdown-item" href="edit-anti-hbsag.php?id=<?php echo $row['anti_id']; ?>"><i class="fa fa-pencil m-r-5"></i> Insert and Edit</a>
                                         <a class="dropdown-item" href="#" onclick="return confirmDelete('<?php echo $row['anti_id']; ?>')"><i class="fa fa-trash-o m-r-5"></i> Delete</a>
                                     <?php else: ?>
-                                        <a class="dropdown-item disabled" href="#">
-                                            <i class="fa fa-pencil m-r-5"></i> Edit
-                                        </a>
                                         <a class="dropdown-item disabled" href="#">
                                             <i class="fa fa-trash-o m-r-5"></i> Delete
                                         </a>
@@ -280,7 +288,7 @@ function confirmDelete(anti_id) {
         confirmButtonText: 'Yes, delete it!'
     }).then((result) => {
         if (result.isConfirmed) {
-            window.location.href = 'anti-hbsag.php?anti_id=' + anti_id;
+            window.location.href = 'anti-hbs.php?anti_id=' + anti_id;
         }
     });
 }
@@ -302,7 +310,7 @@ function filterAntiHbsag() {
     var input = document.getElementById("antiHbsagSearchInput").value;
     
     $.ajax({
-        url: 'fetch_anti_hbsag.php',
+        url: 'fetch_anti_hbs.php',
         type: 'GET',
         data: { query: input },
         success: function(response) {
@@ -350,7 +358,7 @@ function getActionButtons(antiId) {
     
     if (canPrint) {
         buttons += `
-            <form action="generate-anti-hbsag.php" method="get">
+            <form action="generate-anti-hbs.php" method="get">
                 <input type="hidden" name="id" value="${antiId}">
                 <div class="form-group">
                     <input type="text" class="form-control" id="filename" name="filename" placeholder="Enter File Name" aria-label="Enter File Name" aria-describedby="basic-addon2">
@@ -364,10 +372,10 @@ function getActionButtons(antiId) {
     
     if (userRole === 1) {
         buttons += `
-            <a class="dropdown-item" href="edit-anti-hbsag.php?id=${antiId}">
+            <a class="dropdown-item" href="edit-anti-hbs.php?id=${antiId}">
                 <i class="fa fa-pencil m-r-5"></i> Insert and Edit
             </a>
-            <a class="dropdown-item" href="anti-hbsag.php?ids=${antiId}" onclick="return confirmDelete()">
+            <a class="dropdown-item" href="anti-hbs.php?ids=${antiId}" onclick="return confirmDelete()">
                 <i class="fa fa-trash-o m-r-5"></i> Delete
             </a>
         `;
@@ -393,7 +401,7 @@ function searchPatients() {
         return;
     }
     $.ajax({
-        url: "search-anti-hbsag.php",
+        url: "search-anti-hbs.php",
         method: "GET",
         data: { query: input },
         success: function (data) {
@@ -435,15 +443,7 @@ $('.dropdown-toggle').on('click', function (e) {
 });
 </script>
 
-<style>
-.dropdown-action .dropdown-menu {
-    position: absolute;
-    left: -100px; /* This moves the box to the left */
-    min-width: 80px;
-    margin-top: -14px;
-    border-radius: 4px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-}    
+<style>  
 .sticky-search {
     position: sticky;
     left: 0;
@@ -473,44 +473,46 @@ $('.dropdown-toggle').on('click', function (e) {
     color: gray;
 }
 .btn-primary {
-            background: #12369e;
-            border: none;
-        }
-        .btn-primary:hover {
-            background: #05007E;
-        }
-
-    #searchResults {
-        max-height: 200px;
-        overflow-y: auto;
-        border: 1px solid #ddd;
-        border-radius: 5px;
-        display: none;
-        background: #fff;
-        position: absolute;
-        z-index: 1000;
-        width: 50%;
-    }
-    #searchResults li {
-        padding: 8px 12px;
-        cursor: pointer;
-        list-style: none;
-        border-bottom: 1px solid #ddd;
-    }
-    #searchResults li:hover {
-        background-color: #12369e;
-        color: white;
-    }
-    .form-inline .input-group {
-        width: 100%;
-    }
-    .dropdown-action .action-icon {
+    background: #12369e;
+    border: none;
+}
+.btn-primary:hover {
+    background: #05007E;
+}
+#searchResults {
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    display: none;
+    background: #fff;
+    position: absolute;
+    z-index: 1000;
+    width: 50%;
+}
+#searchResults li {
+    padding: 8px 12px;
+    cursor: pointer;
+    list-style: none;
+    border-bottom: 1px solid #ddd;
+}
+#searchResults li:hover {
+    background-color: #12369e;
+    color: white;
+}
+.form-inline .input-group {
+    width: 100%;
+}
+.dropdown-action .action-icon {
     color: #777;
     font-size: 18px;
     display: inline-block;
     padding: 0 10px;
 }
-
+.custom-btn {
+        padding: 5px 27px; /* Adjust padding as needed */
+        font-size: 12px; /* Adjust font size as needed */
+}
 .dropdown-menu {
     border: 1px solid rgba(0, 0, 0, 0.1);
     border-radius: 3px;

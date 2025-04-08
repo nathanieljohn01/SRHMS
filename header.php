@@ -176,11 +176,11 @@
                                     </li>
                                 </ul>
                             </li>
-                            <li class="sidenav">
-                                <a href="operating-room.php"><i class="fa fa-exclamation-triangle"></i> <span>Operating Room</span></a>
-                            </li>
                             <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'radiology.php') ? 'active' : ''; ?>">
                                 <a href="radiology-patients.php"><i class="fa-solid fa-radiation"></i> <span>Radiology Information</span></a>
+                            </li>
+                            <li class="sidenav">
+                                <a href="operating-room.php"><i class="fa fa-exclamation-triangle"></i> <span>Operating Room</span></a>
                             </li>
                             <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'billing.php') ? 'active' : ''; ?>">
                                 <a href="billing.php"><i class="fas fa-file-invoice-dollar"></i> <span>Billing</span></a>

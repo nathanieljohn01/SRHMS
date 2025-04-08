@@ -2,7 +2,7 @@
 session_start();
 if (empty($_SESSION['name'])) {
     header('location:index.php');
-    exit; // Ensure script stops execution after redirection
+    exit;
 }
 
 include('includes/connection.php');
@@ -11,12 +11,11 @@ include('includes/connection.php');
 require_once('vendor/tecnickcom/tcpdf/tcpdf.php');
 require_once('vendor/autoload.php');
 
-// Fetch urinalysis details
+// Fetch fecalysis details
 if (isset($_GET['id'])) {
-    // Sanitize and escape the input using mysqli_real_escape_string
-    $urinalysis_id = mysqli_real_escape_string($connection, $_GET['id']);
+    $fecalysis_id = mysqli_real_escape_string($connection, $_GET['id']);
     mysqli_query($connection, "SET NAMES 'utf8'");
-    $filename = isset($_GET['filename']) ? mysqli_real_escape_string($connection, $_GET['filename']) : 'urinalysis_' . $urinalysis_id;
+    $filename = isset($_GET['filename']) ? mysqli_real_escape_string($connection, $_GET['filename']) : 'fecalysis_' . $fecalysis_id;
 }
 
 // Extend TCPDF class to create custom Header
@@ -25,7 +24,6 @@ class MYPDF extends TCPDF {
         $image_file = __DIR__ . '/assets/img/srchlogo.png';
         $this->Image($image_file, 15, 8, 20, '', 'PNG', '', 'T', false, 300, '', false, false, 0, false, false, false);
         
-        // Get the current page width
         $pageWidth = $this->getPageWidth();
         $centerPosition = ($pageWidth - 30) / 2 + 15;
         
@@ -49,22 +47,19 @@ class MYPDF extends TCPDF {
     }
 }
 
-// Create new PDF document using the extended class
+// Create new PDF document
 $pdf = new MYPDF('L', 'mm', 'A4', true, 'UTF-8', false);
 
 // Set document information
 $pdf->SetCreator('Santa Rosa Hospital');
 $pdf->SetAuthor('Santa Rosa Community Hospital');
-$pdf->SetTitle('Urinalysis Report');
-$pdf->SetSubject('Urinalysis');
-$pdf->SetKeywords('Urinalysis, Report');
+$pdf->SetTitle('Fecalysis Report');
+$pdf->SetSubject('Fecalysis');
+$pdf->SetKeywords('Fecalysis, Report');
 
 // Set header and footer fonts
 $pdf->setHeaderFont(['helvetica', '', 16]);
 $pdf->setFooterFont(['helvetica', '', 14]);
-
-// Set default monospaced font
-$pdf->SetDefaultMonospacedFont(PDF_FONT_MONOSPACED);
 
 // Set margins
 $pdf->SetMargins(15, 25, 15);
@@ -80,16 +75,15 @@ $pdf->setImageScale(PDF_IMAGE_SCALE_RATIO);
 // Add a page
 $pdf->AddPage();
 
-// Output urinalysis details
+// Output fecalysis details
 $html = '';
 
-// Prepare the query using a prepared statement to prevent SQL injection
-$query = "SELECT * FROM tbl_urinalysis WHERE urinalysis_id = ?";
+// Prepare the query using prepared statement
+$query = "SELECT * FROM tbl_fecalysis WHERE fecalysis_id = ?";
 $stmt = mysqli_prepare($connection, $query);
-mysqli_stmt_bind_param($stmt, 's', $urinalysis_id); // Bind parameter to prevent SQL injection
+mysqli_stmt_bind_param($stmt, 's', $fecalysis_id);
 mysqli_stmt_execute($stmt);
 $result = mysqli_stmt_get_result($stmt);
-
 
 while ($row = $result->fetch_assoc()) {
     // Calculate age
@@ -98,76 +92,53 @@ while ($row = $result->fetch_assoc()) {
 
     // Patient Information
     $html .= '<div style="text-align: center; margin-bottom: 20px;">
-                <h3>Urinalysis</h3>
+                <h3>Fecalysis</h3>
                 <p><strong>Patient Name:</strong> ' . htmlspecialchars($row['patient_name'], ENT_QUOTES, 'UTF-8') . ' | 
                 <strong>Age:</strong> ' . $year . ' | 
                 <strong>Gender:</strong> ' . htmlspecialchars($row['gender'], ENT_QUOTES, 'UTF-8') . ' | 
                 <strong>Date and Time:</strong> ' . date('F d Y g:i A', strtotime($row['date_time'])) . '</p>
             </div>';
 
-
-    // Macroscopic Table (sanitized with htmlspecialchars)
+    // Macroscopic Table
     $html .= '<h4 style="font-size: 16px; text-align: center;">Macroscopic</h4>';
     $html .= '<table border="1" cellpadding="5" style="width: 100%;">
                 <thead style="background-color: #CCCCCC;">
                     <tr>   
                         <th>Color</th>
-                        <th>Transparency</th>
-                        <th>Reaction (pH)</th>
-                        <th>Protein</th>
-                        <th>Glucose</th>
-                        <th>Specific Gravity</th>
-                        <th>Ketone</th>
-                        <th>Urobilinogen</th>
-                        <th>Pregnancy Test</th>
+                        <th>Consistency</th>
+                        <th>Occult Blood</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr>
                         <td><strong>' . htmlspecialchars($row['color']) . '</strong></td>
-                        <td><strong>' . htmlspecialchars($row['transparency']) . '</strong></td>
-                        <td><strong>' . htmlspecialchars($row['reaction']) . '</strong></td>
-                        <td><strong>' . htmlspecialchars($row['protein']) . '</strong></td>
-                        <td><strong>' . htmlspecialchars($row['glucose']) . '</strong></td>
-                        <td><strong>' . htmlspecialchars($row['specific_gravity']) . '</strong></td>
-                        <td><strong>' . htmlspecialchars($row['ketone']) . '</strong></td>
-                        <td><strong>' . htmlspecialchars($row['urobilinogen']) . '</strong></td>
-                        <td><strong>' . htmlspecialchars($row['pregnancy_test']) . '</strong></td>
+                        <td><strong>' . htmlspecialchars($row['consistency']) . '</strong></td>
+                        <td><strong>' . htmlspecialchars($row['occult_blood']) . '</strong></td>
                     </tr>
                 </tbody>
             </table>';
 
-    // Microscopic Table (sanitized with htmlspecialchars)
+    // Microscopic Table
     $html .= '<h4 style="font-size: 16px; text-align: center;">Microscopic</h4>';
     $html .= '<table border="1" cellpadding="5" style="width: 100%;">
                 <thead style="background-color: #CCCCCC;">
                     <tr>
                         <th>Pus Cells</th>
-                        <th>Red Blood Cells</th>
-                        <th>Epithelial Cells</th>
-                        <th>A Urates/A Phosphates</th>
-                        <th>Mucus Threads</th>
+                        <th>Ova or Parasite</th>
+                        <th>Yeast Cells</th>
+                        <th>Fat Globules</th>
+                        <th>RBC</th>
                         <th>Bacteria</th>
-                        <th>Calcium Oxalates</th>
-                        <th>Uric Acid Crystals</th>
-                        <th>Pus Cells Clumps</th>
-                        <th>Coarse Granular Cast</th>
-                        <th>Hyaline Cast</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr>
                         <td><strong>' . htmlspecialchars($row['pus_cells']) . '</strong></td>
-                        <td><strong>' . htmlspecialchars($row['red_blood_cells']) . '</strong></td>
-                        <td><strong>' . htmlspecialchars($row['epithelial_cells']) . '</strong></td>
-                        <td><strong>' . htmlspecialchars($row['a_urates_a_phosphates']) . '</strong></td>
-                        <td><strong>' . htmlspecialchars($row['mucus_threads']) . '</strong></td>
+                        <td><strong>' . htmlspecialchars($row['ova_or_parasite']) . '</strong></td>
+                        <td><strong>' . htmlspecialchars($row['yeast_cells']) . '</strong></td>
+                        <td><strong>' . htmlspecialchars($row['fat_globules']) . '</strong></td>
+                        <td><strong>' . htmlspecialchars($row['rbc']) . '</strong></td>
                         <td><strong>' . htmlspecialchars($row['bacteria']) . '</strong></td>
-                        <td><strong>' . htmlspecialchars($row['calcium_oxalates']) . '</strong></td>
-                        <td><strong>' . htmlspecialchars($row['uric_acid_crystals']) . '</strong></td>
-                        <td><strong>' . htmlspecialchars($row['pus_cells_clumps']) . '</strong></td>
-                        <td><strong>' . htmlspecialchars($row['coarse_granular_cast']) . '</strong></td>
-                        <td><strong>' . htmlspecialchars($row['hyaline_cast']) . '</strong></td>
                     </tr>
                 </tbody>
             </table>';
@@ -182,7 +153,6 @@ while ($row = $result->fetch_assoc()) {
     $html .= '<strong>____________________</strong><br>';
     $html .= '<strong>Pathologist</strong><br>';
     $html .= '</div>';
-
 }
 
 // Output the HTML content as a PDF

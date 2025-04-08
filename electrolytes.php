@@ -218,18 +218,31 @@ ob_end_flush(); // Flush output buffer
                             <td class="text-right">
                                 <div class="dropdown dropdown-action">
                                     <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><i class="fa fa-ellipsis-v"></i></a>
-                                    <div class="dropdown-menu dropdown-menu-right">
-                                        <?php if ($can_print): ?>
-                                        <form action="generate-electrolytes.php" method="get">
+                                    <div class="dropdown-menu dropdown-menu-right" style="                                
+                                        min-width: 200px;
+                                        position: absolute;
+                                        top: 50%;
+                                        transform: translateY(-50%);
+                                        right: 50%;
+                                    ">
+                                    <?php if ($can_print): ?>
+                                        <div class="dropdown-item">
+                                        <form action="generate-electrolytes.php" method="get" class="p-2">
                                             <input type="hidden" name="id" value="<?php echo $row['electrolytes_id']; ?>">
-                                            <button class="btn btn-primary btn-sm" type="submit"><i class="fa fa-file-pdf-o m-r-5"></i> Generate Result</button>
+                                            <div class="form-group mb-2">
+                                                <input type="text" class="form-control" name="filename" placeholder="Filename (required)" required>
+                                            </div>
+                                            <button class="btn btn-primary btn-sm custom-btn" type="submit">
+                                                <i class="fa fa-file-pdf-o m-r-5"></i> Generate PDF
+                                            </button>
                                         </form>
-                                        <?php endif; ?>
+                                    </div>
+                                    <div class="dropdown-divider"></div>
+                                    <?php endif; ?>
+                                    <a class="dropdown-item" href="edit-electrolytes.php?id=<?php echo $row['electrolytes_id']; ?>"><i class="fa fa-pencil m-r-5"></i> Insert and Edit</a>
                                         <?php if ($editable): ?>
-                                            <a class="dropdown-item" href="edit-electrolytes.php?id=<?php echo $row['electrolytes_id']; ?>"><i class="fa fa-pencil m-r-5"></i> Insert and Edit</a>
                                             <a class="dropdown-item" href="#" onclick="return confirmDelete('<?php echo $row['electrolytes_id']; ?>')"><i class="fa fa-trash-o m-r-5"></i> Delete</a>
                                         <?php else: ?>
-                                            <a class="dropdown-item disabled" href="#"><i class="fa fa-pencil m-r-5"></i> Insert and Edit</a>
                                             <a class="dropdown-item disabled" href="#"><i class="fa fa-trash-o m-r-5"></i> Delete</a>
                                         <?php endif; ?>
                                     </div>
@@ -466,38 +479,38 @@ $('.dropdown-toggle').on('click', function (e) {
     color: gray;
 }
 .btn-primary {
-            background: #12369e;
-            border: none;
-        }
-        .btn-primary:hover {
-            background: #05007E;
-        }
+    background: #12369e;
+    border: none;
+}
+.btn-primary:hover {
+    background: #05007E;
+}
 
-    #searchResults {
-        max-height: 200px;
-        overflow-y: auto;
-        border: 1px solid #ddd;
-        border-radius: 5px;
-        display: none;
-        background: #fff;
-        position: absolute;
-        z-index: 1000;
-        width: 50%;
-    }
-    #searchResults li {
-        padding: 8px 12px;
-        cursor: pointer;
-        list-style: none;
-        border-bottom: 1px solid #ddd;
-    }
-    #searchResults li:hover {
-        background-color: #12369e;
-        color: white;
-    }
-    .form-inline .input-group {
-        width: 100%;
-    }
-    .dropdown-menu {
+#searchResults {
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    display: none;
+    background: #fff;
+    position: absolute;
+    z-index: 1000;
+    width: 50%;
+}
+#searchResults li {
+    padding: 8px 12px;
+    cursor: pointer;
+    list-style: none;
+    border-bottom: 1px solid #ddd;
+}
+#searchResults li:hover {
+    background-color: #12369e;
+    color: white;
+}
+.form-inline .input-group {
+    width: 100%;
+}
+.dropdown-menu {
     border: 1px solid rgba(0, 0, 0, 0.1);
     border-radius: 3px;
     transform-origin: top right;
@@ -521,5 +534,9 @@ $('.dropdown-toggle').on('click', function (e) {
 
 .dropdown-item:hover i {
     color: #12369e;
+}
+.custom-btn {
+    padding: 5px 27px; /* Adjust padding as needed */
+    font-size: 12px; /* Adjust font size as needed */
 }
 </style> 

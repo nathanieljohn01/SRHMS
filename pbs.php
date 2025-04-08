@@ -30,32 +30,42 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['patientId'])) {
         $last_pbs = $connection->query("SELECT pbs_id FROM tbl_pbs ORDER BY id DESC LIMIT 1")->fetch_assoc();
         $new_pbs_id = $last_pbs ? 'PBS-'.(intval(substr($last_pbs['pbs_id'], 4)) + 1) : 'PBS-1';
 
-
+        $rbc_morphology = sanitize($connection, $_POST['rbc_morphology'] ?? NULL);
+        $platelet_count = sanitize($connection, $_POST['platelet_count'] ?? NULL);
+        $toxic_granules = sanitize($connection, $_POST['toxic_granules'] ?? NULL);
+        $abnormal_cells = sanitize($connection, $_POST['abnormal_cells'] ?? NULL);
+        $segments = sanitize($connection, $_POST['segments'] ?? NULL);  // Note: Check spelling (segments vs segements)
+        $lymphocytes = sanitize($connection, $_POST['lymphocytes'] ?? NULL);
+        $monocytes = sanitize($connection, $_POST['monocytes'] ?? NULL);
+        $eosinophils = sanitize($connection, $_POST['eosinophils'] ?? NULL);
+        $bands = sanitize($connection, $_POST['bands'] ?? NULL);
+        $reticulocyte_count = sanitize($connection, $_POST['reticulocyte_count'] ?? NULL);
+        $remarks = sanitize($connection, $_POST['remarks'] ?? NULL);
         // Insert data
         $insert_query = $connection->prepare("INSERT INTO tbl_pbs (
             pbs_id, patient_id, patient_name, gender, dob, 
             rbc_morphology, platelet_count, toxic_granules, abnormal_cells,
             segments, lymphocytes, monocytes, eosinophils, bands, 
-            reticulocyte_count, remarks
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        
-        $insert_query->bind_param("sssssssssssssss", 
+            reticulocyte_count, remarks, date_time
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+
+        $insert_query->bind_param("ssssssssssssssss",  
             $new_pbs_id,
             $patient['patient_id'],
             $patient['patient_name'],
             $patient['gender'],
             $patient['dob'],
-            sanitize($connection, $_POST['rbc_morphology'] ?? NULL),
-            sanitize($connection, $_POST['platelet_count'] ?? NULL),
-            sanitize($connection, $_POST['toxic_granules'] ?? NULL),
-            sanitize($connection, $_POST['abnormal_cells'] ?? NULL),
-            sanitize($connection, $_POST['segments'] ?? NULL),
-            sanitize($connection, $_POST['lymphocytes'] ?? NULL),
-            sanitize($connection, $_POST['monocytes'] ?? NULL),
-            sanitize($connection, $_POST['eosinophils'] ?? NULL),
-            sanitize($connection, $_POST['bands'] ?? NULL),
-            sanitize($connection, $_POST['reticulocyte_count'] ?? NULL),
-            sanitize($connection, $_POST['remarks'] ?? NULL)
+            $rbc_morphology,
+            $platelet_count,
+            $toxic_granules,
+            $abnormal_cells,
+            $segments,
+            $lymphocytes,
+            $monocytes,
+            $eosinophils,
+            $bands,
+            $reticulocyte_count,
+            $remarks
         );
 
         if ($insert_query->execute()) {
@@ -220,23 +230,31 @@ if (isset($_GET['delete_id'])) {
                         <td class="text-right">
                             <div class="dropdown dropdown-action">
                                 <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><i class="fa fa-ellipsis-v"></i></a>
-                                <div class="dropdown-menu dropdown-menu-right">
+                                <div class="dropdown-menu dropdown-menu-right" style="                                
+                                        min-width: 200px;
+                                        position: absolute;
+                                        top: 50%;
+                                        transform: translateY(-50%);
+                                        right: 50%;
+                                    ">
                                     <?php if ($can_print): ?>
-                                    <form action="generate-pbs.php" method="get">
-                                        <input type="hidden" name="id" value="<?php echo $row['pbs_id']; ?>">
-                                        <div class="form-group">
-                                            <input type="text" class="form-control" id="filename" name="filename" placeholder="Enter File Name">
-                                        </div>
-                                        <button class="btn btn-primary btn-sm custom-btn" type="submit"><i class="fa fa-file-pdf-o m-r-5"></i> Generate Result</button>
-                                    </form>
+                                        <div class="dropdown-item">
+                                        <form action="generate-pbs.php" method="get" class="p-2">
+                                            <input type="hidden" name="id" value="<?php echo $row['pbs_id']; ?>">
+                                            <div class="form-group mb-2">
+                                                <input type="text" class="form-control" name="filename" placeholder="Filename (required)" required>
+                                            </div>
+                                            <button class="btn btn-primary btn-sm custom-btn" type="submit">
+                                                <i class="fa fa-file-pdf-o m-r-5"></i> Generate PDF
+                                            </button>
+                                        </form>
+                                    </div>
+                                    <div class="dropdown-divider"></div>
                                     <?php endif; ?>
+                                    <a class="dropdown-item" href="edit-pbs.php?id=<?php echo $row['pbs_id']; ?>"><i class="fa fa-pencil m-r-5"></i>Insert and Edit</a>
                                     <?php if ($editable): ?>
-                                        <a class="dropdown-item" href="edit-pbs.php?id=<?php echo $row['pbs_id']; ?>"><i class="fa fa-pencil m-r-5"></i> Edit</a>
                                         <a class="dropdown-item" href="#" onclick="return confirmDelete('<?php echo $row['pbs_id']; ?>')"><i class="fa fa-trash-o m-r-5"></i> Delete</a>
                                     <?php else: ?>
-                                        <a class="dropdown-item disabled" href="#">
-                                            <i class="fa fa-pencil m-r-5"></i> Edit
-                                        </a>
                                         <a class="dropdown-item disabled" href="#">
                                             <i class="fa fa-trash-o m-r-5"></i> Delete
                                         </a>
@@ -425,14 +443,6 @@ $('.dropdown-toggle').on('click', function (e) {
 </script>
 
 <style>
-.dropdown-action .dropdown-menu {
-    position: absolute;
-    left: -100px;
-    min-width: 80px;
-    margin-top: -14px;
-    border-radius: 4px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-}    
 .sticky-search {
     position: sticky;
     left: 0;
@@ -444,13 +454,17 @@ $('.dropdown-toggle').on('click', function (e) {
     color: gray;
     border: 1px solid rgb(228, 228, 228);
 }
-.btn-outline-primary:hover, .btn-outline-secondary:hover {
+.btn-outline-primary:hover {
     background-color: #12369e;
     color: #fff;
 }
 .btn-outline-secondary {
     color: gray;
     border: 1px solid rgb(228, 228, 228);
+}
+.btn-outline-secondary:hover {
+    background-color: #12369e;
+    color: #fff;
 }
 .input-group-text {
     background-color:rgb(255, 255, 255);
@@ -464,6 +478,7 @@ $('.dropdown-toggle').on('click', function (e) {
 .btn-primary:hover {
     background: #05007E;
 }
+
 #searchResults {
     max-height: 200px;
     overflow-y: auto;
@@ -488,31 +503,43 @@ $('.dropdown-toggle').on('click', function (e) {
 .form-inline .input-group {
     width: 100%;
 }
+#patientTable2_length, #patientTable_paginate .paginate_button {
+    display: none;
+}
 .dropdown-action .action-icon {
     color: #777;
     font-size: 18px;
     display: inline-block;
     padding: 0 10px;
 }
+
 .dropdown-menu {
     border: 1px solid rgba(0, 0, 0, 0.1);
     border-radius: 3px;
     transform-origin: top right;
     box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
 }
+
 .dropdown-item {
     padding: 7px 15px;
     color: #333;
 }
+
 .dropdown-item:hover {
     background-color: #f8f9fa;
     color: #12369e;
 }
+
 .dropdown-item i {
     margin-right: 8px;
     color: #777;
 }
+
 .dropdown-item:hover i {
     color: #12369e;
-}  
+}
+.custom-btn {
+    padding: 5px 27px; /* Adjust padding as needed */
+    font-size: 12px; /* Adjust font size as needed */
+}
 </style>

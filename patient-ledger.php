@@ -7,6 +7,113 @@ if (empty($_SESSION['name'])) {
 
 include('header.php');
 include('includes/connection.php');
+
+// Process filtering parameters
+$query = isset($_GET['query']) ? trim($_GET['query']) : '';
+
+// Check if we're viewing payment history
+$viewingPayments = isset($_GET['view_payments']);
+$paymentHistory = array();
+$patientNameForModal = '';
+
+if ($viewingPayments) {
+    $patientId = $_GET['view_payments'];
+    $patientNameForModal = isset($_GET['patient_name']) ? urldecode($_GET['patient_name']) : '';
+    
+    $query = "SELECT 
+                p.id as payment_id,
+                p.total_due,
+                p.amount_to_pay,
+                p.amount_paid,
+                p.remaining_balance,
+                DATE_FORMAT(p.payment_datetime, '%M %d, %Y %h:%i %p') as payment_datetime
+              FROM tbl_payment p
+              WHERE p.patient_id = ?
+              AND p.deleted = 0
+              ORDER BY p.payment_datetime DESC";
+              
+    $stmt = $connection->prepare($query);
+    $stmt->bind_param("s", $patientId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    while ($row = $result->fetch_assoc()) {
+        $row['total_due'] = number_format($row['total_due'], 2);
+        $row['amount_to_pay'] = number_format($row['amount_to_pay'], 2);
+        $row['amount_paid'] = number_format($row['amount_paid'], 2);
+        $row['remaining_balance'] = number_format($row['remaining_balance'], 2);
+        $paymentHistory[] = $row;
+    }
+}
+
+// Build the SQL query for main table
+$sql = "SELECT 
+            p.id as payment_id,
+            p.patient_id,
+            p.patient_name,
+            p.patient_type,
+            CASE
+                WHEN p.patient_type = 'Inpatient' THEN bi.total_due
+                WHEN p.patient_type = 'Hemodialysis' THEN bh.total_due
+                WHEN p.patient_type = 'Newborn' THEN bn.total_due
+                WHEN p.patient_type = 'Outpatient' THEN SUM(p.amount_to_pay)
+                ELSE 0
+            END as total_due,
+            SUM(p.amount_paid) as total_paid,
+            CASE 
+                WHEN p.patient_type = 'Inpatient' THEN bi.remaining_balance
+                WHEN p.patient_type = 'Hemodialysis' THEN bh.remaining_balance
+                WHEN p.patient_type = 'Newborn' THEN bn.remaining_balance
+                WHEN p.patient_type = 'Outpatient' THEN (SUM(p.amount_to_pay) - SUM(p.amount_paid))
+                ELSE 0
+            END as balance,
+            CASE 
+                WHEN (p.patient_type = 'Inpatient' AND bi.remaining_balance > 0) OR 
+                     (p.patient_type = 'Hemodialysis' AND bh.remaining_balance > 0) OR
+                     (p.patient_type = 'Newborn' AND bn.remaining_balance > 0) OR
+                     (p.patient_type = 'Outpatient' AND (SUM(p.amount_to_pay) - SUM(p.amount_paid)) > 0) THEN 'Partially Paid'
+                ELSE 'Fully Paid'
+            END as status
+        FROM tbl_payment p
+        LEFT JOIN (
+            SELECT patient_name, patient_id, remaining_balance, billing_id, total_due
+            FROM tbl_billing_inpatient
+            WHERE deleted = 0 AND id IN (
+                SELECT MAX(id)
+                FROM tbl_billing_inpatient
+                GROUP BY patient_id
+            )
+        ) bi ON p.patient_name = bi.patient_name AND p.patient_type = 'Inpatient'
+        LEFT JOIN (
+            SELECT patient_name, patient_id, remaining_balance, billing_id, total_due
+            FROM tbl_billing_hemodialysis
+            WHERE deleted = 0 AND id IN (
+                SELECT MAX(id)
+                FROM tbl_billing_hemodialysis
+                GROUP BY patient_id
+            )
+        ) bh ON p.patient_name = bh.patient_name AND p.patient_type = 'Hemodialysis'
+        LEFT JOIN (
+            SELECT patient_name, newborn_id as patient_id, remaining_balance, billing_id, total_due
+            FROM tbl_billing_newborn
+            WHERE deleted = 0 AND id IN (
+                SELECT MAX(id)
+                FROM tbl_billing_newborn
+                GROUP BY newborn_id
+            )
+        ) bn ON p.patient_name = bn.patient_name AND p.patient_type = 'Newborn'
+        WHERE p.deleted = 0";
+
+// Add search filter
+if (!empty($query)) {
+    $safe_query = mysqli_real_escape_string($connection, $query);
+    $sql .= " AND (p.patient_name LIKE '%$safe_query%' OR p.patient_id LIKE '%$safe_query%')";
+}
+
+$sql .= " GROUP BY p.patient_id, p.patient_name, p.patient_type";
+$sql .= " ORDER BY p.patient_name";
+
+$result = mysqli_query($connection, $sql);
 ?>
 
 <div class="page-wrapper">
@@ -15,84 +122,110 @@ include('includes/connection.php');
             <div class="col-sm-4 col-3">
                 <h4 class="page-title">Patient Ledger</h4>
             </div>
-            <div class="col-sm-8 col-9 text-right m-b-20">
-                <a href="payment-processing.php" class="btn btn-primary float-right"><i class="fa fa-arrow-left"></i> Back</a>
-            </div>
         </div>
-
-       
-            <div class="table-responsive">
-                <div class="sticky-search bg-white p-4 mb-4 border rounded">
-                    <h5 class="font-weight-bold mb-3">Search Payment:</h5>
-                    <div class="row">
-                        <div class="col-sm-6 col-md-4">
-                            <div class="form-group mb-md-0">
-                                <div class="position-relative">
-                                    <i class="fa fa-search position-absolute text-secondary" style="top: 50%; left: 12px; transform: translateY(-50%);"></i>
-                                    <input class="form-control" type="text" id="paymentSearchInput" onkeyup="filterPayments()" placeholder="Search" style="padding-left: 35px; padding-right: 35px;">
-                                    <button class="position-absolute border-0 bg-transparent text-secondary" type="button" onclick="clearSearch()" style="top: 50%; right: 10px; transform: translateY(-50%);">
-                                        <i class="fa fa-times"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-sm-6 col-md-4">
-                            <div class="form-group mb-md-0">
-                                <select class="form-control" id="patientTypeFilter">
-                                    <option value="">All Patient Types</option>
-                                    <option value="Outpatient">Outpatient</option>
-                                    <option value="Inpatient">Inpatient</option>
-                                    <option value="Hemodialysis">Hemodialysis</option>
-                                    <option value="Newborn">Newborn</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="col-sm-6 col-md-4">
-                            <div class="form-group mb-0">
-                                <select class="form-control" id="statusFilter">
-                                    <option value="">All Status</option>
-                                    <option value="Fully Paid">Fully Paid</option>
-                                    <option value="Partially Paid">Partially Paid</option>
-                                </select>
-                            </div>
+        
+        <div class="sticky-search bg-white p-4 mb-4 border rounded">
+            <h5 class="font-weight-bold mb-3">Search Patient:</h5>
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="input-group mb-3">
+                        <div class="position-relative w-100">
+                            <i class="fa fa-search position-absolute text-secondary" style="top: 50%; left: 12px; transform: translateY(-50%);"></i>
+                            <input class="form-control" type="text" id="paymentSearchInput" onkeyup="filterPayments()" placeholder="Search" style="padding-left: 35px; padding-right: 35px;">
+                            <button class="position-absolute border-0 bg-transparent text-secondary" type="button" onclick="clearSearch()" style="top: 50%; right: 10px; transform: translateY(-50%);">
+                                <i class="fa fa-times"></i>
+                            </button>
                         </div>
                     </div>
                 </div>
-
-                <table class="datatable table table-hover" id="ledgerTable">
-                    <thead style="background-color: #CCCCCC;">
-                        <tr>
-                            <th>Patient ID</th>
-                            <th>Patient Name</th>
-                            <th>Patient Type</th>
-                            <th>Total Due</th>
-                            <th>Total Paid</th>
-                            <th>Balance</th>
-                            <th>Status</th>
-                            <th>Details</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                    </tbody>
-                </table>
+                <div class="col-md-4">
+                    <div class="form-group mb-0">
+                        <select class="form-control" id="statusFilter" onchange="filterPayments()">
+                            <option value="">All Status</option>
+                            <option value="Fully Paid">Fully Paid</option>
+                            <option value="Partially Paid">Partially Paid</option>
+                        </select>
+                    </div>
+                </div>
             </div>
+        </div>
+        <div class="table-responsive">
+            <table class="datatable table table-hover" id="patientLedgerTable">
+                <thead style="background-color: #CCCCCC;">
+                    <tr>
+                        <th>Patient ID</th>
+                        <th>Patient Name</th>
+                        <th>Patient Type</th>
+                        <th>Total Due</th>
+                        <th>Total Paid</th>
+                        <th>Remaining Balance</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php
+                    if (mysqli_num_rows($result) > 0) {
+                        while ($row = mysqli_fetch_assoc($result)) {
+                            $status_class = $row['status'] == 'Fully Paid' ? 'status-paid' : 'status-partial';
+                            ?>
+                            <tr>
+                                <td><?php echo htmlspecialchars($row['patient_id']); ?></td>
+                                <td><?php echo htmlspecialchars($row['patient_name']); ?></td>
+                                <td><?php echo htmlspecialchars($row['patient_type']); ?></td>
+                                <td>₱<?php echo number_format($row['total_due'], 2); ?></td>
+                                <td>₱<?php echo number_format($row['total_paid'], 2); ?></td>
+                                <td>₱<?php echo number_format($row['balance'], 2); ?></td>
+                                <td>
+                                    <span class="payment-status <?php echo $status_class; ?> has-tooltip" data-tooltip="<?php echo $tooltip; ?>">
+                                        <?php echo $row['status']; ?>
+                                    </span>
+                                </td>
+                                <td class="text-right">
+                                    <button class="btn btn-sm btn-primary view-payment-btn" 
+                                            data-patient-id="<?php echo $row['patient_id']; ?>"
+                                            data-patient-name="<?php echo htmlspecialchars($row['patient_name']); ?>">
+                                        <i class="fa fa-eye"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            <?php
+                        }
+                    } else {
+                        echo '<tr><td colspan="8" class="text-center">No records found</td></tr>';
+                    }
+                    ?>
+                </tbody>
+            </table>
         </div>
     </div>
 </div>
 
-<!-- Payment Details Modal -->
-<div class="modal fade" id="paymentDetailsModal" tabindex="-1" role="dialog">
+<!-- Payment History Modal -->
+<div class="modal fade" id="paymentDetailsModal" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <h4 class="modal-title">Payment History</h4>
+                <h4 class="modal-title">Payment History for <span id="modalPatientName"></span></h4>
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
             <div class="modal-body">
+                <div class="sticky-search bg-white p-4 mb-4 border rounded">
+                    <h5 class="font-weight-bold mb-3">Search Payments:</h5>
+                    <div class="input-group mb-3">
+                        <div class="position-relative w-100">
+                            <i class="fa fa-search position-absolute text-secondary" style="top: 50%; left: 12px; transform: translateY(-50%);"></i>
+                            <input class="form-control" type="text" id="modalSearchInput" placeholder="Search" style="padding-left: 35px; padding-right: 35px;">
+                            <button class="position-absolute border-0 bg-transparent text-secondary" type="button" onclick="clearModalSearch()" style="top: 50%; right: 10px; transform: translateY(-50%);">
+                                <i class="fa fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
                 <div class="table-responsive">
-                    <table class="datatable table table-hover">
+                    <table class="table table-hover" id="paymentHistoryTable">
                         <thead style="background-color: #CCCCCC;">
                             <tr>
                                 <th>Payment ID</th>
@@ -103,7 +236,8 @@ include('includes/connection.php');
                                 <th>Payment Date</th>
                             </tr>
                         </thead>
-                        <tbody id="paymentDetailsBody">
+                        <tbody id="paymentHistoryBody">
+                            <!-- Payment history will be loaded here via AJAX -->
                         </tbody>
                     </table>
                 </div>
@@ -118,355 +252,260 @@ include('includes/connection.php');
 <?php include('footer.php'); ?>
 
 <script>
-function clearSearch() {
-    document.getElementById("paymentSearchInput").value = '';
-    $('#patientTypeFilter').val('');
-    $('#statusFilter').val('');
-    filterPayments();
+$(document).ready(function() {
+    // Handle view payment button click
+    $(document).on('click', '.view-payment-btn', function() {
+        var patientId = $(this).data('patient-id');
+        var patientName = $(this).data('patient-name');
+        
+        // Set patient name in modal title
+        $('#modalPatientName').text(patientName);
+        
+        // Show loading state
+        $('#paymentHistoryBody').html('<tr><td colspan="6" class="text-center"><i class="fa fa-spinner fa-spin"></i> Loading payment history...</td></tr>');
+        
+        // Show modal
+        $('#paymentDetailsModal').modal('show');
+        
+        // Load payment history via AJAX
+        $.ajax({
+            url: 'fetch_payment_history.php',
+            method: 'GET',
+            data: { patient_id: patientId },
+            dataType: 'json',
+            success: function(response) {
+                if (response.success && response.data.length > 0) {
+                    var html = '';
+                    $.each(response.data, function(index, payment) {
+                        html += `
+                            <tr>
+                                <td>${payment.payment_id}</td>
+                                <td>₱${payment.total_due}</td>
+                                <td>₱${payment.amount_to_pay}</td>
+                                <td>₱${payment.amount_paid}</td>
+                                <td>₱${payment.remaining_balance}</td>
+                                <td>${payment.payment_datetime}</td>
+                            </tr>
+                        `;
+                    });
+                    $('#paymentHistoryBody').html(html);
+                } else {
+                    $('#paymentHistoryBody').html('<tr><td colspan="6" class="text-center">No payment history found</td></tr>');
+                }
+            },
+            error: function(xhr, status, error) {
+                $('#paymentHistoryBody').html('<tr><td colspan="6" class="text-center text-danger">Error loading payment history</td></tr>');
+                console.error("Error loading payment history:", error);
+            }
+        });
+    });
+
+    // Filter modal table
+    $('#modalSearchInput').on('keyup', function() {
+        var value = $(this).val().toLowerCase();
+        $('#paymentHistoryTable tbody tr').filter(function() {
+            $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1);
+        });
+    });
+});
+
+function clearModalSearch() {
+    $('#modalSearchInput').val('');
+    $('#modalSearchInput').keyup();
 }
 
 function filterPayments() {
-    var searchQuery = document.getElementById("paymentSearchInput").value;
-    var patientType = document.getElementById("patientTypeFilter").value;
-    var paymentStatus = document.getElementById("statusFilter").value;
+    var input = document.getElementById("paymentSearchInput").value;
+    var status = document.getElementById("statusFilter").value;
     
     $.ajax({
-        url: 'fetch_payment_ledger.php',
+        url: 'fetch_patient_ledger.php',
         method: 'GET',
         data: { 
-            query: searchQuery,
-            patient_type: patientType,
-            payment_status: paymentStatus
+            query: input,
+            status: status 
         },
+        dataType: 'json',
         success: function(response) {
-            var data = JSON.parse(response);
-            updatePaymentTable(data);
+            if (Array.isArray(response)) {
+                updatePatientTable(response);
+            } else if (response.error) {
+                console.error(response.error);
+            } else {
+                console.error("Invalid response format");
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error("Error fetching data:", error);
         }
     });
 }
 
-function updatePaymentTable(data) {
-    var tbody = $('#ledgerTable tbody');
+function clearSearch() {
+    document.getElementById("paymentSearchInput").value = '';
+    document.getElementById("statusFilter").value = '';
+    filterPayments();
+}
+
+function updatePatientTable(data) {
+    var tbody = $('#patientLedgerTable tbody');
     tbody.empty();
     
-    if(data.length === 0) {
-        tbody.append(`
-            <tr>
-                <td colspan="8" class="text-center py-4 text-muted">
-                    <i class="fas fa-search mr-2"></i>No matching records found
-                </td>
-            </tr>
-        `);
+    if (data.length === 0) {
+        tbody.append('<tr><td colspan="8" class="text-center">No records found</td></tr>');
         return;
     }
     
     data.forEach(function(row) {
-        const statusClass = getStatusClass(row.status);
-        const balanceClass = parseFloat(row.balance) > 0 ? 'balance-positive' : 'balance-zero';
-        const typeClass = getTypeClass(row.patient_type);
+        var status_class = row.status == 'Fully Paid' ? 'status-paid' : 'status-partial';
         
         tbody.append(`
             <tr>
-                <td>${formatPatientId(row)}</td>
+                <td>${row.patient_id}</td>
                 <td>${row.patient_name}</td>
-                <td><span class="patient-type-badge ${typeClass}">${row.patient_type}</span></td>
-                <td class="amount-due">₱${formatCurrency(row.total_due)}</td>
-                <td class="amount-paid">₱${formatCurrency(row.total_paid)}</td>
-                <td class="amount-balance ${balanceClass}">₱${formatCurrency(row.balance)}</td>
-                <td>
-                    <span class="status-badge ${statusClass}">
-                        <i class="fas ${getStatusIcon(row.status)}"></i>
-                        ${row.status}
-                    </span>
-                </td>
-                <td class="text-center">
-                    <button type="button" 
-                            class="btn btn-view-details btn-outline-primary" 
-                            onclick="viewPaymentDetails('${row.patient_id}', '${row.patient_name}')"
-                            data-toggle="tooltip" title="View Payment History">
+                <td>${row.patient_type}</td>
+                <td>₱${row.total_due}</td>
+                <td>₱${row.total_paid}</td>
+                <td>₱${row.balance}</td>
+                <td><span class="payment-status ${status_class}">${row.status}</span></td>
+                <td class="text-right">
+                    <button class="btn btn-sm btn-primary view-payment-btn" 
+                            data-patient-id="${row.patient_id}"
+                            data-patient-name="${row.patient_name}">
                         <i class="fa fa-eye"></i>
                     </button>
                 </td>
             </tr>
         `);
     });
-    
-    // Initialize tooltips
-    $('[data-toggle="tooltip"]').tooltip();
 }
-
-// Helper functions
-function formatPatientId(row) {
-    if(row.patient_type === 'Newborn') {
-        return `Newborn: ${row.patient_id}</span>`;
-    }
-    return row.patient_id;
-}
-
-function formatCurrency(amount) {
-    // Alisin ang lahat ng non-numeric characters maliban sa decimal point
-    const numericValue = String(amount).replace(/[^0-9.]/g, '');
-    return parseFloat(numericValue).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-}
-
-function getStatusClass(status) {
-    switch(status) {
-        case 'Fully Paid': return 'status-fully-paid';
-        case 'Partially Paid': return 'status-partially-paid';
-        case 'Unpaid': return 'status-unpaid';
-        case 'Overdue': return 'status-overdue';
-        default: return 'status-partially-paid';
-    }
-}
-
-function getTypeClass(type) {
-    switch(type) {
-        case 'Inpatient': return 'type-inpatient';
-        case 'Outpatient': return 'type-outpatient';
-        case 'Newborn': return 'type-newborn';
-        default: return '';
-    }
-}
-
-function getStatusIcon(status) {
-    switch(status) {
-        case 'Fully Paid': return 'fa-check-circle';
-        case 'Partially Paid': return 'fa-clock';
-        case 'Unpaid': return 'fa-exclamation-circle';
-        case 'Overdue': return 'fa-exclamation-triangle';
-        default: return 'fa-info-circle';
-    }
-}
-function viewPaymentDetails(patientId, patientName) {
-    $.ajax({
-        url: 'get-payment-details.php',
-        type: 'POST',
-        data: {
-            patient_id: patientId
-        },
-        success: function(response) {
-            const payments = JSON.parse(response);
-            let html = '';
-            
-            payments.forEach(payment => {
-                html += `<tr>
-                    <td>${payment.payment_id}</td>
-                    <td>₱${parseFloat(payment.total_due).toFixed(2)}</td>
-                    <td>₱${parseFloat(payment.amount_to_pay).toFixed(2)}</td>
-                    <td>₱${parseFloat(payment.amount_paid).toFixed(2)}</td>
-                    <td>₱${parseFloat(payment.remaining_balance).toFixed(2)}</td>
-                    <td>${payment.payment_datetime}</td>
-                </tr>`;
-            });
-            
-            $('#paymentDetailsBody').html(html);
-            $('#paymentDetailsModal .modal-title').text(`Payment History - ${patientName}`);
-            $('#paymentDetailsModal').modal('show');
-        },
-        error: function() {
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: 'Failed to fetch payment details'
-            });
-        }
-    });
-}
-
-$(document).ready(function() {
-    // Initial load
-    filterPayments();
-    
-    // Event listeners
-    $('#paymentSearchInput').on('keyup', function() {
-        filterPayments();
-    });
-    
-    $('#patientTypeFilter, #statusFilter').on('change', function() {
-        filterPayments();
-    });
-});
 </script>
 
 <style>
-.btn-outline-primary {
-    background-color: rgb(252, 252, 252);
-    color: gray;
-    border: 1px solid rgb(228, 228, 228);
-    padding: 0.375rem 0.75rem;
-    transition: all 0.2s ease;
-    min-width: 38px;
+.modal-lg {
+    max-width: 90%;
 }
 
-.btn-outline-primary:hover {
-    background-color: #12369e;
-    color: #fff;
-    border-color: #12369e;
-}
-
-.btn-outline-secondary {
-    color: gray;
-    border: 1px solid rgb(228, 228, 228);
-    padding: 0.375rem 0.75rem;
-    transition: all 0.2s ease;
-}
-
-.btn-outline-secondary:hover {
-    background-color: #12369e;
-    color: #fff;
-    border-color: #12369e;
-}
-
-.input-group-text {
-    background-color: rgb(255, 255, 255);
-    border: 1px solid rgb(228, 228, 228);
-    color: gray;
-}
-
-.btn-primary {
-    background: #12369e;
-    border: none;
-    padding: 0.375rem 1rem;
-    transition: all 0.2s ease;
-}
-
-.btn-primary:hover {
-    background: #05007E;
-}
-
-.custom-badge {
-    padding: 6px 12px;
-    border-radius: 4px;
-    font-size: 12px;
-    font-weight: 500;
-    display: inline-block;
-    text-align: center;
-    min-width: 80px;
-}
-
-.form-control {
-    height: 38px;
-    border: 1px solid #e3e3e3;
-    border-radius: 4px;
-    padding: 0.375rem 0.75rem;
-}
-
-.form-control:focus {
-    border-color: #12369e;
-    box-shadow: 0 0 0 0.2rem rgba(18, 54, 158, 0.25);
+.btn-rounded {
+    border-radius: 50px;
 }
 
 .sticky-search {
     position: sticky;
     top: 0;
     z-index: 100;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 }
 
-.modal-content {
-    border-radius: 6px;
-    overflow: hidden;
-}
-
-.modal-header {
-    background-color: #f8f9fa;
-    border-bottom: 1px solid #e3e3e3;
-    padding: 1rem 1.5rem;
-}
-
-.modal-body {
-    padding: 1.5rem;
-}
-
-.modal-footer {
-    border-top: 1px solid #e3e3e3;
-    padding: 1rem 1.5rem;
-}
-
-@media (max-width: 767.98px) {
-    .form-group {
-        margin-bottom: 1rem;
-        background-color: rgb(241, 241, 241);
-        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
-        padding: 10px;
-        border-radius: 4px;
-        border: 1px solid #e9ecef;
-    }
-    
-    .sticky-search {
-        padding: 1rem !important;
-    }
-    
-    .custom-badge {
-        min-width: 70px;
-        padding: 4px 8px;
-    }
-}
-/* Status Badge System */
-.status-badge {
-    padding: 6px 12px;
-    border-radius: 50px;
+.payment-status {
+    padding: 8px 16px;
+    border-radius: 24px;
     font-size: 12px;
-    font-weight: 600;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 100px;
+    font-weight: 700;
+    display: inline-block;
+    min-width: 110px;
+    text-align: center;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-    transition: all 0.3s ease;
-    border: 1px solid transparent;
+    letter-spacing: 0.8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    position: relative;
+    overflow: hidden;
+    border: none;
 }
 
-.status-badge i {
-    margin-right: 5px;
-    font-size: 10px;
+.status-paid {
+    background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%);
+    color: white;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    box-shadow: 0 3px 10px rgba(40, 167, 69, 0.3);
 }
 
-.status-fully-paid {
-    background-color: #e8f5e9;
-    color: #2e7d32;
-    border: 1px solid #c8e6c9;
-}
-
-.status-partially-paid {
-    background-color: #fff3e0;
-    color: #e65100;
-    border: 1px solid #ffe0b2;
-}
-
-.status-unpaid {
-    background-color: #ffebee;
-    color: #c62828;
-    border: 1px solid #ffcdd2;
-}
-
-.status-overdue {
-    background-color: #f3e5f5;
-    color: #6a1b9a;
-    border: 1px solid #e1bee7;
-}
-
-.status-badge:hover {
+.status-paid:hover {
     transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
 }
 
-/*Action Button */
-.btn-view-details {
-    width: 32px;
-    height: 32px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-    transition: all 0.2s;
+.status-paid:after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, 
+              rgba(255,255,255,0) 0%, 
+              rgba(255,255,255,0.2) 50%, 
+              rgba(255,255,255,0) 100%);
+    animation: shine 3s infinite;
 }
 
-.btn-view-details:hover {
-    background-color: #12369e;
-    color: white !important;
-    transform: scale(1.1);
+.status-partial {
+    background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
+    color: #2a2a2a;
+    box-shadow: 0 3px 10px rgba(255, 193, 7, 0.3);
+    position: relative;
+}
+
+.status-partial:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(255, 193, 7, 0.4);
+}
+
+.status-partial:before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, 
+              rgba(255,255,255,0) 0%, 
+              rgba(255,255,255,0.2) 50%, 
+              rgba(255,255,255,0) 100%);
+    animation: shine 3s infinite;
+}
+
+@keyframes shine {
+    0% { left: -100%; }
+    20% { left: 100%; }
+    100% { left: 100%; }
+}
+/* For smaller screens */
+@media (max-width: 768px) {
+    .payment-status {
+        padding: 6px 12px;
+        min-width: 90px;
+        font-size: 11px;
+    }
+}
+
+.btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    border-radius: 0.2rem;
+}
+
+.btn-primary {
+    background: #12369e;
+    border: none;
+}
+
+.btn-primary:hover {
+    background: #05007E;
+}
+select.form-control {
+    border: 1px solid; /* Border color */
+    border-color: #ced4da; /* Border color */
+    background-color: #f8f9fa; /* Background color */
+    padding: .375rem 2.5rem .375rem .75rem; /* Adjust padding to make space for the larger arrow */
+    line-height: 1.5; /* Line height */
+    height: calc(2.25rem + 2px); /* Adjust height */
+    -webkit-appearance: none; /* Remove default styling on WebKit browsers */
+    -moz-appearance: none; /* Remove default styling on Mozilla browsers */
+    appearance: none; /* Remove default styling on other browsers */
+    background: url('data:image/svg+xml;charset=UTF-8,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20"%3E%3Cpath d="M7 10l5 5 5-5z" fill="%23aaa"/%3E%3C/svg%3E') no-repeat right 0.75rem center;
+    background-size: 20px; /* Size of the custom arrow */
 }
 </style>

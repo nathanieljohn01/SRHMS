@@ -1,8 +1,12 @@
 <?php
+session_start();
 include('includes/connection.php');
 
 $query = isset($_GET['query']) ? $_GET['query'] : '';
+$currentUser = $_SESSION['name'] ?? '';
+$role = $_SESSION['role'] ?? 0;
 
+// Base query
 $sql = "SELECT r.*, i.discharge_date, 
         GROUP_CONCAT(CONCAT(t.medicine_name, ' (', t.medicine_brand, ') - ', t.total_quantity, ' pcs') SEPARATOR '<br>') AS treatments
         FROM tbl_inpatient_record r
@@ -10,7 +14,13 @@ $sql = "SELECT r.*, i.discharge_date,
         LEFT JOIN tbl_treatment t ON r.inpatient_id = t.inpatient_id
         WHERE r.deleted = 0";
 
-if(!empty($query)) {
+// Add doctor filter if role is doctor (2)
+if ($role == 2) {
+    $sql .= " AND r.doctor_incharge = '$currentUser'";
+}
+
+// Add search filter if query exists
+if (!empty($query)) {
     $sql .= " AND (r.patient_id LIKE '%$query%' 
               OR r.inpatient_id LIKE '%$query%' 
               OR r.patient_name LIKE '%$query%'
@@ -22,9 +32,14 @@ if(!empty($query)) {
 
 $sql .= " GROUP BY r.inpatient_id";
 $result = mysqli_query($connection, $sql);
+
+if (!$result) {
+    die("Query failed: " . mysqli_error($connection));
+}
+
 $data = array();
 
-while($row = mysqli_fetch_assoc($result)) {
+while ($row = mysqli_fetch_assoc($result)) {
     $dob = $row['dob'];
     $date = str_replace('/', '-', $dob);
     $dob = date('Y-m-d', strtotime($date));
@@ -35,6 +50,7 @@ while($row = mysqli_fetch_assoc($result)) {
     $treatmentDetails = $row['treatments'] ?: 'No treatments added';
 
     $data[] = array(
+        'id' => $row['id'], // Added ID for delete functionality
         'patient_id' => $row['patient_id'],
         'inpatient_id' => $row['inpatient_id'], 
         'patient_name' => $row['patient_name'],
@@ -47,8 +63,7 @@ while($row = mysqli_fetch_assoc($result)) {
         'room_number' => $row['room_number'],
         'bed_number' => $row['bed_number'],
         'admission_date' => $admission_date_time,
-        'discharge_date' => $discharge_date_time,
-         
+        'discharge_date' => $discharge_date_time
     );
 }
 

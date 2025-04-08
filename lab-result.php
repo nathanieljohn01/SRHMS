@@ -208,7 +208,7 @@ $dashboardLink = ($role == 1) ? 'dashboard.php' : (($role == 5) ? 'dashboard-lab
                 "Electrolytes": "electrolytes.php",
                 "Dengue Duo": "dengue-duo.php",
                 "Crossmatching": "crossmatching.php",
-                "Anti-HBs": "anti-hbsag.php",
+                "Anti-HBs": "anti-hbs.php",
                 "Peripheral Blood Smear": "pbs.php",
                 "PTPTT": "ptptt.php",
                 "Chemistry Panel": "chemistry-panel.php"

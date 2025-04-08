@@ -5,18 +5,18 @@ if (empty($_SESSION['name'])) {
     exit; // Ensure script stops execution after redirection
 }
 
-// filepath: /c:/xampp/htdocs/hms/generate-cbc.php
+// filepath: /c:/xampp/htdocs/hms/generate-chemistry.php
 include('includes/connection.php');
 
 // Include TCPDF library
 require_once('vendor/tecnickcom/tcpdf/tcpdf.php');
 require_once('vendor/autoload.php');
 
-// Fetch CBC details
+// Fetch Chemistry Panel details
 if (isset($_GET['id'])) {
-    $cbc_id = mysqli_real_escape_string($connection, $_GET['id']); // Prevent SQL injection
+    $chem_id = mysqli_real_escape_string($connection, $_GET['id']); // Prevent SQL injection
     mysqli_query($connection, "SET NAMES 'utf8'");
-    $filename = isset($_GET['filename']) ? htmlspecialchars($_GET['filename'], ENT_QUOTES, 'UTF-8') : 'cbc_' . $cbc_id;
+    $filename = isset($_GET['filename']) ? htmlspecialchars($_GET['filename'], ENT_QUOTES, 'UTF-8') : 'chemistry_' . $chem_id;
 }
 
 // Extend TCPDF class to create custom Header
@@ -55,9 +55,9 @@ $pdf = new MYPDF('L', 'mm', 'A4', true, 'UTF-8', false);
 // Set document information
 $pdf->SetCreator('Santa Rosa Hospital');
 $pdf->SetAuthor('Santa Rosa Community Hospital');
-$pdf->SetTitle('CBC Report');
-$pdf->SetSubject('CBC');
-$pdf->SetKeywords('CBC, Report');
+$pdf->SetTitle('Chemistry Panel Report');
+$pdf->SetSubject('Chemistry Panel');
+$pdf->SetKeywords('Chemistry, Panel, Report');
 
 // Set header and footer fonts
 $pdf->setHeaderFont(['helvetica', '', 16]);
@@ -80,13 +80,13 @@ $pdf->setImageScale(PDF_IMAGE_SCALE_RATIO);
 // Add a page
 $pdf->AddPage();
 
-// Output CBC details
+// Output Chemistry Panel details
 $html = '';
 
-// Prepare and fetch CBC details using a prepared statement
-$query = "SELECT * FROM tbl_cbc WHERE cbc_id = ?";
+// Prepare and fetch Chemistry Panel details using a prepared statement
+$query = "SELECT * FROM tbl_chemistry WHERE chem_id = ?";
 $stmt = mysqli_prepare($connection, $query);
-mysqli_stmt_bind_param($stmt, 's', $cbc_id); // Bind parameter to prevent SQL injection
+mysqli_stmt_bind_param($stmt, 'i', $chem_id); // Bind parameter to prevent SQL injection
 mysqli_stmt_execute($stmt);
 $result = mysqli_stmt_get_result($stmt);
 
@@ -97,59 +97,55 @@ while ($row = mysqli_fetch_assoc($result)) {
 
     // Patient Information
     $html .= '<div style="text-align: center; margin-bottom: 20px;">
-                <h3>Complete Blood Count</h3>
+                <h3>Chemistry Panel</h3>
                 <p><strong>Patient Name:</strong> ' . htmlspecialchars($row['patient_name'], ENT_QUOTES, 'UTF-8') . ' | 
                 <strong>Age:</strong> ' . $year . ' | 
                 <strong>Gender:</strong> ' . htmlspecialchars($row['gender'], ENT_QUOTES, 'UTF-8') . ' | 
                 <strong>Date and Time:</strong> ' . date('F d Y g:i A', strtotime($row['date_time'])) . '</p>
             </div>';
 
-    // CBC Table
     $html .= '<table border="1" cellpadding="5" style="width: 100%; text-align: center;">
                 <thead style="background-color: #CCCCCC;">
                     <tr>   
-                        <th>Hemoglobin</th>
-                        <th>Hematocrit</th>
-                        <th>Red Blood Cells</th>
-                        <th>White Blood Cells</th>
-                        <th>Segmenters</th>
-                        <th>Lymphocytes</th>
-                        <th>Eosinophils</th>
-                        <th>Monocytes</th>
-                        <th>Bands</th>
-                        <th>Platelets</th>
+                        <th>FBS</th>
+                        <th>PPBS</th>
+                        <th>BUN</th>
+                        <th>Creatinine</th>
+                        <th>Uric Acid</th>
+                        <th>Total Cholesterol</th>
+                        <th>Triglycerides</th>
+                        <th>HDL</th>
+                        <th>LDL</th>
+                        <th>VLDL</th>
+                        <th>AST</th>
+                        <th>ALT</th>
+                        <th>ALP</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr>
-                        <td><strong>' . htmlspecialchars($row['hemoglobin'], ENT_QUOTES, 'UTF-8') . '</strong></td>
-                        <td><strong>' . htmlspecialchars($row['hematocrit'], ENT_QUOTES, 'UTF-8') . '</strong></td>
-                        <td><strong>' . htmlspecialchars($row['red_blood_cells'], ENT_QUOTES, 'UTF-8') . '</strong></td>
-                        <td><strong>' . htmlspecialchars($row['white_blood_cells'], ENT_QUOTES, 'UTF-8') . '</strong></td>
-                        <td><strong>' . htmlspecialchars($row['segmenters'], ENT_QUOTES, 'UTF-8') . '</strong></td>
-                        <td><strong>' . htmlspecialchars($row['lymphocytes'], ENT_QUOTES, 'UTF-8') . '</strong></td>
-                        <td><strong>' . htmlspecialchars($row['eosinophils'], ENT_QUOTES, 'UTF-8') . '</strong></td>
-                        <td><strong>' . htmlspecialchars($row['monocytes'], ENT_QUOTES, 'UTF-8') . '</strong></td>
-                        <td><strong>' . htmlspecialchars($row['bands'], ENT_QUOTES, 'UTF-8') . '</strong></td>
-                        <td><strong>' . htmlspecialchars($row['platelets'], ENT_QUOTES, 'UTF-8') . '</strong></td>
+                        <td><strong>' . htmlspecialchars($row['fbs'], ENT_QUOTES, 'UTF-8') . '</strong></td>
+                        <td><strong>' . htmlspecialchars($row['ppbs'], ENT_QUOTES, 'UTF-8') . '</strong></td>
+                        <td><strong>' . htmlspecialchars($row['bun'], ENT_QUOTES, 'UTF-8') . '</strong></td>
+                        <td><strong>' . htmlspecialchars($row['crea'], ENT_QUOTES, 'UTF-8') . '</strong></td>
+                        <td><strong>' . htmlspecialchars($row['bua'], ENT_QUOTES, 'UTF-8') . '</strong></td>
+                        <td><strong>' . htmlspecialchars($row['tc'], ENT_QUOTES, 'UTF-8') . '</strong></td>
+                        <td><strong>' . htmlspecialchars($row['tg'], ENT_QUOTES, 'UTF-8') . '</strong></td>
+                        <td><strong>' . htmlspecialchars($row['hdl'], ENT_QUOTES, 'UTF-8') . '</strong></td>
+                        <td><strong>' . htmlspecialchars($row['ldl'], ENT_QUOTES, 'UTF-8') . '</strong></td>
+                        <td><strong>' . htmlspecialchars($row['vldl'], ENT_QUOTES, 'UTF-8') . '</strong></td>
+                        <td><strong>' . htmlspecialchars($row['ast'], ENT_QUOTES, 'UTF-8') . '</strong></td>
+                        <td><strong>' . htmlspecialchars($row['alt'], ENT_QUOTES, 'UTF-8') . '</strong></td>
+                        <td><strong>' . htmlspecialchars($row['alp'], ENT_QUOTES, 'UTF-8') . '</strong></td>
                     </tr>
                 </tbody>
             </table>';
 
-    $html .= '<h4 style="font-size: 14px; margin-top: 5px;">Reference Ranges:</h4>';
-    $html .= '<ul style="margin-left: 20px;">
-                <li>Hemoglobin: 120-150g/L</li>
-                <li>Hematocrit: 0.40-50</li>
-                <li>Red Blood Cells: 4.5-6.0x10/L</li>
-                <li>White Blood Cells: 5-10x10/L</li>
-                <li>ESR: 0.15mm/hr</li>
-                <li>Segmenters: 0.50-0.70</li>
-                <li>Lymphocytes: 0.20-0.55</li>
-                <li>Eosinophils: 0-0.05</li>
-                <li>Monocytes: 0-0.04</li>
-                <li>Bands: 0-0.03</li>
-                <li>Platelets: 150-400x10/L</li>
-                </ul>';        
+    // Remarks section
+    $html .= '<div style="margin-top: 20px;">
+                <h4 style="font-size: 14px;">Remarks:</h4>
+                <p>' . htmlspecialchars($row['remarks'], ENT_QUOTES, 'UTF-8') . '</p>
+            </div>';
 
     // Medical Technologist Signature
     $html .= '<div style="position: absolute; bottom: 20px; left: 30px; text-align: left; width: 150px; font-weight: bold;">';

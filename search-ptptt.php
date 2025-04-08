@@ -6,40 +6,24 @@ if (isset($_GET['query'])) {
     // Sanitize the input query to prevent SQL injection
     $query = sanitize($connection, $_GET['query']);
 
-    // Prepare and bind the query to fetch patient data from tbl_ptptt
-    $query_sql = "SELECT DISTINCT ptptt_id, patient_name FROM tbl_ptptt 
-                  WHERE (prothrombin_control LIKE ? 
-                  OR prothrombin_test LIKE ? 
-                  OR prothrombin_inr LIKE ? 
-                  OR prothrombin_activity LIKE ? 
-                  OR prothrombin_result LIKE ? 
-                  OR prothrombin_normal_values LIKE ? 
-                  OR ptt_control LIKE ? 
-                  OR ptt_patient_result LIKE ? 
-                  OR ptt_normal_values LIKE ? 
-                  OR remarks LIKE ?) 
-                  AND deleted = 0";
-    
+    // Prepare and bind the query to fetch patient data from tbl_laborder
+    $query_sql = "SELECT DISTINCT id, patient_name FROM tbl_laborder WHERE lab_test = 'PTPTT' AND status = 'Completed' AND patient_name LIKE ?";
     $stmt = $connection->prepare($query_sql);
-    $search_term = "%" . $query . "%";  // Adding wildcards to match any field containing the query term
-    $stmt->bind_param("ssssssssss", 
-        $search_term, $search_term, $search_term, $search_term, 
-        $search_term, $search_term, $search_term, $search_term, 
-        $search_term, $search_term
-    );  
+    $search_term = "%" . $query . "%";  // Adding wildcards to match any patient_name containing the query term
+    $stmt->bind_param("s", $search_term);  // Binding the search term to the SQL statement
 
     // Execute the query
     $stmt->execute();
     $result = $stmt->get_result();
 
-    // Output the results as list items with search-result class
+    // Output the results as divs with patient-option class
     if ($result->num_rows > 0) {
         while ($row = $result->fetch_assoc()) {
-            // Output each patient as a list item with patient_name
-            echo '<li class="search-result" data-id="' . $row['ptptt_id'] . '">' . $row['patient_name'] . '</li>';
+            // Output each patient as a div with patient_name
+            echo '<li class="search-result" data-id="' . $row['id'] . '">' . $row['patient_name'] . '</li>';
         }
     } else {
-        echo '<li class="search-result-none" style="pointer-events: none; color: gray; padding: 8px 12px;">No matching records found</li>';
+        echo '<li class="search-result-none" style="pointer-events: none; color: gray; padding: 8px 12px;">No matching patients found</li>';
     }
 
     // Close the statement

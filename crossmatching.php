@@ -237,29 +237,32 @@ ob_end_flush();
                                 <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown">
                                     <i class="fa fa-ellipsis-v"></i>
                                 </a>
-                                <div class="dropdown-menu dropdown-menu-right">
+                                <div class="dropdown-menu dropdown-menu-right
+                                        min-width: 200px;
+                                        position: absolute;
+                                        top: 50%;
+                                        transform: translateY(-50%);
+                                        right: 50%;
+                                    ">
                                     <?php if ($can_print): ?>
                                         <form action="generate-crossmatching.php" method="get">
                                             <input type="hidden" name="id" value="<?= $row['crossmatching_id']; ?>">
                                             <div class="form-group">
-                                                <input type="text" class="form-control" name="filename" placeholder="Enter File Name">
+                                                <input type="text" class="form-control" name="filename" placeholder="Filename (required)" required>
                                             </div>
                                             <button class="btn btn-primary btn-sm custom-btn" type="submit">
                                                 <i class="fa fa-file-pdf-o m-r-5"></i> Generate Result
                                             </button>
                                         </form>
                                     <?php endif; ?>
-                                    <?php if ($editable): ?>
                                         <a class="dropdown-item" href="edit-crossmatching.php?id=<?= $row['crossmatching_id']; ?>">
                                             <i class="fa fa-pencil m-r-5"></i> Insert and Edit
                                         </a>
+                                    <?php if ($editable): ?>
                                         <a class="dropdown-item" href="#" onclick="return confirmDelete('<?php echo $row['crossmatching_id']; ?>')">
                                             <i class="fa fa-trash-o m-r-5"></i> Delete
                                         </a>
                                     <?php else: ?>
-                                        <a class="dropdown-item disabled">
-                                            <i class="fa fa-pencil m-r-5"></i> Edit
-                                        </a>
                                         <a class="dropdown-item disabled">
                                             <i class="fa fa-trash-o m-r-5"></i> Delete
                                         </a>
@@ -513,7 +516,7 @@ $('.dropdown-toggle').on('click', function (e) {
 });
 </script>
 
-<style>
+<style>  
 .sticky-search {
     position: sticky;
     left: 0;
@@ -549,7 +552,6 @@ $('.dropdown-toggle').on('click', function (e) {
 .btn-primary:hover {
     background: #05007E;
 }
-
 #searchResults {
     max-height: 200px;
     overflow-y: auto;
@@ -574,16 +576,16 @@ $('.dropdown-toggle').on('click', function (e) {
 .form-inline .input-group {
     width: 100%;
 }
-#patientTable2_length, #patientTable_paginate .paginate_button {
-    display: none;
-}
 .dropdown-action .action-icon {
     color: #777;
     font-size: 18px;
     display: inline-block;
     padding: 0 10px;
 }
-
+.custom-btn {
+    padding: 5px 27px; /* Adjust padding as needed */
+    font-size: 12px; /* Adjust font size as needed */
+}
 .dropdown-menu {
     border: 1px solid rgba(0, 0, 0, 0.1);
     border-radius: 3px;
