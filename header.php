@@ -504,6 +504,12 @@
         </div>
     </div>
 </body>
+<script src="assets/js/jquery-3.6.0.min.js"></script>
+<script src="assets/js/bootstrap.bundle.min.js"></script>
+<script src="assets/js/select2.min.js"></script>
+<script src="assets/js/moment.min.js"></script>
+<script src="assets/js/bootstrap-datetimepicker.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
 // Improved sidebar toggle with smooth transitions
    document.addEventListener("DOMContentLoaded", function() {
@@ -688,6 +694,24 @@ $('.dropdown-toggle').on('click', function (e) {
 
 .sidebar-menu .active a:hover {
     background-color: #f5f5f5;
+}
+/* Mobile adaptations */
+@media (max-width: 768px) {
+    .sidebar {
+        transform: translateX(-100%);
+    }
+    
+    .sidebar.active {
+        transform: translateX(0);
+    }
+    
+    .page-wrapper {
+        margin-left: 0;
+    }
+    
+    .sidebar ~ .page-wrapper {
+        margin-left: 0;
+    }
 }
 </style>
 </html>

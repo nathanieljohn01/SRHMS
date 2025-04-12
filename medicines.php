@@ -283,7 +283,7 @@ include('footer.php');
     background: #05007E;
 }
 .badge {
-    padding: 6px 12px;
+    padding: 6px 16px;
     border-radius: 50px;
     font-size: 12px;
     font-weight: 600;
@@ -293,14 +293,17 @@ include('footer.php');
     min-width: 100px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
     transition: all 0.3s ease;
-    border: 1px solid transparent;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    color: #333;
 }
+
 .badge:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.12);
 }
+
 /* Stock Status Badges */
 .badge-stock {
     background-color: #f8f9fa;
