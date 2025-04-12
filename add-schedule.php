@@ -99,7 +99,7 @@ if (isset($_REQUEST['add-schedule'])) {
                         <div class="col-md-6">
                             <div class="form-group">
                                 <label>Doctor Name</label>
-                                <select class="select" name="doctor" required>
+                                <select class="form-control" name="doctor" required>
                                     <option value="">Select</option>
                                     <?php
                                 $fetch_query = mysqli_query($connection, "select concat(first_name,' ',last_name) as name from tbl_employee where role=2 and status=1");
@@ -113,8 +113,8 @@ if (isset($_REQUEST['add-schedule'])) {
                         <div class="col-md-6">
                             <div class="form-group">
                                 <label>Available Days</label>
-                                <select class="select" multiple name="days[]" required>
-                                    <option value="">Select Days</option>
+                                <select class="form-control" name="days" required>
+                                    <option value="">Select</option>
                                     <option>Sunday</option>
                                     <option>Monday</option>
                                     <option>Tuesday</option>
@@ -164,7 +164,7 @@ if (isset($_REQUEST['add-schedule'])) {
                         </div>
                     </div>
                     <div class="m-t-20 text-center">
-                        <button class="btn btn-primary submit-btn" name="add-schedule">Create Schedule</button>
+                        <button class="btn btn-primary submit-btn" name="add-schedule">Save</button>
                     </div>
                 </form>
             </div>

@@ -122,7 +122,7 @@ if (isset($_POST['edit-radiology'])) {
                 </div>
             </div>
             <div class="m-t-20 text-center">
-                <button type="submit" name="edit-radiology" class="btn btn-primary submit-btn"><i class="fas fa-save mr-2"></i>Save</button>
+                <button type="submit" name="edit-radiology" class="btn btn-primary submit-btn"><i class="fas fa-save mr-2"></i>Update</button>
             </div>
         </form>
     </div>

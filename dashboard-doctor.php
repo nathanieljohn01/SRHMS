@@ -107,10 +107,22 @@ for ($i = $current_month; $i <= 12; $i++) {
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
-    // Get the canvas element
+    // Improved Patient Overview Chart (Bar Chart)
     var ctx = document.getElementById('patientChart').getContext('2d');
+    
+    // Gradient backgrounds for the bars
+    let inpatientGradient = ctx.createLinearGradient(0, 0, 0, 400);
+    inpatientGradient.addColorStop(0, 'rgba(197, 16, 20, 0.8)');
+    inpatientGradient.addColorStop(1, 'rgba(197, 16, 20, 0.2)');
+    
+    let outpatientGradient = ctx.createLinearGradient(0, 0, 0, 400);
+    outpatientGradient.addColorStop(0, 'rgba(15, 54, 159, 0.8)');
+    outpatientGradient.addColorStop(1, 'rgba(15, 54, 159, 0.2)');
+    
+    let hemodialysisGradient = ctx.createLinearGradient(0, 0, 0, 400);
+    hemodialysisGradient.addColorStop(0, 'rgba(120, 182, 35, 0.8)');
+    hemodialysisGradient.addColorStop(1, 'rgba(120, 182, 35, 0.2)');
 
-    // Create the chart
     var patientChart = new Chart(ctx, {
         type: 'bar',
         data: {
@@ -122,9 +134,11 @@ for ($i = $current_month; $i <= 12; $i++) {
             datasets: [
                 {
                     label: 'Inpatient',
-                    backgroundColor: 'rgba(197, 16, 20, 0.2)', // Red for Inpatient
-                    borderColor: 'rgba(197, 16, 20, 1)', // Border color for Inpatient
+                    backgroundColor: inpatientGradient,
+                    borderColor: 'rgba(197, 16, 20, 1)',
                     borderWidth: 1,
+                    borderRadius: 6,
+                    borderSkipped: false,
                     data: [
                         <?php foreach ($months as $month): ?>
                             <?php 
@@ -137,9 +151,11 @@ for ($i = $current_month; $i <= 12; $i++) {
                 },
                 {
                     label: 'Outpatient',
-                    backgroundColor: 'rgba(15, 54, 159, 0.2)', // Blue for Outpatient
-                    borderColor: 'rgba(15, 54, 159, 1)', // Border color for Outpatient
+                    backgroundColor: outpatientGradient,
+                    borderColor: 'rgba(15, 54, 159, 1)',
                     borderWidth: 1,
+                    borderRadius: 6,
+                    borderSkipped: false,
                     data: [
                         <?php foreach ($months as $month): ?>
                             <?php 
@@ -152,9 +168,11 @@ for ($i = $current_month; $i <= 12; $i++) {
                 },
                 {
                     label: 'Hemodialysis',
-                    backgroundColor: 'rgba(120, 182, 35, 0.5)', // Green for Hemodialysis
-                    borderColor: 'rgba(120, 182, 35, 1)', // Green color for Hemodialysis
+                    backgroundColor: hemodialysisGradient,
+                    borderColor: 'rgba(120, 182, 35, 1)',
                     borderWidth: 1,
+                    borderRadius: 6,
+                    borderSkipped: false,
                     data: [
                         <?php foreach ($months as $month): ?>
                             <?php 
@@ -167,92 +185,77 @@ for ($i = $current_month; $i <= 12; $i++) {
                 }
             ]
         },
-        options: {
+        options: {  
             responsive: true,
             maintainAspectRatio: false,
-            scales: {
-                yAxes: [{
-                    ticks: {
-                        beginAtZero: true
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        font: {
+                            size: 12,
+                            family: "'Poppins', sans-serif"
+                        },
+                        padding: 20,
+                        usePointStyle: true,
+                        pointStyle: 'circle'
                     }
-                }]
-            }
-        }
-    });
-
-    $('.dropdown-toggle').on('click', function (e) {
-        var $el = $(this).next('.dropdown-menu');
-        var isVisible = $el.is(':visible');
-        
-        // Hide all dropdowns
-        $('.dropdown-menu').slideUp('400');
-        
-        // If this wasn't already visible, slide it down
-        if (!isVisible) {
-            $el.stop(true, true).slideDown('400');
-        }
-        
-        // Close the dropdown if clicked outside of it
-        $(document).on('click', function (e) {
-            if (!$(e.target).closest('.dropdown').length) {
-                $('.dropdown-menu').slideUp('400');
-            }
-        });
-    });
-</script>
-
-<script>
-    var ctxTotalPatients = document.getElementById('totalPatientChart').getContext('2d');
-    var months = <?php echo json_encode($months); ?>;
-
-    var totalPatientChart = new Chart(ctxTotalPatients, {
-        type: 'line',
-        data: {
-            labels: months.map(month => new Date(Date.parse(month + " 1, 2000")).toLocaleString('en-US', { month: 'long' })),
-            datasets: [{
-                label: 'Total Patients',
-                data: [
-                    <?php
-                    $total_patients = array();
-                    foreach ($months as $month) {
-                        $result = mysqli_query($connection, "SELECT COUNT(*) AS total FROM tbl_patient WHERE MONTH(created_at) = '$month' AND YEAR(created_at) = YEAR(NOW())");
-                        $row = mysqli_fetch_assoc($result);
-                        $total_patients[] = $row['total'];
-                    }
-                    echo implode(',', $total_patients);
-                    ?>
-                ],
-                backgroundColor: 'rgba(120, 182, 35, 0.5)',
-                borderColor: 'rgba(120, 182, 35, 1)',
-                borderWidth: 1,
-                lineTension: 0.3
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0,0,0,0.8)',
+                    titleFont: {
+                        size: 14,
+                        family: "'Poppins', sans-serif"
+                    },
+                    bodyFont: {
+                        size: 12,
+                        family: "'Poppins', sans-serif"
+                    },
+                    padding: 12,
+                    cornerRadius: 6,
+                    displayColors: true,
+                    mode: 'index',
+                    intersect: false
+                }
+            },
             scales: {
-                yAxes: [{
+                x: {
+                    grid: {
+                        display: false,
+                        drawBorder: false
+                    },
                     ticks: {
-                        beginAtZero: true,
-                        callback: function(value) {
-                            if (value % 1 === 0) {
-                                return value;
-                            }
+                        font: {
+                            family: "'Poppins', sans-serif"
                         }
                     }
-                }]
+                },
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        color: 'rgba(0,0,0,0.05)',
+                        drawBorder: false
+                    },
+                    ticks: {
+                        font: {
+                            family: "'Rubik', sans-serif"
+                        },
+                        padding: 10
+                    }
+                }
             },
             animation: {
-                duration: 2000,
+                duration: 1500,
+                easing: 'easeOutQuart'
             },
-            hover: {
-                animationDuration: 2000,
-            },
-            responsiveAnimationDuration: 2000,
+            interaction: {
+                intersect: false,
+                mode: 'index'
+            }
         }
     });
 </script>
+
 <style>
 .btn-primary {
     background: #12369e;

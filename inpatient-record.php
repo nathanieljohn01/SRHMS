@@ -321,12 +321,14 @@ ob_end_flush();
                                 <?php } ?>
                             </td>
                             <td>
+                                <?php if ($_SESSION['role'] == 2) { ?>
                                 <form action="generate-result.php" method="get">
                                     <input type="hidden" name="patient_id" value="<?php echo htmlspecialchars($row['patient_id']); ?>">
                                     <button class="btn btn-primary btn-sm custom-btn" type="submit">
                                         <i class="fa fa-file-pdf-o m-r-5"></i> View Result
                                     </button>
                                 </form>
+                                <?php } ?>
                             </td>
                             <td><?php echo htmlspecialchars($row['diagnosis']); ?></td>
                             <td>
@@ -334,10 +336,11 @@ ob_end_flush();
                                     <!-- Display Treatment Details if Present -->
                                     <div><?php echo nl2br(strip_tags($row['treatments'], '<br>')); ?></div>
                                 <?php else: ?>
-                                    <!-- Display Button to Add/Edit Treatments if No Treatments Exist -->
+                                    <?php if ($_SESSION['role'] == 10) { ?>
                                     <button class="btn btn-primary btn-sm treatment-btn mt-2" data-toggle="modal" data-target="#treatmentModal" data-id="<?php echo htmlspecialchars($row['inpatient_id']); ?>">
                                         <i class="fa fa-stethoscope m-r-5"></i> Add/Edit Treatments
                                     </button>
+                                    <?php } ?>
                                 <?php endif; ?>
                             </td>
                             <td><?php echo htmlspecialchars($row['room_type']); ?></td>
@@ -673,31 +676,68 @@ $('.treatment-btn').on('click', function () {
         tbody.empty();
         
         data.forEach(function(row) {
-            var doctorButton = row.doctor_incharge ? row.doctor_incharge : 
-                `<button class="btn btn-primary btn-sm select-doctor-btn" data-toggle="modal" data-target="#doctorModal" data-id="${row.inpatient_id}">Select Doctor</button>`;
-                
-            var treatmentContent = row.treatments !== 'No treatments added' ? 
-                `<div>${row.treatments}</div>` :
-                `<button class="btn btn-primary btn-sm treatment-btn mt-2" data-toggle="modal" data-target="#treatmentModal" data-id="${row.inpatient_id}">
-                    <i class="fa fa-stethoscope m-r-5"></i> Add/Edit Treatments
-                </button>`;
+            // Doctor In-Charge button/display - show for role 3 (staff/nurse)
+            var doctorButton = row.doctor_incharge ? 
+                row.doctor_incharge : 
+                (role == 3 ? 
+                    `<button class="btn btn-primary btn-sm select-doctor-btn" 
+                        data-toggle="modal" 
+                        data-target="#doctorModal" 
+                        data-id="${row.inpatient_id}">
+                        Select Doctor
+                    </button>` : 
+                    row.doctor_incharge || 'Not assigned'
+                );
 
+            // View Result button - show for role 2 (doctor)
+            var viewResultButton = role == 2 ? 
+                `<form action="generate-result.php" method="get">
+                    <input type="hidden" name="patient_id" value="${row.patient_id}">
+                    <button class="btn btn-primary btn-sm custom-btn" type="submit">
+                        <i class="fa fa-file-pdf-o m-r-5"></i> View Result
+                    </button>
+                </form>` : 
+                '';
+
+            // Treatment display - show for role 2 (doctor)
+            var treatmentContent = row.treatments && row.treatments !== 'No treatments added' ? 
+                `<div>${row.treatments}</div>` : 
+                (role == 2 ? 
+                    `<button class="btn btn-primary btn-sm treatment-btn" 
+                        data-toggle="modal" 
+                        data-target="#treatmentModal" 
+                        data-id="${row.inpatient_id}">
+                        <i class="fa fa-stethoscope m-r-5"></i> Add Treatment
+                    </button>` : 
+                    'No treatments'
+                );
+
+            // Action buttons based on role
             var actionButtons = '';
             if (role == 2 && doctor_name == row.doctor_incharge) {
-                actionButtons += `<button class="dropdown-item diagnosis-btn" data-toggle="modal" data-target="#diagnosisModal" data-id="${row.inpatient_id}" ${row.diagnosis ? 'disabled' : ''}>
-                    <i class="fa fa-stethoscope m-r-5"></i> Diagnosis</button>`;
+                actionButtons += `
+                    <button class="dropdown-item diagnosis-btn" 
+                        data-toggle="modal" 
+                        data-target="#diagnosisModal" 
+                        data-id="${row.inpatient_id}" 
+                        ${row.diagnosis ? 'disabled' : ''}>
+                        <i class="fa fa-stethoscope m-r-5"></i> Diagnosis
+                    </button>`;
             }
-            if (role == 1) {
+            if (role == 1 || role == 3) {
                 actionButtons += `
                     <a class="dropdown-item" href="edit-inpatient-record.php?id=${row.id}">
                         <i class="fa fa-pencil m-r-5"></i> Edit
-                    </a>
+                    </a>`;
+            }
+            if (role == 1) {
+                actionButtons += `
                     <a class="dropdown-item" href="#" onclick="return confirmDelete('${row.id}')">
                         <i class="fa fa-trash-o m-r-5"></i> Delete
                     </a>`;
             }
 
-
+            // Build the table row
             tbody.append(`<tr>
                 <td>${row.patient_id}</td>
                 <td>${row.inpatient_id}</td>
@@ -705,21 +745,14 @@ $('.treatment-btn').on('click', function () {
                 <td>${row.age}</td>
                 <td>${row.gender}</td>
                 <td>${doctorButton}</td>
-                <td>
-                    <form action="generate-result.php" method="get">
-                        <input type="hidden" name="patient_id" value="${row.patient_id}">
-                        <button class="btn btn-primary btn-sm custom-btn" type="submit">
-                            <i class="fa fa-file-pdf-o m-r-5"></i> View Result
-                        </button>
-                    </form>
-                </td>
+                <td>${viewResultButton}</td>
                 <td>${row.diagnosis}</td>
                 <td>${treatmentContent}</td>
                 <td>${row.room_type}</td>
                 <td>${row.room_number}</td>
                 <td>${row.bed_number}</td>
                 <td>${row.admission_date}</td>
-                <td>${row.discharge_date}</td>
+                <td>${row.discharge_date || 'N/A'}</td>
                 <td class="text-right">
                     <div class="dropdown dropdown-action">
                         <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
@@ -737,8 +770,6 @@ $('.treatment-btn').on('click', function () {
     // Add these variables at the top of your script
     var role = <?php echo json_encode($_SESSION['role']); ?>;
     var doctor_name = <?php echo json_encode($_SESSION['name']); ?>;
-
-
 
     function searchPatients() {
         var input = document.getElementById("patientSearchInput").value;

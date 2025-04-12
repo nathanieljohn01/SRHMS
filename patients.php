@@ -155,7 +155,7 @@ function confirmDelete(id) {
         showCancelButton: true,
         confirmButtonColor: '#d33',
         cancelButtonColor: '#12369e',
-        confirmButtonText: 'Yes, delete it!'
+        confirmButtonText: 'OK'
     }).then((result) => {
         if (result.isConfirmed) {
             window.location.href = 'patients.php?ids=' + id;  

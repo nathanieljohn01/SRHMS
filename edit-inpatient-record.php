@@ -121,7 +121,7 @@ if (isset($_POST['update-inpatient'])) {
                         </div>
                     </div>
                     <div class="m-t-20 text-center">
-                        <button name="update-inpatient" class="btn btn-primary submit-btn"><i class="fas fa-save mr-2"></i>Save</button>
+                        <button name="update-inpatient" class="btn btn-primary submit-btn"><i class="fas fa-save mr-2"></i>Update</button>
                     </div>
                 </form>
             </div>

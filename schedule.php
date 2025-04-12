@@ -54,23 +54,30 @@ if (isset($_POST['submit'])) {
     }
 }
 
-// Replace basic alerts with SweetAlert2 for deletion
 if (isset($_GET['ids'])) {
     try {
-        // Show loading state first
         echo "<script>showLoading('Processing request...');</script>";
         
         $id = mysqli_real_escape_string($connection, $_GET['ids']);
-        $delete_query = mysqli_query($connection, "UPDATE tbl_schedule SET deleted = 1 WHERE schedule_id='$id'");
+        
+        // Debug output (remove after testing)
+        error_log("Deleting schedule ID: $id");
+        
+        // Using prepared statement for security
+        $stmt = $connection->prepare("UPDATE tbl_schedule SET deleted = 1 WHERE id = ?");
+        $stmt->bind_param("i", $id);
+        $delete_query = $stmt->execute();
         
         if ($delete_query) {
             echo "<script>
                 showSuccess('Schedule deleted successfully!', true);
+                setTimeout(function(){ window.location.href = 'schedule.php'; }, 1500);
             </script>";
         } else {
-            throw new Exception(mysqli_error($connection));
+            throw new Exception($connection->error);
         }
     } catch (Exception $e) {
+        error_log("Delete error: " . $e->getMessage());
         echo "<script>
             showError('Error deleting schedule: " . addslashes($e->getMessage()) . "');
         </script>";
@@ -157,7 +164,9 @@ if (isset($_GET['ids'])) {
                                     <?php } ?>
                                     <?php if ($role == 1) { ?>
                                         <a class="dropdown-item" href="edit-schedule.php?id=<?php echo $row['id']; ?>"><i class="fa fa-pencil m-r-5"></i> Edit</a>
-                                        <a class="dropdown-item delete-btn" data-id="<?php echo $row['id']; ?>"><i class="fa fa-trash-o m-r-5"></i> Delete</a>
+                                        <a class="dropdown-item" href="#" onclick="return confirmDelete('<?php echo $row['id']; ?>')">
+                                            <i class="fa fa-trash-o m-r-5"></i> Delete
+                                        </a>
                                     <?php } ?>
                                 </div>
                             </div>
@@ -173,9 +182,22 @@ if (isset($_GET['ids'])) {
 include('footer.php');
 ?>
 <script language="JavaScript" type="text/javascript">
-    function confirmDelete(){
-        return confirm('Are you sure you want to delete this Schedule?');
-    }
+   function confirmDelete(id) {
+    return Swal.fire({
+        title: 'Delete Schedule?',
+        text: 'Are you sure you want to delete this schedule? This action cannot be undone!',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#12369e',
+        confirmButtonText: 'OK',
+        cancelButtonText: 'Cancel'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            window.location.href = 'schedule.php?ids=' + id;  
+        }
+    });
+}
 </script>
 <script>
     function filterSchedule() {

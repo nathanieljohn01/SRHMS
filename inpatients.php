@@ -169,7 +169,7 @@ ob_end_flush(); // Flush output buffer
                                 <div class="dropdown dropdown-action">
                                     <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><i class="fa fa-ellipsis-v"></i></a>
                                     <div class="dropdown-menu dropdown-menu-right">
-                                        <?php if ($_SESSION['role'] == 1 || $_SESSION['role'] == 10): ?>
+                                        <?php if ($_SESSION['role'] == 1 || $_SESSION['role'] == 3): ?>
                                             <!-- Insert Room Link Disabled based on conditions -->
                                             <?php if (empty($row['room_type']) && empty($row['room_number']) && empty($row['bed_number'])): ?>
                                                 <a class="dropdown-item" href="insert-room.php?id=<?php echo $row['id']; ?>"><i class="fa fa-pencil m-r-5"></i> Insert Room</a>
@@ -212,7 +212,7 @@ function confirmDelete(id) {
         showCancelButton: true,
         confirmButtonColor: '#d33',
         cancelButtonColor: '#12369e',
-        confirmButtonText: 'Yes, delete it!'
+        confirmButtonText: 'OK'
     }).then((result) => {
         if (result.isConfirmed) {
             window.location.href = 'inpatients.php?id=' + id;
@@ -224,11 +224,11 @@ function confirmDischarge(id) {
     Swal.fire({
         title: 'Are you sure?',
         text: "You are about to discharge this inpatient. This action cannot be undone!",
-        icon: 'warning',
+        icon: 'question',
         showCancelButton: true,
-        confirmButtonColor: '#12369e',
-        cancelButtonColor: '#f62d51',
-        confirmButtonText: 'Yes, discharge!'
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#12369e',
+        confirmButtonText: 'Yes'
     }).then((result) => {
         if (result.isConfirmed) {
             Swal.fire({

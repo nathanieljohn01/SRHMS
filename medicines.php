@@ -117,13 +117,11 @@ $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_medicines WHERE dele
                             <td><?php echo date('F d, Y g:i A', strtotime($row['new_added_date'])); ?></td>
                             <td class="text-right">
                                 <div class="dropdown dropdown-action">
-                                    <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
-                                        <i class="fa fa-ellipsis-v"></i>
-                                    </a>
+                                    <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><i class="fa fa-ellipsis-v"></i></a>
                                     <div class="dropdown-menu dropdown-menu-right">
                                         <?php 
                                         if ($_SESSION['role'] == 1 || $_SESSION['role'] == 4) {
-                                            echo '<a class="dropdown-item" href="edit-medicines.php?id='.$row['id'].'"><i class="fa fa-pencil m-r-5"></i> Update</a>';
+                                            echo '<a class="dropdown-item" href="edit-medicines.php?id='.$row['id'].'"><i class="fa fa-pencil m-r-5"></i> Edit</a>';
                                             echo '<a class="dropdown-item" href="#" onclick="return confirmDelete(\''.$row['id'].'\')"><i class="fa fa-trash-o m-r-5"></i> Delete</a>';
                                         }
                                         ?>
@@ -219,7 +217,7 @@ include('footer.php');
                             </a>
                             <div class="dropdown-menu dropdown-menu-right">
                                 <a class="dropdown-item" href="edit-medicines.php?id=${row.id}">
-                                    <i class="fa fa-pencil m-r-5"></i> Update
+                                    <i class="fa fa-pencil m-r-5"></i> Edit
                                 </a>
                                 <a class="dropdown-item" href="#" onclick="return confirmDelete('${row.id}')">
                                     <i class="fa fa-trash-o m-r-5"></i> Delete
@@ -333,5 +331,35 @@ include('footer.php');
     border: 1px solid #fd7e14;
     color: white;
 }
+.dropdown-action .action-icon {
+    color: #777;
+    font-size: 18px;
+    display: inline-block;
+    padding: 0 10px;
+}
+.dropdown-menu {
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 3px;
+    transform-origin: top right;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
 
+.dropdown-item {
+    padding: 7px 15px;
+    color: #333;
+}
+
+.dropdown-item:hover {
+    background-color: #f8f9fa;
+    color: #12369e;
+}
+
+.dropdown-item i {
+    margin-right: 8px;
+    color: #777;
+}
+
+.dropdown-item:hover i {
+    color: #12369e;
+}
 </style>

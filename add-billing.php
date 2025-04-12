@@ -732,8 +732,8 @@ if (isset($_POST['add-billing'])) {
                     </div>
                     <!-- Submit Button -->
                     <div class="form-submit text-center mt-4">
-                        <button type="submit" name="add-billing" class="btn btn-primary btn-lg">
-                            <i class="fas fa-file-invoice-dollar mr-2"></i> Generate Statement
+                        <button type="submit" name="add-billing" class="btn btn-primary submit-btn">
+                            <i class="fas fa-file-invoice-dollar mr-2"></i> Create SOA
                         </button>
                     </div>
                 </form>

@@ -17,7 +17,7 @@ include('includes/connection.php');
             <div class="col-sm-8 col-9 text-right m-b-20">
                 <?php 
                 if ($_SESSION['role'] == 1 || $_SESSION['role'] == 3) {  
-                    echo '<a href="add-operating-room.php" class="btn btn-primary float-right"><i class="fa fa-plus"></i> Add Operating Room </a>';
+                    echo '<a href="add-operating-room.php" class="btn btn-primary float-right"><i class="fa fa-plus"></i> Add Operation</a>';
                 }
                 ?>
             </div>
@@ -93,7 +93,7 @@ include('includes/connection.php');
                                     <div class="dropdown-menu dropdown-menu-right">
                                     <?php 
                                     if ($_SESSION['role'] == 1 || $_SESSION['role'] == 3) {
-                                        echo '<a class="dropdown-item" href="edit-operating-room.php?id='.$row['id'].'"><i class="fa fa-tasks m-r-5"></i> Update Progress</a>';
+                                        echo '<a class="dropdown-item" href="edit-operating-room.php?id='.$row['id'].'"><i class="fa fa-tasks m-r-5"></i> Update Status</a>';
                                         echo '<a class="dropdown-item delete-btn" data-id="'.$row['id'].'" href="#"><i class="fa fa-trash-o m-r-5"></i> Delete</a>';
                                     }
                                     ?>

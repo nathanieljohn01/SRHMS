@@ -187,7 +187,7 @@ if (isset($_GET['patient_id'])) {
                                     <div class="modal-dialog" role="document">
                                         <div class="modal-content">
                                             <div class="modal-header">
-                                                <h5 class="modal-title" id="cancelReasonLabel_<?php echo $lab_test_row['id']; ?>">Enter Cancel Reason</h5>
+                                                <h5 class="modal-title" id="cancelReasonLabel_<?php echo $lab_test_row['id']; ?>">Enter Cancellation Reason</h5>
                                                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                                                     <span aria-hidden="true">&times;</span>
                                                 </button>

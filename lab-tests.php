@@ -16,14 +16,23 @@ include('includes/connection.php');
             </div>
         </div>
         <div class="table-responsive">
-            <div class="input-group">
-            <input class="form-control mb-3" type="text" id="labTestSearchInput" onkeyup="filterTests()" placeholder="Search for Lab Test">
-                <div class="input-group-append">
-                    <button class="btn btn-outline-primary mb-3" type="button" onclick="clearSearch()">
-                        <i class="fa fa-times"></i>
-                    </button>
+            <div class="sticky-search">
+            <h5 class="font-weight-bold mb-2">Search for Lab Test:</h5>
+                <div class="input-group mb-3">
+                    <div class="position-relative w-100">
+                        <!-- Search Icon -->
+                        <i class="fa fa-search position-absolute text-secondary" style="top: 50%; left: 12px; transform: translateY(-50%);"></i>
+                        <!-- Input Field -->
+                        <input class="form-control" type="text" id="labTestSearchInput" onkeyup="filterTests()" placeholder="Search" style="padding-left: 35px; padding-right: 35px;">
+                        <!-- Clear Button -->
+                        <button class="position-absolute border-0 bg-transparent text-secondary" type="button" onclick="clearSearch()" style="top: 50%; right: 10px; transform: translateY(-50%);">
+                            <i class="fa fa-times"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
+        </div>
+        <div class="table-responsive">
             <table class="datatable table table-hover" id="labTestTable">
                 <thead style="background-color: #CCCCCC;">
                     <tr>
@@ -31,7 +40,7 @@ include('includes/connection.php');
                         <th>Lab Test</th>
                         <th>Lab Code</th>
                         <th>Status</th>
-                        <th>Action</th> <!-- Added Action column -->
+                        <th>Action</th> 
                     </tr>
                 </thead>
                 <tbody>
@@ -46,11 +55,13 @@ include('includes/connection.php');
                             <td><?php echo $test_row['code']; ?></td>
                             <td><?php echo $test_row['status']; ?></td>
                             <td>
-                                <label class="switch">
-                                    <input type="checkbox" <?php echo $test_row['status'] === 'Available' ? 'checked' : ''; ?> onclick="toggleStatus(this, '<?php echo $test_row['lab_test']; ?>')">
-                                    <span class="slider round"></span>
-                                </label>
-                            </td> <!-- Added toggle switch for status -->
+                                <div class="custom-control custom-switch">
+                                    <input type="checkbox" class="custom-control-input" id="toggle_<?php echo $test_row['code']; ?>" 
+                                        <?php echo $test_row['status'] === 'Available' ? 'checked' : ''; ?> 
+                                        onchange="toggleStatus(this, '<?php echo $test_row['lab_test']; ?>')">
+                                    <label class="custom-control-label" for="toggle_<?php echo $test_row['code']; ?>"></label>
+                                </div>
+                            </td>
                         </tr>
                     <?php } ?>
                 </tbody>
@@ -128,7 +139,7 @@ include('footer.php');
                 statusCell.innerText = newStatus;
             }
         };
-        xhttp.open("POST", "update_lab_status.php", true);
+        xhttp.open("POST", "update-lab-status.php", true);
         xhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
         xhttp.send("lab_test=" + encodeURIComponent(labTest) + "&status=" + encodeURIComponent(newStatus));
     }
@@ -156,49 +167,37 @@ include('footer.php');
         border: 1px solid rgb(228, 228, 228);
         color: gray;
     } 
-    .switch {
-        position: relative;
-        display: inline-block;
-        width: 60px;
-        height: 34px;
+    
+    .custom-switch .custom-control-label::before {
+        width: 3rem;
+        height: 1.5rem;
+        border-radius: 1rem;
+        background-color: #e9ecef;
+        border: none;
+        transition: all 0.3s ease;
     }
 
-    .switch input {
-        opacity: 0;
-        width: 0;
-        height: 0;
-    }
-
-    .slider {
-        position: absolute;
-        cursor: pointer;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background-color: #ccc;
-        transition: .4s;
-        border-radius: 34px;
-    }
-
-    .slider:before {
-        position: absolute;
-        content: "";
-        height: 26px;
-        width: 26px;
-        left: 4px;
-        bottom: 4px;
-        background-color: white;
-        transition: .4s;
+    .custom-switch .custom-control-label::after {
+        width: 1.25rem;
+        height: 1.25rem;
         border-radius: 50%;
+        background-color: #fff;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        transform: translateX(0.25rem);
+        transition: all 0.3s ease;
     }
 
-    input:checked + .slider {
+    .custom-switch .custom-control-input:checked ~ .custom-control-label::before {
         background-color: #12369e;
+        border-color: #12369e;
     }
 
-    input:checked + .slider:before {
-        transform: translateX(26px);
+    .custom-switch .custom-control-input:checked ~ .custom-control-label::after {
+        transform: translateX(1.5rem);
+    }
+
+    .custom-switch .custom-control-input:focus ~ .custom-control-label::before {
+        box-shadow: 0 0 0 0.2rem rgba(18, 54, 158, 0.25);
     }
 </style>
 <style>

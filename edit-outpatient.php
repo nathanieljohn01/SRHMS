@@ -123,7 +123,7 @@ if (isset($_REQUEST['save-outpatient'])) {
                             <textarea cols="30" rows="4" class="form-control" name="diagnosis"> <?php  echo $row['diagnosis'];  ?></textarea>
                     </div>        
                     <div class="m-t-20 text-center">
-                        <button name="save-outpatient" class="btn btn-primary submit-btn"><i class="fas fa-save mr-2"></i>Save</button>
+                        <button name="save-outpatient" class="btn btn-primary submit-btn"><i class="fas fa-save mr-2"></i>Updates</button>
                     </div>
                 </form>
             </div>

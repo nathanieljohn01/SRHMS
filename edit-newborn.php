@@ -177,7 +177,7 @@ mysqli_stmt_close($fetch_query);
                             </div>
                         </div>
                         <div class="col-12 mt-3 text-center">
-                            <button class="btn btn-primary submit-btn" name="update-newborn"><i class="fas fa-save mr-2"></i>Save</button>
+                            <button class="btn btn-primary submit-btn" name="update-newborn"><i class="fas fa-save mr-2"></i>Update</button>
                         </div>
                     </div>
                 </form>

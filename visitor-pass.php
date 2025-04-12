@@ -66,15 +66,23 @@ include('includes/connection.php');
                             <td><?php echo $row['contact_number']; ?></td>
                             <td><?php echo $row['purpose']; ?></td>
                             <td><?php echo $check_in_time; ?></td>
-                            <td><?php echo $check_out_time; ?></td> <!-- Display check_out_time -->
+                            <td><?php echo $check_out_time; ?></td> 
                             <td class="text-right">
                                 <div class="dropdown dropdown-action">
                                     <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><i class="fa fa-ellipsis-v"></i></a>
                                     <div class="dropdown-menu dropdown-menu-right">
                                         <?php if (empty($row['check_out_time'])) { ?>
-                                            <a class="dropdown-item" href="checkout.php?id=<?php echo $row['id']; ?>" onclick="return confirmCheckout()"><i class="fa fa-sign-out-alt m-r-5"></i> Check Out</a>
+                                            <?php if ($_SESSION['role'] == 10): ?>
+                                            <a class="dropdown-item" href="#" onclick="return confirmCheckout(<?php echo $row['id']; ?>)">
+                                                <i class="fa fa-sign-out-alt m-r-5"></i> Check Out
+                                            </a>
+                                            <?php endif; ?>
                                         <?php } ?>
-                                        <a class="dropdown-item" href="visitor-pass.php?ids=<?php echo $row['id']; ?>" onclick="return confirmDelete()"><i class="fa fa-trash-o m-r-5"></i> Delete</a>
+                                        <?php if ($_SESSION['role'] == 1): ?>
+                                        <a class="dropdown-item" href="#" onclick="return confirmDelete(<?php echo $row['id']; ?>)">
+                                            <i class="fa fa-trash-o m-r-5"></i> Delete
+                                        </a>
+                                        <?php endif; ?>
                                     </div>
                                 </div>
                             </td>
@@ -91,13 +99,38 @@ include('includes/connection.php');
 include('footer.php');
 ?>
 
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script language="JavaScript" type="text/javascript">
-    function confirmDelete() {
-        return confirm('Are you sure you want to delete this visitor pass?');
+    function confirmDelete(id) {
+        return Swal.fire({
+            title: 'Delete Visitor Pass?',
+            text: 'Are you sure you want to delete this visitor pass? This action cannot be undone!',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#12369e',
+            confirmButtonText: 'OK'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                window.location.href = 'visitor-pass.php?ids=' + id;
+            }
+        });
     }
     
-    function confirmCheckout() {
-        return confirm('Are you sure you want to check out this visitor?');
+    function confirmCheckout(id) {
+        return Swal.fire({
+            title: 'Check Out Visitor?',
+            text: 'Are you sure you want to check out this visitor?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#12369e',
+            confirmButtonText: 'Yes'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                window.location.href = 'checkout.php?id=' + id;
+            }
+        });
     }
 </script>
 <script>
@@ -157,20 +190,25 @@ include('footer.php');
 
     function getActionButtons(record) {
         let buttons = '';
+        var role = <?php echo json_encode($_SESSION['role']); ?>; // Get the user's role from PHP
         
-        if (!record.check_out_time) {
+        // Check Out button (only for role 10 and if not checked out)
+        if (!record.check_out_time && role == 10) {
             buttons += `
-                <a class="dropdown-item" href="checkout.php?id=${record.id}" onclick="return confirmCheckout()">
+                <a class="dropdown-item" href="#" onclick="return confirmCheckout(${record.id})">
                     <i class="fa fa-sign-out-alt m-r-5"></i> Check Out
                 </a>
             `;
         }
         
-        buttons += `
-            <a class="dropdown-item" href="visitor-pass.php?ids=${record.id}" onclick="return confirmDelete()">
-                <i class="fa fa-trash-o m-r-5"></i> Delete
-            </a>
-        `;
+        // Delete button (only for role 1)
+        if (role == 1) {
+            buttons += `
+                <a class="dropdown-item" href="#" onclick="return confirmDelete(${record.id})">
+                    <i class="fa fa-trash-o m-r-5"></i> Delete
+                </a>
+            `;
+        }
         
         return buttons;
     }

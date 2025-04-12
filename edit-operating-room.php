@@ -208,7 +208,7 @@ if (isset($_REQUEST['edit-operating-room'])) {
 
                     <!-- Submit Button -->
                     <div class="m-t-20 text-center">
-                        <button name="edit-operating-room" class="btn btn-primary submit-btn"><i class="fas fa-save mr-2"></i>Save</button>
+                        <button name="edit-operating-room" class="btn btn-primary submit-btn"><i class="fas fa-save mr-2"></i>Update</button>
                     </div>
                 </form>
             </div>

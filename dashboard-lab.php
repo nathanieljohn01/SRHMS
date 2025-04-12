@@ -146,17 +146,25 @@ $stat_tests = mysqli_fetch_row(mysqli_query($connection, "
 
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@1.0.1/dist/chartjs-plugin-annotation.min.js"></script>
 <script>
-    // Get the canvas elements
+    // Enhanced Test Charts with Poppins Font
     var ctxCompletedTests = document.getElementById('completedTestsChart').getContext('2d');
     var ctxCancelledTests = document.getElementById('cancelledTestsChart').getContext('2d');
 
-    // Fetch shift data
+    // Create gradients
+    let completedGradient = ctxCompletedTests.createLinearGradient(0, 0, 0, 400);
+    completedGradient.addColorStop(0, 'rgba(15, 54, 159, 0.8)');
+    completedGradient.addColorStop(1, 'rgba(15, 54, 159, 0.2)');
+
+    let cancelledGradient = ctxCancelledTests.createLinearGradient(0, 0, 0, 400);
+    cancelledGradient.addColorStop(0, 'rgba(197, 16, 20, 0.8)');
+    cancelledGradient.addColorStop(1, 'rgba(197, 16, 20, 0.2)');
+
     fetch('shift-chart-data.php')
     .then(response => response.json())
     .then(data => {
-        // Ensure data has the correct structure
         console.log(data); // For debugging
 
+        // Completed Tests Chart
         new Chart(ctxCompletedTests, {
             type: 'bar',
             data: {
@@ -164,20 +172,108 @@ $stat_tests = mysqli_fetch_row(mysqli_query($connection, "
                 datasets: [{
                     label: 'Completed Tests',
                     data: Object.values(data.Completed),
-                    backgroundColor: 'rgba(15, 54, 159, 0.2)',
+                    backgroundColor: completedGradient,
                     borderColor: 'rgba(15, 54, 159, 1)',
-                    borderWidth: 1
+                    borderWidth: 1,
+                    borderRadius: 6,
+                    borderSkipped: false,
+                    barPercentage: 0.7 // Adjust bar width
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            font: {
+                                family: "'Poppins', sans-serif",
+                                size: 12,
+                                weight: '500'
+                            },
+                            padding: 20,
+                            usePointStyle: true,
+                            pointStyle: 'circle'
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0,0,0,0.8)',
+                        titleFont: {
+                            family: "'Poppins', sans-serif",
+                            size: 14,
+                            weight: '600'
+                        },
+                        bodyFont: {
+                            family: "'Poppins', sans-serif",
+                            size: 12
+                        },
+                        padding: 12,
+                        cornerRadius: 6,
+                        displayColors: true,
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.dataset.label}: ${context.raw}`;
+                            }
+                        }
+                    }
+                },
                 scales: {
-                    y: { beginAtZero: true }
+                    x: {
+                        grid: {
+                            display: false,
+                            drawBorder: false
+                        },
+                        ticks: {
+                            font: {
+                                family: "'Poppins', sans-serif",
+                                weight: '500'
+                            }
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(0,0,0,0.05)',
+                            drawBorder: false
+                        },
+                        ticks: {
+                            font: {
+                                family: "'Poppins', sans-serif",
+                                weight: '500'
+                            },
+                            padding: 10,
+                            callback: function(value) {
+                                if (Number.isInteger(value)) {
+                                    return value;
+                                }
+                            }
+                        }
+                    }
+                },
+                animation: {
+                    duration: 1500,
+                    easing: 'easeOutQuart',
+                    onComplete: function() {
+                        var ctx = this.ctx;
+                        ctx.font = "500 12px Poppins";
+                        ctx.fillStyle = "#666";
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'bottom';
+                        
+                        this.data.datasets.forEach(function(dataset, i) {
+                            var meta = this.getDatasetMeta(i);
+                            meta.data.forEach(function(bar, index) {
+                                var data = dataset.data[index];
+                                ctx.fillText(data, bar.x, bar.y - 5);
+                            });
+                        }, this);
+                    }
                 }
             }
         });
 
+        // Cancelled Tests Chart
         new Chart(ctxCancelledTests, {
             type: 'bar',
             data: {
@@ -185,16 +281,103 @@ $stat_tests = mysqli_fetch_row(mysqli_query($connection, "
                 datasets: [{
                     label: 'Cancelled Tests',
                     data: Object.values(data.Cancelled),
-                    backgroundColor: 'rgba(197, 16, 20, 0.2)',
+                    backgroundColor: cancelledGradient,
                     borderColor: 'rgba(197, 16, 20, 1)',
-                    borderWidth: 1
+                    borderWidth: 1,
+                    borderRadius: 6,
+                    borderSkipped: false,
+                    barPercentage: 0.7 // Adjust bar width
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            font: {
+                                family: "'Poppins', sans-serif",
+                                size: 12,
+                                weight: '500'
+                            },
+                            padding: 20,
+                            usePointStyle: true,
+                            pointStyle: 'circle'
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0,0,0,0.8)',
+                        titleFont: {
+                            family: "'Poppins', sans-serif",
+                            size: 14,
+                            weight: '600'
+                        },
+                        bodyFont: {
+                            family: "'Poppins', sans-serif",
+                            size: 12
+                        },
+                        padding: 12,
+                        cornerRadius: 6,
+                        displayColors: true,
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.dataset.label}: ${context.raw}`;
+                            }
+                        }
+                    }
+                },
                 scales: {
-                    y: { beginAtZero: true }
+                    x: {
+                        grid: {
+                            display: false,
+                            drawBorder: false
+                        },
+                        ticks: {
+                            font: {
+                                family: "'Poppins', sans-serif",
+                                weight: '500'
+                            }
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(0,0,0,0.05)',
+                            drawBorder: false
+                        },
+                        ticks: {
+                            font: {
+                                family: "'Poppins', sans-serif",
+                                weight: '500'
+                            },
+                            padding: 10,
+                            callback: function(value) {
+                                if (Number.isInteger(value)) {
+                                    return value;
+                                }
+                            }
+                        }
+                    }
+                },
+                animation: {
+                    duration: 1500,
+                    easing: 'easeOutQuart',
+                    onComplete: function() {
+                        var ctx = this.ctx;
+                        ctx.font = "500 12px Poppins";
+                        ctx.fillStyle = "#666";
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'bottom';
+                        
+                        this.data.datasets.forEach(function(dataset, i) {
+                            var meta = this.getDatasetMeta(i);
+                            meta.data.forEach(function(bar, index) {
+                                var data = dataset.data[index];
+                                ctx.fillText(data, bar.x, bar.y - 5);
+                            });
+                        }, this);
+                    }
                 }
             }
         });

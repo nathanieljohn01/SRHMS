@@ -226,18 +226,22 @@ ob_end_flush();
                             <td><?php echo $row['gender']; ?></td>
                             <td>
                                 <?php if (empty($row['doctor_incharge'])) { ?>
+                                    <?php if ($role == 3) { ?>
                                     <button class="btn btn-primary btn-sm select-doctor-btn" data-toggle="modal" data-target="#doctorModal" data-id="<?php echo htmlspecialchars($row['outpatient_id']); ?>">Select Doctor</button>
+                                    <?php } ?>
                                 <?php } else { ?>
                                     <?php echo htmlspecialchars($row['doctor_incharge']); ?>
                                 <?php } ?>
                             </td>
                             <td>
+                                <?php if ($role == 2) { ?>
                                 <form action="generate-result.php" method="get">
                                     <input type="hidden" name="patient_id" value="<?php echo $row['patient_id']; ?>">
                                     <button class="btn btn-primary btn-sm custom-btn" type="submit">
                                         <i class="fa fa-file-pdf-o m-r-5"></i> View Result
                                     </button>
                                 </form>
+                                <?php } ?>
                             </td>
                             <td><?php echo $row['diagnosis']; ?></td>
                             <td><?php echo $date_time; ?></td>
@@ -248,12 +252,15 @@ ob_end_flush();
                                     <?php if ($role == 2 && $doctor_name == $row['doctor_incharge']) { ?>
                                         <button class="dropdown-item diagnosis-btn" data-toggle="modal" data-target="#diagnosisModal" data-id="<?php echo $row['outpatient_id']; ?>" <?php echo !empty($row['diagnosis']) ? 'disabled' : ''; ?>><i class="fa fa-stethoscope m-r-5"></i> Diagnosis</button>
                                     <?php } ?>
-                                    <?php 
-                                    if ($role == 1) {
+                                    <?php if ($role == 1 || $role == 3) {
                                         echo '<a class="dropdown-item" href="edit-outpatient.php?id='.$row['id'].'"><i class="fa fa-pencil m-r-5"></i> Edit</a>';
-                                        echo '<a class="dropdown-item" href="outpatients.php?ids='.$row['id'].'" onclick="return confirmDelete()"><i class="fa fa-trash-o m-r-5"></i> Delete</a>';
                                     }
                                     ?>
+                                    <?php if ($_SESSION['role'] == 1): ?>
+                                        <a class="dropdown-item" href="#" onclick="return confirmDelete('<?php echo $row['id']; ?>')">
+                                            <i class="fa fa-trash-o m-r-5"></i> Delete
+                                        </a>
+                                    <?php endif; ?>
                                 </div>
                             </div>
                         </td>
@@ -347,21 +354,23 @@ ob_end_flush();
 include('footer.php');
 ?>
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script language="JavaScript" type="text/javascript">
-    function confirmDelete(){
-        return confirm('Are you sure want to delete this Patient?');
+    function confirmDelete(id) {
+        return Swal.fire({
+            title: 'Delete Patient Record?',
+            text: 'Are you sure you want to delete this Patient record? This action cannot be undone!',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#12369e',
+            confirmButtonText: 'OK'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                window.location.href = 'outpatients.php?ids=' + id;
+            }
+        });
     }
-
-    // Set outpatient id when diagnosis button clicked
-    $(document).on('click', '.diagnosis-btn', function(){
-        var outpatientId = $(this).data('id');
-        $('#outpatientId').val(outpatientId);
-    });
-</script>
-
-<script>
-var role = <?php echo json_encode($_SESSION['role']); ?>;
-var doctor_name = <?php echo json_encode($_SESSION['name']); ?>;
 </script>
 
 <script>
@@ -387,54 +396,109 @@ var doctor_name = <?php echo json_encode($_SESSION['name']); ?>;
         var tbody = $('#outpatientTable tbody');
         tbody.empty();
         
+        // Escape HTML function to prevent XSS
+        const escapeHtml = (unsafe) => {
+            return unsafe?.toString()?.replace(/[&<>"']/g, function(match) {
+                return {
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#039;'
+                }[match];
+            }) || '';
+        };
+
         data.forEach(function(row) {
+            // Doctor In-Charge display - show for all roles
+            const doctorDisplay = row.doctor_incharge ? 
+                escapeHtml(row.doctor_incharge) : 
+                (role == 3 ?  // Only show assign button for role 3 (staff/nurse)
+                    `<button class="btn btn-primary btn-sm select-doctor-btn" 
+                        data-toggle="modal" 
+                        data-target="#doctorModal" 
+                        data-id="${escapeHtml(row.outpatient_id)}">
+                        Select Doctor
+                    </button>` : 
+                    ''
+                );
+
+            // View Result button - show for role 2 (doctor) and role 1 (admin)
+            const viewResultButton = (role == 2) ? 
+                `<form action="generate-result.php" method="get">
+                    <input type="hidden" name="patient_id" value="${escapeHtml(row.patient_id)}">
+                    <button class="btn btn-primary btn-sm custom-btn" type="submit">
+                        <i class="fa fa-file-pdf-o m-r-5"></i> View Result
+                    </button>
+                </form>` : 
+                '';
+
+            // Action buttons based on role
+            let actionButtons = '';
+            
+            // Diagnosis button for doctors (role 2) assigned to this patient
+            if (role == 2 && doctor_name === row.doctor_incharge) {
+                actionButtons += `
+                    <button class="dropdown-item diagnosis-btn" 
+                        data-toggle="modal" 
+                        data-target="#diagnosisModal" 
+                        data-id="${escapeHtml(row.outpatient_id)}" 
+                        ${row.diagnosis ? 'disabled' : ''}>
+                        <i class="fa fa-stethoscope m-r-5"></i> Diagnosis
+                    </button>`;
+            }
+            
+            // Edit and Delete buttons for admin (role 1)
+            if (role == 1) {
+                actionButtons += `
+                    <a class="dropdown-item" href="edit-outpatient.php?id=${escapeHtml(row.id)}">
+                        <i class="fa fa-pencil m-r-5"></i> Edit
+                    </a>
+                    <a class="dropdown-item" href="#" onclick="return confirmDelete('${escapeHtml(row.id)}')">
+                        <i class="fa fa-trash-o m-r-5"></i> Delete
+                    </a>`;
+            }
+            
+            // Treatment button for doctors (role 2)
+            if (role == 2 && doctor_name === row.doctor_incharge) {
+                actionButtons += `
+                    <button class="dropdown-item treatment-btn" 
+                        data-toggle="modal" 
+                        data-target="#treatmentModal" 
+                        data-id="${escapeHtml(row.outpatient_id)}">
+                        <i class="fa fa-medkit m-r-5"></i> Treatment
+                    </button>`;
+            }
+
+            // Build the table row with proper HTML escaping
             tbody.append(`<tr>
-                <td>${row.patient_id}</td>
-                <td>${row.outpatient_id}</td>
-                <td>${row.patient_name}</td>
-                <td>${row.age}</td>
-                <td>${row.dob}</td>
-                <td>${row.gender}</td>
-                <td>${row.doctor_incharge}</td>
-                <td>
-                    <form action="generate-result.php" method="get">
-                        <input type="hidden" name="patient_id" value="${row.patient_id}">
-                        <button class="btn btn-primary btn-sm custom-btn" type="submit">
-                            <i class="fa fa-file-pdf-o m-r-5"></i> View Result
-                        </button>
-                    </form>
-                </td>
-                <td>${row.diagnosis}</td>
-                <td>${row.date_time}</td>
+                <td>${escapeHtml(row.patient_id)}</td>
+                <td>${escapeHtml(row.outpatient_id)}</td>
+                <td>${escapeHtml(row.patient_name)}</td>
+                <td>${escapeHtml(row.age)}</td>
+                <td>${escapeHtml(row.dob)}</td>
+                <td>${escapeHtml(row.gender)}</td>
+                <td>${doctorDisplay}</td>
+                <td>${viewResultButton}</td>
+                <td>${escapeHtml(row.diagnosis)}</td>
+                <td>${escapeHtml(row.date_time)}</td>
                 <td class="text-right">
                     <div class="dropdown dropdown-action">
                         <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
                             <i class="fa fa-ellipsis-v"></i>
                         </a>
                         <div class="dropdown-menu dropdown-menu-right">
-                            ${role == 2 && doctor_name == row.doctor_incharge ? 
-                                `<button class="dropdown-item diagnosis-btn" 
-                                    data-toggle="modal" 
-                                    data-target="#diagnosisModal" 
-                                    data-id="${row.outpatient_id}" 
-                                    ${row.diagnosis ? 'disabled' : ''}>
-                                    <i class="fa fa-stethoscope m-r-5"></i> Diagnosis
-                                </button>` : ''
-                            }
-                            ${role == 1 ? 
-                                `<a class="dropdown-item" href="edit-outpatient.php?id=${row.id}">
-                                    <i class="fa fa-pencil m-r-5"></i> Edit
-                                </a>
-                                <a class="dropdown-item" href="outpatients.php?ids=${row.id}" onclick="return confirmDelete()">
-                                    <i class="fa fa-trash-o m-r-5"></i> Delete
-                                </a>` : ''
-                            }
+                            ${actionButtons}
                         </div>
                     </div>
                 </td>
             </tr>`);
         });
     }
+
+    // These should be set from PHP session variables
+    var role = <?php echo json_encode($_SESSION['role']); ?>;
+    var doctor_name = <?php echo json_encode($_SESSION['name']); ?>;
 
     function searchPatients() {
         var input = document.getElementById("patientSearchInput").value;

@@ -192,7 +192,7 @@ if (isset($_POST['save-schedule'])) {
                         </div>
                     </div>
                     <div class="m-t-20 text-center">
-                        <button class="btn btn-primary submit-btn" name="save-schedule"><i class="fas fa-save mr-2"></i>Save</button>
+                        <button class="btn btn-primary submit-btn" name="save-schedule"><i class="fas fa-save mr-2"></i>Update</button>
                     </div>
                 </form>
             </div>

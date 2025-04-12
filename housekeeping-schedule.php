@@ -81,9 +81,15 @@ if (isset($_GET['msg'])) {
                                 <div class="dropdown dropdown-action">
                                     <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><i class="fa fa-ellipsis-v"></i></a>
                                     <div class="dropdown-menu dropdown-menu-right">
-                                        <a class="dropdown-item <?php echo $isDisabled; ?>" href="#" onclick="confirmCompletion(<?php echo $row['id']; ?>);"><i class="fa fa-check m-r-5"></i> Complete</a>
+                                    <?php if ($_SESSION['role'] == 1 || $_SESSION['role'] == 3): ?>   
+                                    <a class="dropdown-item <?php echo $isDisabled; ?>" href="#" onclick="return confirmCompletion(<?php echo $row['id']; ?>);">
+                                        <i class="fa fa-check m-r-5"></i> Complete Task
+                                    </a>
+                                    <?php endif; ?>
                                         <a class="dropdown-item edit-link <?php echo $isEditable; ?>" href="edit-housekeeping-schedule.php?id=<?php echo $row['id']; ?>"><i class="fa fa-pencil m-r-5"></i> Edit</a>
+                                        <?php if ($_SESSION['role'] == 1): ?>   
                                         <a class="dropdown-item" href="#" onclick="return confirmDelete('<?php echo $row['id']; ?>')"><i class="fa fa-trash-o m-r-5"></i> Delete </a>
+                                        <?php endif; ?>
                                     </div>
                                 </div>
                             </td>
@@ -101,6 +107,43 @@ include('footer.php');
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script language="JavaScript" type="text/javascript">
+    function confirmCompletion(id) {
+        return Swal.fire({
+            title: 'Mark Task as Complete?',
+            text: 'Are you sure you want to mark this task as completed?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#12369e',
+            confirmButtonText: 'Yes',
+            showLoaderOnConfirm: true,
+            preConfirm: () => {
+                return fetch(`complete-housekeeping.php?id=${id}`)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(response.statusText);
+                        }
+                        return response.json();
+                    })
+                    .catch(error => {
+                        Swal.showValidationMessage(
+                            `Request failed: ${error}`
+                        );
+                    });
+            },
+            allowOutsideClick: () => !Swal.isLoading()
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire(
+                    'Completed!',
+                    'The task has been marked as completed.',
+                    'success'
+                ).then(() => {
+                    location.reload();
+                });
+            }
+        });
+    }
     function confirmDelete(id) {
         return Swal.fire({
             title: 'Delete Housekeeping Record?',
@@ -109,7 +152,7 @@ include('footer.php');
             showCancelButton: true,
             confirmButtonColor: '#d33',
             cancelButtonColor: '#12369e',
-            confirmButtonText: 'Yes, delete it!'
+            confirmButtonText: 'OK'
         }).then((result) => {
             if (result.isConfirmed) {
                 window.location.href = 'housekeeping-schedule.php?ids=' + id;  

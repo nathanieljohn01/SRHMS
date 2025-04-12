@@ -106,6 +106,19 @@
                                 </ul>
                             </li>
                             <li class="sidenav">
+                                <a href="#bedmanagementSubmenu" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle" aria-haspopup="true">
+                                    <i class="fa-solid fa-bed"></i> <span>Bed Management</span>
+                                </a>
+                                <ul class="collapse list-unstyled" id="bedmanagementSubmenu">
+                                    <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'bedallotment.php') ? 'active' : ''; ?>">
+                                        <a href="bedallotment.php"><i class="fa-solid fa-bed"></i> <span>Bed Allotment</span></a>
+                                    </li>
+                                    <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'housekeeping-schedule.php') ? 'active' : ''; ?>">
+                                        <a href="housekeeping-schedule.php"><i class="fa-solid fa-calendar"></i> <span>Housekeeping Schedule</span></a>
+                                    </li>
+                                </ul>
+                            </li>
+                            <li class="sidenav">
                                 <a href="#wardmanagementSubmenu" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle" aria-haspopup="true">
                                     <i class="fa-solid fa-clipboard-user"></i> <span>Ward Management</span>
                                 </a>
@@ -118,19 +131,6 @@
                                     </li>
                                     <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'bed-transfer.php') ? 'active' : ''; ?>">
                                         <a href="bed-transfer.php"><i class="fa-solid fa-bed"></i> <span>Bed Transfer</span></a>
-                                    </li>
-                                </ul>
-                            </li>
-                            <li class="sidenav">
-                                <a href="#bedmanagementSubmenu" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle" aria-haspopup="true">
-                                    <i class="fa-solid fa-bed"></i> <span>Bed Management</span>
-                                </a>
-                                <ul class="collapse list-unstyled" id="bedmanagementSubmenu">
-                                    <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'bedallotment.php') ? 'active' : ''; ?>">
-                                        <a href="bedallotment.php"><i class="fa-solid fa-bed"></i> <span>Bed Allotment</span></a>
-                                    </li>
-                                    <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'housekeeping-schedule.php') ? 'active' : ''; ?>">
-                                        <a href="housekeeping-schedule.php"><i class="fa-solid fa-calendar"></i> <span>Housekeeping Schedule</span></a>
                                     </li>
                                 </ul>
                             </li>

@@ -285,7 +285,7 @@ if (isset($_POST['save-emp'])) {
 
                         <!-- Submit Button -->
                         <div class="col-sm-12 text-center mt-3">
-                            <button class="btn btn-primary submit-btn" name="save-emp"><i class="fas fa-save mr-2"></i>Save</button>
+                            <button class="btn btn-primary submit-btn" name="save-emp"><i class="fas fa-save mr-2"></i>Update</button>
                         </div>
                     </div>
                 </form>

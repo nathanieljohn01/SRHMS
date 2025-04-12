@@ -30,76 +30,78 @@ $fetch_query = mysqli_query($connection, "
 ");
 
 ?>
-<div class="page-wrapper">
-    <div class="content">
-        <div class="row">
-            <div class="col-6">
-                <h4 class="page-title">Pharmacy Invoice</h4>
+    <div class="page-wrapper">
+        <div class="content">
+            <div class="row">
+                <div class="col-6">
+                    <h4 class="page-title">Pharmacy Invoice</h4>
+                </div>
+                <div class="col-6 text-right">
+                    <a href="add-pharmacy-invoice.php" class="btn btn-primary float-right"><i class="fa fa-plus"></i> Add Invoice</a>
+                </div>
             </div>
-            <div class="col-6 text-right">
-                <a href="add-pharmacy-invoice.php" class="btn btn-primary float-right"><i class="fa fa-plus"></i> Add Transaction</a>
-            </div>
-        </div>
-        <div class="table-responsive">
-            <div class="sticky-search">
-            <h5 class="font-weight-bold mb-2">Search Patient:</h5>
-                <div class="input-group mb-3">
-                    <div class="position-relative w-100">
-                        <!-- Search Icon -->
-                        <i class="fa fa-search position-absolute text-secondary" style="top: 50%; left: 12px; transform: translateY(-50%);"></i>
-                        <!-- Input Field -->
-                        <input class="form-control" type="text" id="medicineSearchInput" onkeyup="filterMedicines()" placeholder="Search" style="padding-left: 35px; padding-right: 35px;">
-                        <!-- Clear Button -->
-                        <button class="position-absolute border-0 bg-transparent text-secondary" type="button" onclick="clearSearch()" style="top: 50%; right: 10px; transform: translateY(-50%);">
-                            <i class="fa fa-times"></i>
-                        </button>
+            <div class="table-responsive">
+                <div class="sticky-search">
+                <h5 class="font-weight-bold mb-2">Search Patient:</h5>
+                    <div class="input-group mb-3">
+                        <div class="position-relative w-100">
+                            <!-- Search Icon -->
+                            <i class="fa fa-search position-absolute text-secondary" style="top: 50%; left: 12px; transform: translateY(-50%);"></i>
+                            <!-- Input Field -->
+                            <input class="form-control" type="text" id="medicineSearchInput" onkeyup="filterMedicines()" placeholder="Search" style="padding-left: 35px; padding-right: 35px;">
+                            <!-- Clear Button -->
+                            <button class="position-absolute border-0 bg-transparent text-secondary" type="button" onclick="clearSearch()" style="top: 50%; right: 10px; transform: translateY(-50%);">
+                                <i class="fa fa-times"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-        <div class="table-responsive">
-            <table class="datatable table table-bordered table-hover" id="medicineTable">
-                <thead style="background-color: #CCCCCC">
-                    <tr>
-                        <th>Patient ID</th>
-                        <th>Invoice ID</th>
-                        <th>Patient Name</th>
-                        <th>Medicine Details</th>
-                        <th>Total Cost</th>
-                        <th>Invoice Date and Time</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php
-                    while ($row = mysqli_fetch_array($fetch_query)) {
-                        // Sanitize the output to avoid XSS attacks
-                        $patient_id = htmlspecialchars($row['patient_id'], ENT_QUOTES, 'UTF-8');
-                        $invoice_id = htmlspecialchars($row['invoice_id'], ENT_QUOTES, 'UTF-8');
-                        $patient_name = htmlspecialchars($row['patient_name'], ENT_QUOTES, 'UTF-8');
-                        $medicine_details = htmlspecialchars($row['medicine_details'], ENT_QUOTES, 'UTF-8'); // Sanitize
-                        $medicine_details = nl2br($medicine_details); // Convert newlines to <br> for display
-                        $total_price = htmlspecialchars($row['total_price'], ENT_QUOTES, 'UTF-8');
-                        $invoice_datetime = htmlspecialchars($row['invoice_datetime'], ENT_QUOTES, 'UTF-8');
-                    ?>
-                    <tr>
-                        <td><?php echo htmlspecialchars($row['patient_id'], ENT_QUOTES, 'UTF-8'); ?></td>
-                        <td><?php echo htmlspecialchars($row['invoice_id'], ENT_QUOTES, 'UTF-8'); ?></td>
-                        <td><?php echo htmlspecialchars($row['patient_name'], ENT_QUOTES, 'UTF-8'); ?></td>
-                        <td><?php echo $medicine_details; ?></td> <!-- Display medicine details with line breaks -->
-                        <td><?php echo number_format($row['total_price'], 2); ?></td>
-                        <td><?php echo date('F d, Y g:i A', strtotime($row['invoice_datetime'])); ?></td>
-                        <td>
-                            <div class="dropdown dropdown-action">
-                                <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><i class="fa fa-file-pdf-o"></i></a>
-                                <div class="dropdown-menu dropdown-menu-right">
-                                    <form action="generate-pharmacy-pdf.php" method="get">
-                                        <input type="hidden" name="id" value="<?php echo htmlspecialchars($row['invoice_id'], ENT_QUOTES, 'UTF-8'); ?>">
-                                        <div class="form-group">
-                                            <input type="text" class="form-control" id="filename" name="filename" placeholder="Enter File Name" aria-label="Enter File Name" aria-describedby="basic-addon2">
-                                        </div>
-                                        <button class="btn btn-primary btn-block mt-1" type="submit"><i class="fa fa-file-pdf-o m-r-5"></i> Generate Invoice</button>
-                                    </form>
+            <div class="table-responsive">
+                <table class="datatable table table-bordered table-hover" id="medicineTable">
+                    <thead style="background-color: #CCCCCC">
+                        <tr>
+                            <th>Patient ID</th>
+                            <th>Invoice ID</th>
+                            <th>Patient Name</th>
+                            <th>Medicine Details</th>
+                            <th>Total Cost</th>
+                            <th>Invoice Date and Time</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php
+                        while ($row = mysqli_fetch_array($fetch_query)) {
+                            // Sanitize the output to avoid XSS attacks
+                            $patient_id = htmlspecialchars($row['patient_id'], ENT_QUOTES, 'UTF-8');
+                            $invoice_id = htmlspecialchars($row['invoice_id'], ENT_QUOTES, 'UTF-8');
+                            $patient_name = htmlspecialchars($row['patient_name'], ENT_QUOTES, 'UTF-8');
+                            $medicine_details = htmlspecialchars($row['medicine_details'], ENT_QUOTES, 'UTF-8'); // Sanitize
+                            $medicine_details = nl2br($medicine_details); // Convert newlines to <br> for display
+                            $total_price = htmlspecialchars($row['total_price'], ENT_QUOTES, 'UTF-8');
+                            $invoice_datetime = htmlspecialchars($row['invoice_datetime'], ENT_QUOTES, 'UTF-8');
+                        ?>
+                        <tr>
+                            <td><?php echo htmlspecialchars($row['patient_id'], ENT_QUOTES, 'UTF-8'); ?></td>
+                            <td><?php echo htmlspecialchars($row['invoice_id'], ENT_QUOTES, 'UTF-8'); ?></td>
+                            <td><?php echo htmlspecialchars($row['patient_name'], ENT_QUOTES, 'UTF-8'); ?></td>
+                            <td><?php echo $medicine_details; ?></td> <!-- Display medicine details with line breaks -->
+                            <td><?php echo number_format($row['total_price'], 2); ?></td>
+                            <td><?php echo date('F d, Y g:i A', strtotime($row['invoice_datetime'])); ?></td>
+                            <td>
+                                <div class="dropdown dropdown-action">
+                                    <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><i class="fa fa-file-pdf-o"></i></a>
+                                    <div class="dropdown-menu dropdown-menu-right">
+                                        <div class="dropdown-item">
+                                        <form action="generate-pharmacy-pdf.php" method="get">
+                                            <input type="hidden" name="id" value="<?php echo htmlspecialchars($row['invoice_id'], ENT_QUOTES, 'UTF-8'); ?>">
+                                                <div class="form-group mb-2">
+                                                    <input type="text" class="form-control" name="filename" placeholder="Filename (required)" required>
+                                                </div>
+                                            <button class="btn btn-primary btn-sm custom-btn" type="submit"><i class="fa fa-file-pdf-o m-r-5"></i> Generate Invoice</button>
+                                        </form>
+                                    </div>
                                 </div>
                             </div>
                         </td>
@@ -224,6 +226,19 @@ include('footer.php');
 .btn-primary:hover {
     background: #05007E;
 }
+.dropdown-action .action-icon {
+    color: #777;
+    font-size: 18px;
+    display: inline-block;
+    padding: 0 10px;
+}
+.dropdown-menu {
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 3px;
+    transform-origin: top right;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
 .dropdown-item {
     padding: 7px 15px;
     color: #333;
@@ -241,5 +256,9 @@ include('footer.php');
 
 .dropdown-item:hover i {
     color: #12369e;
+}
+.custom-btn {
+    padding: 5px 27px; /* Adjust padding as needed */
+    font-size: 12px; /* Adjust font size as needed */
 }
 </style>

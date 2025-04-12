@@ -262,10 +262,11 @@ ob_end_flush(); // Flush output buffer
                                     <!-- Display Treatment Details if Present -->
                                     <div><?php echo nl2br(strip_tags($row['treatments'], '<br>')); ?></div>
                                 <?php else: ?>
-                                    <!-- Display Button to Add/Edit Treatments if No Treatments Exist -->
+                                    <?php if ($_SESSION['role'] == 3) { ?>
                                     <button class="btn btn-primary btn-sm treatment-btn mt-2" data-toggle="modal" data-target="#treatmentModal" data-id="<?php echo htmlspecialchars($row['hemopatient_id']); ?>">
                                         <i class="fa fa-stethoscope m-r-5"></i> Add/Edit Treatments
                                     </button>
+                                    <?php } ?>
                                 <?php endif; ?>
                             </td>
                             <td>
@@ -295,9 +296,13 @@ ob_end_flush(); // Flush output buffer
                                     <?php 
                                     if ($_SESSION['role'] == 1 | $_SESSION['role'] == 3) {
                                         echo '<a class="dropdown-item" href="edit-hemo.php?id='.$row['id'].'"><i class="fa fa-pencil m-r-5"></i> Update</a>';
-                                        echo '<a class="dropdown-item" href="hemodialysis.php?ids='.$row['id'].'" onclick="return confirmDelete()"><i class="fa fa-trash-o m-r-5"></i> Delete</a>';
-                                    }
+                                    };
                                     ?>
+                                    <?php if ($_SESSION['role'] == 1): ?>
+                                        <a class="dropdown-item" href="#" onclick="return confirmDelete('<?php echo $row['id']; ?>')">
+                                            <i class="fa fa-trash-o m-r-5"></i> Delete
+                                        </a>
+                                    <?php endif; ?>
                                     </div>
                                 </div>
                             </td>
@@ -371,10 +376,23 @@ ob_end_flush(); // Flush output buffer
 <?php
 include('footer.php');
 ?>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script language="JavaScript" type="text/javascript">
-function confirmDelete(){
-    return confirm('Are you sure want to delete this Patient?');
-}
+    function confirmDelete(id) {
+        return Swal.fire({
+            title: 'Delete Patient Record?',
+            text: 'Are you sure you want to delete this Patient record? This action cannot be undone!',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#12369e',
+            confirmButtonText: 'OK'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                window.location.href = 'hemodialysis.php?ids=' + id;
+            }
+        });
+    }
 </script>
 
 <script>

@@ -138,7 +138,6 @@ if (isset($_POST['save-order'])) {
     }
 }
 ?>
-
 <div class="page-wrapper">
     <div class="content">
         <div class="row">
@@ -146,7 +145,7 @@ if (isset($_POST['save-order'])) {
                 <h4 class="page-title">Add Order</h4>
             </div>
             <div class="col-sm-6 text-right m-b-20">
-                <a href="lab-order-patients.php" class="btn btn-primary btn-rounded float-right">Back</a>
+                <a href="lab-order-patients.php" class="btn btn-primary float-right">Back</a>
             </div>
         </div>
         <div class="row justify-content-center">
@@ -187,32 +186,37 @@ if (isset($_POST['save-order'])) {
                         </div>
                         <div class="col-md-6">
                             <div class="form-group">
-                                <label>STAT</label><br>
-                                <label class="switch">
-                                    <input type="checkbox" name="stat" value="1">
-                                    <span class="slider round"></span>
-                                </label>
+                                <label>Priority</label>
+                                <div class="d-flex align-items-center">
+                                    <label class="switch mr-2">
+                                        <input type="checkbox" name="stat" id="statToggle">
+                                        <span class="slider round"></span>
+                                    </label>
+                                    <span id="statStatusText" class="text-muted">Regular</span>
+                                </div>
                             </div>
                         </div>
                     </div>
+                    
                     <div class="table-responsive">
-                    <div class="sticky-search">
-                    <h5 class="font-weight-bold mb-2">Search for Laboratory Test:</h5>
-                        <div class="input-group mb-3">
-                            <div class="position-relative w-100">
-                                <!-- Search Icon -->
-                                <i class="fa fa-search position-absolute text-secondary" style="top: 50%; left: 12px; transform: translateY(-50%);"></i>
-                                <!-- Input Field -->
-                                <input class="form-control" type="text" id="labTestSearchInput" onkeyup="filterTests()" placeholder="Search" style="padding-left: 35px; padding-right: 35px;">
-                                <!-- Clear Button -->
-                                <button class="position-absolute border-0 bg-transparent text-secondary" type="button" onclick="clearSearch()" style="top: 50%; right: 10px; transform: translateY(-50%);">
-                                    <i class="fa fa-times"></i>
-                                </button>
+                        <div class="sticky-search">
+                            <h5 class="font-weight-bold mb-2">Search for Laboratory Test:</h5>
+                            <div class="input-group mb-3">
+                                <div class="position-relative w-100">
+                                    <!-- Search Icon -->
+                                    <i class="fa fa-search position-absolute text-secondary" style="top: 50%; left: 12px; transform: translateY(-50%);"></i>
+                                    <!-- Input Field -->
+                                    <input class="form-control" type="text" id="labTestSearchInput" onkeyup="filterTests()" placeholder="Search" style="padding-left: 35px; padding-right: 35px;">
+                                    <!-- Clear Button -->
+                                    <button class="position-absolute border-0 bg-transparent text-secondary" type="button" onclick="clearSearch()" style="top: 50%; right: 10px; transform: translateY(-50%);">
+                                        <i class="fa fa-times"></i>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-                <div class="table-responsive">
+                    
+                    <div class="table-responsive">
                         <table class="datatable table table-hover" id="labTestTable">
                             <thead style="background-color: #CCCCCC;">
                                 <tr>
@@ -225,7 +229,7 @@ if (isset($_POST['save-order'])) {
                             </thead>
                             <tbody>
                                 <?php
-                                    $fetch_tests_query = mysqli_query($connection, "
+                                $fetch_tests_query = mysqli_query($connection, "
                                     SELECT lab_department, lab_test, code, lab_test_price 
                                     FROM tbl_labtest 
                                     WHERE status = 'Available'
@@ -242,10 +246,10 @@ if (isset($_POST['save-order'])) {
                                         <td><input type="checkbox" name="lab_test[]" value="<?php echo $test_row['lab_test']; ?>"></td>
                                     </tr>
                                 <?php } ?>
-                        
                             </tbody>
                         </table>
                     </div>
+                    
                     <div class="m-t-20 text-center">
                         <button class="btn btn-primary submit-btn" name="save-order">Save</button>
                     </div>
@@ -270,6 +274,19 @@ include('footer.php');
         }
         return true;
     }
+    // STAT Toggle Functionality
+    document.getElementById('statToggle').addEventListener('change', function() {
+        const statusText = document.getElementById('statStatusText');
+        if(this.checked) {
+            statusText.textContent = 'STAT';
+            statusText.classList.remove('text-muted');
+            statusText.classList.add('text-danger', 'font-weight-bold');
+        } else {
+            statusText.textContent = 'Regular';
+            statusText.classList.remove('text-danger', 'font-weight-bold');
+            statusText.classList.add('text-muted');
+        }
+    });
 </script>
 
 <script>
@@ -347,6 +364,75 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 
 <style>
+    /* STAT Switch Styling */
+    .switch {
+        position: relative;
+        display: inline-block;
+        width: 60px;  /* Increased from 50px */
+        height: 34px; /* Increased from 30px */
+        margin-top: 3px; /* Better vertical alignment */
+    }
+
+    .switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+    .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #e9ecef; /* Lighter inactive state */
+        border: 1px solid #ced4da; /* Matching form control borders */
+        transition: .4s;
+    }
+
+    .slider:before {
+        position: absolute;
+        content: "";
+        height: 26px;  /* Larger knob */
+        width: 26px;   /* Larger knob */
+        left: 4px;
+        bottom: 4px;
+        background-color: white;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.2); /* Subtle depth */
+        transition: .4s;
+    }
+
+    input:checked + .slider {
+        background-color: #dc3545; /* Emergency red */
+        border-color: #dc3545;    /* Matching border */
+    }
+
+    input:checked + .slider:before {
+        transform: translateX(26px); /* Adjusted for new size */
+    }
+
+    /* Rounded sliders */
+    .slider.round {
+        border-radius: 34px;
+    }
+
+    .slider.round:before {
+        border-radius: 50%;
+    }
+
+    /* Status text styling */
+    #statStatusText {
+        margin-left: 8px;
+        font-size: 0.9rem;
+        font-weight: 500;
+        vertical-align: middle;
+    }
+    .btn-primary.submit-btn {
+        border-radius: 4px; 
+        padding: 10px 20px;
+        font-size: 16px;
+    }
     .btn-outline-primary {
         background-color:rgb(252, 252, 252);
         color: gray;
@@ -400,83 +486,4 @@ document.addEventListener('DOMContentLoaded', function () {
         border-color: #12369e; /* Border color on focus */
         box-shadow: 0 0 0 .2rem rgba(38, 143, 255, .25); /* Shadow on focus */
     }
-</style>
-
-<style>
-    .switch {
-        position: relative;
-        display: inline-block;
-        width: 60px;
-        height: 34px;
-    }
-
-    .switch input {
-        opacity: 0;
-        width: 0;
-        height: 0;
-    }
-
-    .slider {
-        position: absolute;
-        cursor: pointer;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background-color: #ccc;
-        transition: .4s;
-        border-radius: 34px;
-    }
-
-    .slider:before {
-        position: absolute;
-        content: "";
-        height: 26px;
-        width: 26px;
-        left: 4px;
-        bottom: 4px;
-        background-color: white;
-        transition: .4s;
-        border-radius: 50%;
-    }
-
-    input:checked + .slider {
-        background-color: #12369e;
-    }
-
-    input:checked + .slider:before {
-        transform: translateX(26px);
-    }
-
-    #patient-search {
-    position: relative; /* Makes sure the patient list is positioned below */
-    }
-
-    /* Styling the patient list */
-    .patient-list {
-        max-height: 200px; /* Maximum height to prevent list overflow */
-        overflow-y: auto; /* Scrollable if the list is long */
-        border: 1px solid #ddd; /* Border color */
-        border-radius: 5px; /* Rounded corners */
-        background: #fff; /* Background color */
-        position: absolute; /* Absolute positioning below the input */
-        z-index: 1000; /* Ensures the list is on top of other elements */
-        width: 93%; /* Adjust the width to match the input field */
-        display: none; /* Initially hidden */
-        box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1); /* Add subtle shadow */
-    }
-
-    /* Styling individual list items */
-    .patient-list .patient-option {
-        padding: 8px 12px;
-        cursor: pointer;
-        list-style: none;
-        border-bottom: 1px solid #ddd;
-    }
-
-    /* Hover effect on list items */
-    .patient-list .patient-option:hover {
-        background-color: #12369e;
-        color: white;
-    }   
 </style>
