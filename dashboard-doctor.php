@@ -63,11 +63,18 @@ include('includes/connection.php');
                     </div>
                 </div>
             </div>
-                       <!-- New Patients Chart -->
-                       <div class="col-12 col-md-6 col-lg-6 col-xl-6">
+                      <!-- New Patients Chart -->
+            <div class="col-12 col-md-6 col-lg-6 col-xl-6">
                 <div class="card">
                     <div class="card-header">
                         <h4 class="card-title d-inline-block">Patients Overview</h4>
+                        <div class="float-right">
+                            <select id="patientTimeRange" class="form-control">
+                                <option value="weekly">Weekly</option>
+                                <option value="monthly" selected>Monthly</option>
+                                <option value="yearly">Yearly</option>
+                            </select>
+                        </div>
                     </div>
                     <div class="card-body">
                         <canvas id="patientChart"></canvas>
@@ -80,15 +87,19 @@ include('includes/connection.php');
                 <div class="card">
                     <div class="card-header">
                         <h4 class="card-title d-inline-block">Total Patients Overview</h4>
+                        <div class="float-right">
+                            <select id="totalPatientTimeRange" class="form-control">
+                                <option value="weekly">Weekly</option>
+                                <option value="monthly" selected>Monthly</option>
+                                <option value="yearly">Yearly</option>
+                            </select>
+                        </div>
                     </div>
                     <div class="card-body">
                         <canvas id="totalPatientChart"></canvas>
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
-</div>
 
 <?php
 // Create an array of months from current month to December
@@ -103,12 +114,97 @@ for ($i = $current_month; $i <= 12; $i++) {
  include('footer.php');
 ?>
 
-<!-- Include Chart.js library -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Include Chart.js library -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
-    // Improved Patient Overview Chart (Bar Chart)
-    var ctx = document.getElementById('patientChart').getContext('2d');
+// Global variables to store chart instances
+var patientChart;
+var totalPatientChart;
+
+// Function to generate weekly labels
+function getWeeklyLabels() {
+    const weeks = [];
+    const now = new Date();
+    const currentWeek = Math.ceil(now.getDate() / 7);
+    
+    for (let i = 1; i <= currentWeek; i++) {
+        weeks.push(`Week ${i}`);
+    }
+    return weeks;
+}
+
+// Function to generate monthly labels
+function getMonthlyLabels() {
+    const months = [];
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1; // JavaScript months are 0-based
+    
+    for (let i = 1; i <= currentMonth; i++) {
+        const monthName = new Date(now.getFullYear(), i - 1, 1).toLocaleString('default', { month: 'long' });
+        months.push(monthName);
+    }
+    return months;
+}
+
+// Function to generate yearly labels
+function getYearlyLabels() {
+    const years = [];
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    
+    // Show last 5 years including current year
+    for (let i = currentYear - 4; i <= currentYear; i++) {
+        years.push(i.toString());
+    }
+    return years;
+}
+
+// Function to fetch patient data via AJAX
+function fetchPatientData(timeRange, patientType) {
+    return new Promise((resolve, reject) => {
+        $.ajax({
+            url: 'fetch_patient_data.php',
+            type: 'GET',
+            data: {
+                timeRange: timeRange,
+                patientType: patientType
+            },
+            success: function(response) {
+                let data;
+                try {
+                    data = typeof response === 'string' ? JSON.parse(response) : response;
+                } catch (e) {
+                    console.error('Error parsing response:', e);
+                    data = [];
+                }
+                resolve(data);
+            },
+            error: function(error) {
+                reject(error);
+            }
+        });
+    });
+}
+
+// Function to initialize or update the patient chart
+function initializeOrUpdatePatientChart(timeRange = 'monthly') {
+    const ctx = document.getElementById('patientChart').getContext('2d');
+    
+    // Destroy previous chart if it exists
+    if (patientChart) {
+        patientChart.destroy();
+    }
+    
+    // Set labels based on time range
+    let labels;
+    if (timeRange === 'weekly') {
+        labels = getWeeklyLabels();
+    } else if (timeRange === 'monthly') {
+        labels = getMonthlyLabels();
+    } else { // yearly
+        labels = getYearlyLabels();
+    }
     
     // Gradient backgrounds for the bars
     let inpatientGradient = ctx.createLinearGradient(0, 0, 0, 400);
@@ -123,14 +219,11 @@ for ($i = $current_month; $i <= 12; $i++) {
     hemodialysisGradient.addColorStop(0, 'rgba(120, 182, 35, 0.8)');
     hemodialysisGradient.addColorStop(1, 'rgba(120, 182, 35, 0.2)');
 
-    var patientChart = new Chart(ctx, {
+    // Create new chart
+    patientChart = new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: [
-                <?php foreach ($months as $month): ?>
-                    '<?php echo date('F', mktime(0, 0, 0, $month, 1)); ?>',
-                <?php endforeach; ?>
-            ],
+            labels: labels,
             datasets: [
                 {
                     label: 'Inpatient',
@@ -139,15 +232,8 @@ for ($i = $current_month; $i <= 12; $i++) {
                     borderWidth: 1,
                     borderRadius: 6,
                     borderSkipped: false,
-                    data: [
-                        <?php foreach ($months as $month): ?>
-                            <?php 
-                                $result = mysqli_query($connection, "SELECT * FROM tbl_patient WHERE patient_type='Inpatient' AND MONTH(created_at) = '$month' AND YEAR(created_at) = YEAR(NOW())");
-                                $count = mysqli_num_rows($result);
-                                echo $count . ",";
-                            ?>
-                        <?php endforeach; ?>
-                    ]
+                    data: [], // Will be filled via AJAX
+                    hidden: false
                 },
                 {
                     label: 'Outpatient',
@@ -156,15 +242,8 @@ for ($i = $current_month; $i <= 12; $i++) {
                     borderWidth: 1,
                     borderRadius: 6,
                     borderSkipped: false,
-                    data: [
-                        <?php foreach ($months as $month): ?>
-                            <?php 
-                                $result = mysqli_query($connection, "SELECT * FROM tbl_patient WHERE patient_type='Outpatient' AND MONTH(created_at) = '$month' AND YEAR(created_at) = YEAR(NOW())");
-                                $count = mysqli_num_rows($result);
-                                echo $count . ",";
-                            ?>
-                        <?php endforeach; ?>
-                    ]
+                    data: [], // Will be filled via AJAX
+                    hidden: false
                 },
                 {
                     label: 'Hemodialysis',
@@ -173,15 +252,8 @@ for ($i = $current_month; $i <= 12; $i++) {
                     borderWidth: 1,
                     borderRadius: 6,
                     borderSkipped: false,
-                    data: [
-                        <?php foreach ($months as $month): ?>
-                            <?php 
-                                $result = mysqli_query($connection, "SELECT * FROM tbl_patient WHERE patient_type='Hemodialysis' AND MONTH(created_at) = '$month' AND YEAR(created_at) = YEAR(NOW())");
-                                $count = mysqli_num_rows($result);
-                                echo $count . ",";
-                            ?>
-                        <?php endforeach; ?>
-                    ]
+                    data: [], // Will be filled via AJAX
+                    hidden: false
                 }
             ]
         },
@@ -238,7 +310,7 @@ for ($i = $current_month; $i <= 12; $i++) {
                     },
                     ticks: {
                         font: {
-                            family: "'Rubik', sans-serif"
+                            family: "'Poppins', sans-serif"
                         },
                         padding: 10
                     }
@@ -254,8 +326,173 @@ for ($i = $current_month; $i <= 12; $i++) {
             }
         }
     });
-</script>
 
+    // Fetch data for all patient types
+    Promise.all([
+        fetchPatientData(timeRange, 'Inpatient'),
+        fetchPatientData(timeRange, 'Outpatient'),
+        fetchPatientData(timeRange, 'Hemodialysis')
+    ]).then(results => {
+        // Update chart data
+        patientChart.data.datasets[0].data = results[0];
+        patientChart.data.datasets[1].data = results[1];
+        patientChart.data.datasets[2].data = results[2];
+        patientChart.update();
+    }).catch(error => {
+        console.error('Error fetching patient data:', error);
+    });
+}
+
+// Function to initialize or update the total patient chart
+function initializeOrUpdateTotalPatientChart(timeRange = 'monthly') {
+    const ctxTotalPatients = document.getElementById('totalPatientChart').getContext('2d');
+    
+    // Destroy previous chart if it exists
+    if (totalPatientChart) {
+        totalPatientChart.destroy();
+    }
+    
+    // Set labels based on time range
+    let labels;
+    if (timeRange === 'weekly') {
+        labels = getWeeklyLabels();
+    } else if (timeRange === 'monthly') {
+        labels = getMonthlyLabels();
+    } else { // yearly
+        labels = getYearlyLabels();
+    }
+    
+    // Gradient for the line chart
+    let lineGradient = ctxTotalPatients.createLinearGradient(0, 0, 0, 400);
+    lineGradient.addColorStop(0, 'rgba(120, 182, 35, 0.8)');
+    lineGradient.addColorStop(1, 'rgba(120, 182, 35, 0.1)');
+
+    // Create new chart
+    totalPatientChart = new Chart(ctxTotalPatients, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Total Patients',
+                data: [], // Will be filled via AJAX
+                backgroundColor: lineGradient,
+                borderColor: 'rgba(120, 182, 35, 1)',
+                borderWidth: 2,
+                tension: 0.3,
+                fill: true,
+                pointBackgroundColor: '#fff',
+                pointBorderColor: 'rgba(120, 182, 35, 1)',
+                pointBorderWidth: 2,
+                pointRadius: 5,
+                pointHoverRadius: 7
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0,0,0,0.8)',
+                    titleFont: {
+                        size: 14,
+                        family: "'Poppins', sans-serif"
+                    },
+                    bodyFont: {
+                        size: 12,
+                        family: "'Poppins', sans-serif"
+                    },
+                    padding: 12,
+                    cornerRadius: 6,
+                    displayColors: false
+                }
+            },
+            scales: {
+                x: {
+                    grid: {
+                        display: false,
+                        drawBorder: false
+                    },
+                    ticks: {
+                        font: {
+                            family: "'Poppins', sans-serif"
+                        }
+                    }
+                },
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        color: 'rgba(0,0,0,0.05)',
+                        drawBorder: false
+                    },
+                    ticks: {
+                        font: {
+                            family: "'Poppins', sans-serif"
+                        },
+                        padding: 10
+                    }
+                }
+            },
+            animation: {
+                duration: 1500,
+                easing: 'easeOutQuart'
+            },
+            elements: {
+                line: {
+                    tension: 0.3
+                }
+            }
+        }
+    });
+
+    // Fetch total patient data
+    fetchPatientData(timeRange, 'All').then(data => {
+        console.log('Received data:', data);
+        // Update chart data
+        totalPatientChart.data.datasets[0].data = data;
+        totalPatientChart.update();
+        }).catch(error => {
+            console.error('Error fetching total patient data:', error);
+        });
+}
+
+// Initialize charts on page load
+$(document).ready(function() {
+    initializeOrUpdatePatientChart();
+    initializeOrUpdateTotalPatientChart();
+    
+    // Add event listeners for time range selectors
+    $('#patientTimeRange').change(function() {
+        initializeOrUpdatePatientChart($(this).val());
+    });
+    
+    $('#totalPatientTimeRange').change(function() {
+        initializeOrUpdateTotalPatientChart($(this).val());
+    });
+});
+
+$('.dropdown-toggle').on('click', function (e) {
+    var $el = $(this).next('.dropdown-menu');
+    var isVisible = $el.is(':visible');
+    
+    // Hide all dropdowns
+    $('.dropdown-menu').slideUp('400');
+    
+    // If this wasn't already visible, slide it down
+    if (!isVisible) {
+        $el.stop(true, true).slideDown('400');
+    }
+    
+    // Close the dropdown if clicked outside of it
+    $(document).on('click', function (e) {
+        if (!$(e.target).closest('.dropdown').length) {
+            $('.dropdown-menu').slideUp('400');
+        }
+    });
+});
+</script>
 <style>
 .btn-primary {
     background: #12369e;
@@ -431,4 +668,31 @@ canvas {
 .dash-widget:nth-child(2) { animation-delay: 0.2s; }
 .dash-widget:nth-child(3) { animation-delay: 0.3s; }
 .dash-widget:nth-child(4) { animation-delay: 0.4s; }
+
+.form-control {
+    border-radius: .375rem; /* Rounded corners */
+    border-color: #ced4da; /* Border color */
+    background-color: #f8f9fa; /* Background color */
+}
+
+select.form-control {
+    border-radius: .375rem; /* Rounded corners */
+    border: 1px solid; /* Border color */
+    border-color: #ced4da; /* Border color */
+    background-color: #f8f9fa; /* Background color */
+    padding: .375rem 2.5rem .375rem .75rem; /* Adjust padding to make space for the larger arrow */
+    font-size: 1rem; /* Font size */
+    line-height: 1.5; /* Line height */
+    height: calc(2.25rem + 2px); /* Adjust height */
+    -webkit-appearance: none; /* Remove default styling on WebKit browsers */
+    -moz-appearance: none; /* Remove default styling on Mozilla browsers */
+    appearance: none; /* Remove default styling on other browsers */
+    background: url('data:image/svg+xml;charset=UTF-8,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20"%3E%3Cpath d="M7 10l5 5 5-5z" fill="%23aaa"/%3E%3C/svg%3E') no-repeat right 0.75rem center;
+    background-size: 20px; /* Size of the custom arrow */
+}
+
+select.form-control:focus {
+    border-color: #12369e; /* Border color on focus */
+    box-shadow: 0 0 0 .2rem rgba(38, 143, 255, .25); /* Shadow on focus */
+}
 </style>

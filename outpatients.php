@@ -1,14 +1,13 @@
 <?php
 session_start();
-ob_start(); // Start output buffering
+ob_start();
 if (empty($_SESSION['name'])) {
     header('location:index.php');
-    exit; // Stop further execution
+    exit;
 }
 include('header.php');
 include('includes/connection.php');
 
-// Function to sanitize user inputs
 function sanitize($connection, $input) {
     return mysqli_real_escape_string($connection, trim($input));
 }
@@ -16,7 +15,6 @@ function sanitize($connection, $input) {
 $role = isset($_SESSION['role']) ? $_SESSION['role'] : null;
 $doctor_name = isset($_SESSION['name']) ? $_SESSION['name'] : null;
 
-// Update diagnosis in the database
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['diagnosis']) && isset($_POST['patientId'])) {
     $diagnosis = sanitize($connection, $_POST['diagnosis']);
     $patientId = sanitize($connection, $_POST['patientId']);
@@ -32,7 +30,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['diagnosis']) && isset(
     $update_query->close();
 }
 
-// Fetch patient details from tbl_patient based on patient_id
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['patientId'])) {
     $patientId = sanitize($connection, $_POST['patientId']);
     $patient_query = $connection->prepare("SELECT * FROM tbl_patient WHERE id = ?");
@@ -91,7 +88,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['patientId'])) {
     $patient_query->close();
 }
 
-// Process the form submission to assign doctor in charge
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['outpatientIdDoctor']) && isset($_POST['doctorId'])) {
     $outpatientId = sanitize($connection, $_POST['outpatientIdDoctor']);
     $doctorId = sanitize($connection, $_POST['doctorId']);
@@ -144,7 +140,7 @@ ob_end_flush();
                         <div class="input-group w-50">
                             <div class="input-group-prepend">
                                 <span class="input-group-text">
-                                    <i class="fas fa-search"></i> <!-- Search icon -->
+                                    <i class="fas fa-search"></i>
                                 </span>
                             </div>
                             <input
@@ -169,11 +165,8 @@ ob_end_flush();
                 <h5 class="font-weight-bold mb-2">Search Patient:</h5>
                     <div class="input-group mb-3">
                         <div class="position-relative w-100">
-                            <!-- Search Icon -->
                             <i class="fa fa-search position-absolute text-secondary" style="top: 50%; left: 12px; transform: translateY(-50%);"></i>
-                            <!-- Input Field -->
                             <input class="form-control" type="text" id="outpatientSearchInput" onkeyup="filterOutpatients()" placeholder="Search" style="padding-left: 35px; padding-right: 35px;">
-                            <!-- Clear Button -->
                             <button class="position-absolute border-0 bg-transparent text-secondary" type="button" onclick="clearSearch()" style="top: 50%; right: 10px; transform: translateY(-50%);">
                                 <i class="fa fa-times"></i>
                             </button>
@@ -193,6 +186,7 @@ ob_end_flush();
                         <th>Gender</th>
                         <th>Doctor In-Charge</th>
                         <th>Lab Result</th>
+                        <th>Radiographic Images</th>
                         <th>Diagnosis</th>
                         <th>Date and Time</th>
                         <th>Action</th>
@@ -234,15 +228,31 @@ ob_end_flush();
                                 <?php } ?>
                             </td>
                             <td>
-                                <?php if ($role == 2) { ?>
+                                <?php if ($_SESSION['role'] == 2 || $_SESSION['role'] == 1) { ?>
                                 <form action="generate-result.php" method="get">
                                     <input type="hidden" name="patient_id" value="<?php echo $row['patient_id']; ?>">
-                                    <button class="btn btn-primary btn-sm custom-btn" type="submit">
+                                    <button class="btn btn-primary custom-btn" type="submit">
                                         <i class="fa fa-file-pdf-o m-r-5"></i> View Result
                                     </button>
                                 </form>
                                 <?php } ?>
                             </td>
+                            <?php if ($_SESSION['role'] == 2 || $_SESSION['role'] == 1) { ?>
+                            <td id="img-btn-<?php echo $row['patient_id']; ?>">
+                                <?php 
+                                $rad_query = $connection->prepare("SELECT COUNT(*) as count FROM tbl_radiology WHERE patient_id = ? AND radiographic_image IS NOT NULL AND radiographic_image != '' AND deleted = 0");
+                                $rad_query->bind_param("s", $row['patient_id']);
+                                $rad_query->execute();
+                                $rad_result = $rad_query->get_result();
+                                $rad_count = $rad_result->fetch_assoc()['count'];
+                                if ($rad_count > 0) {
+                                ?>
+                                <button class="btn btn-primary custom-btn" onclick="showRadiologyImages('<?php echo $row['patient_id']; ?>')">
+                                    <i class="fa fa-image m-r-5"></i> View Images
+                                </button>
+                                <?php } ?>
+                            </td>
+                            <?php } ?>
                             <td><?php echo $row['diagnosis']; ?></td>
                             <td><?php echo $date_time; ?></td>
                             <td class="text-right">
@@ -275,14 +285,12 @@ ob_end_flush();
 <!-- Diagnosis Modal -->
 <div id="diagnosisModal" class="modal fade" role="dialog">
     <div class="modal-dialog">
-        <!-- Modal content-->
         <div class="modal-content">
             <div class="modal-header">
                 <h4 class="modal-title">Diagnosis</h4>
                 <button type="button" class="close" data-dismiss="modal">&times;</button>
             </div>
             <div class="modal-body">
-                <!-- Form for diagnosis -->
                 <form id="diagnosisForm" method="post" action="outpatients.php">
                     <div class="form-group">
                         <label for="diagnosis">Enter Diagnosis:</label>
@@ -300,21 +308,18 @@ ob_end_flush();
 <!-- Doctor Modal -->
 <div id="doctorModal" class="modal fade" role="dialog">
     <div class="modal-dialog">
-        <!-- Modal content-->
         <div class="modal-content">
             <div class="modal-header">
                 <h4 class="modal-title">Select Doctor</h4>
                 <button type="button" class="close" data-dismiss="modal">&times;</button>
             </div>
             <div class="modal-body">
-                <!-- List of doctors -->
                 <form id="doctorForm" method="post" action="outpatients.php">
                     <input type="hidden" id="outpatientIdDoctor" name="outpatientIdDoctor">
                     <div class="form-group">
                         <label for="doctor">Select Doctor:</label>
                         <select class="form-control" id="doctor" name="doctor">
                             <?php
-                            // Fetch doctors from tbl_employee where role = 2 (doctor)
                             $doctor_query = mysqli_query($connection, "SELECT id, first_name, last_name FROM tbl_employee WHERE role = 2");
                             while ($doctor = mysqli_fetch_array($doctor_query)) {
                                 $doctor_name = $doctor['first_name'] . ' ' . $doctor['last_name'];
@@ -331,16 +336,60 @@ ob_end_flush();
     </div>
 </div>
 
-<!-- Modal for displaying lab test results -->
-<div class="modal fade" id="resultModal" tabindex="-1" aria-labelledby="resultModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
+<!-- Radiology Images Grid Modal -->
+<div class="modal fade" id="radiologyModal" tabindex="-1" role="dialog" aria-labelledby="radiologyModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="resultModalLabel">Lab Test Result</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <h5 class="modal-title" id="radiologyModalLabel">Radiographic Images</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
             </div>
             <div class="modal-body">
-                <!-- The fetched content will be inserted here -->
+                <div id="radiologyImagesContainer" class="row">
+                    <!-- Images will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Image Viewer Modal -->
+<div class="modal fade" id="imageViewerModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="imageViewerTitle">Radiographic Image</h5>
+            </div>
+            <div class="modal-body p-0">
+                <div class="image-container" style="height: 80vh;">
+                    <img id="viewedImage" src="" class="img-fluid" style="max-width: 100%; max-height: 100%; transform-origin: center center;">
+                </div>
+            </div>
+            <div class="modal-footer d-flex justify-content-between align-items-center">
+                <div class="zoom-controls btn-group btn-group-sm">
+                    <button class="btn btn-outline-secondary zoom-out-btn" title="Zoom Out">
+                        <i class="fas fa-search-minus"></i>
+                    </button>
+                    <button class="btn btn-outline-secondary zoom-reset-btn" title="Reset Zoom">
+                        <i class="fas fa-expand"></i>
+                    </button>
+                    <button class="btn btn-outline-secondary zoom-in-btn" title="Zoom In">
+                        <i class="fas fa-search-plus"></i>
+                    </button>
+                </div>
+                <div class="rotation-controls btn-group btn-group-sm">
+                    <button class="btn btn-outline-secondary rotate-left-btn" title="Rotate Left">
+                        <i class="fas fa-undo"></i>
+                    </button>
+                    <button class="btn btn-outline-secondary rotate-right-btn" title="Rotate Right">
+                        <i class="fas fa-redo"></i>
+                    </button>
+                </div>
+                <div class="ml-auto">
+                    <button type="button" class="btn btn-primary" data-dismiss="modal">Close</button>
+                </div>
             </div>
         </div>
     </div>
@@ -353,9 +402,164 @@ ob_end_flush();
 <?php
 include('footer.php');
 ?>
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script language="JavaScript" type="text/javascript">
+<script>
+// Image viewer variables
+var currentZoom = 1;
+var currentRotation = 0;
+var isDragging = false;
+var startX, startY, translateX = 0, translateY = 0;
+
+function updateImageTransform() {
+    const transform = `translate(${translateX}px, ${translateY}px) rotate(${currentRotation}deg) scale(${currentZoom})`;
+    $('#viewedImage').css('transform', transform);
+}
+
+function openImageViewer(imageId, examType, imageSrc) {
+    $('#imageViewerTitle').text(examType);
+    $('#viewedImage').attr('src', imageSrc);
+    
+    // Reset viewer state
+    currentZoom = 1;
+    currentRotation = 0;
+    translateX = 0;
+    translateY = 0;
+    updateImageTransform();
+    
+    $('#imageViewerModal').modal('show');
+}
+
+function showRadiologyImages(patientId) {
+    // Show loading state
+    $('#radiologyImagesContainer').html(`
+        <div class="col-12 text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="sr-only">Loading...</span>
+            </div>
+            <p class="mt-2">Loading images...</p>
+        </div>
+    `);
+    
+    // Show the modal
+    $('#radiologyModal').modal('show');
+    
+    // Fetch radiology images
+    $.ajax({
+        url: 'fetch-radiology-images.php',
+        type: 'GET',
+        data: { patient_id: patientId },
+        dataType: 'json',
+        success: function(data) {
+            if (data.images && data.images.length > 0) {
+                let content = '';
+                data.images.forEach(image => {
+                    content += `
+                        <div class="col-md-4 mb-3">
+                            <div class="card h-100">
+                                <img src="fetch-image.php?id=${image.id}" 
+                                     class="card-img-top" 
+                                     style="height: 200px; object-fit: cover; cursor: pointer"
+                                     onclick="openImageViewer('${image.id}', '${image.exam_type.replace(/'/g, "\\'")}', 'fetch-image.php?id=${image.id}')"
+                                     alt="Radiology Image">
+                                <div class="card-body">
+                                    <h6 class="card-title mb-1">${image.exam_type}</h6>
+                                    <p class="card-text small text-muted">${image.test_type}</p>
+                                </div>
+                            </div>
+                        </div>`;
+                });
+                $('#radiologyImagesContainer').html(content);
+            } else {
+                $('#radiologyImagesContainer').html(`
+                    <div class="col-12 text-center py-5">
+                        <div class="text-muted">
+                            <i class="fas fa-image fa-3x mb-3"></i>
+                            <p>No radiographic images found for this patient.</p>
+                        </div>
+                    </div>
+                `);
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('Error fetching images:', error);
+            $('#radiologyImagesContainer').html(`
+                <div class="col-12 text-center py-5">
+                    <div class="text-danger">
+                        <i class="fas fa-exclamation-circle fa-3x mb-3"></i>
+                        <p>Failed to load radiographic images. Please try again.</p>
+                    </div>
+                </div>
+            `);
+        }
+    });
+}
+
+$(document).ready(function() {
+    // Initialize zoom controls
+    $('.zoom-in-btn').on('click', function() {
+        currentZoom *= 1.2;
+        updateImageTransform();
+    });
+    
+    $('.zoom-out-btn').on('click', function() {
+        currentZoom /= 1.2;
+        if (currentZoom < 0.5) currentZoom = 0.5;
+        updateImageTransform();
+    });
+    
+    $('.zoom-reset-btn').on('click', function() {
+        currentZoom = 1;
+        currentRotation = 0;
+        translateX = 0;
+        translateY = 0;
+        updateImageTransform();
+    });
+    
+    // Rotation controls
+    $('.rotate-left-btn').on('click', function() {
+        currentRotation -= 90;
+        updateImageTransform();
+    });
+    
+    $('.rotate-right-btn').on('click', function() {
+        currentRotation += 90;
+        updateImageTransform();
+    });
+    
+    // Drag functionality
+    const imageContainer = $('.image-container');
+    
+    imageContainer.on('mousedown touchstart', function(e) {
+        isDragging = true;
+        startX = (e.type === 'mousedown') ? e.pageX : e.originalEvent.touches[0].pageX;
+        startY = (e.type === 'mousedown') ? e.pageY : e.originalEvent.touches[0].pageY;
+        e.preventDefault();
+    });
+    
+    $(document).on('mousemove touchmove', function(e) {
+        if (!isDragging) return;
+        
+        const currentX = (e.type === 'mousemove') ? e.pageX : e.originalEvent.touches[0].pageX;
+        const currentY = (e.type === 'mousemove') ? e.pageY : e.originalEvent.touches[0].pageY;
+        
+        translateX += (currentX - startX);
+        translateY += (currentY - startY);
+        
+        startX = currentX;
+        startY = currentY;
+        
+        updateImageTransform();
+        e.preventDefault();
+    });
+    
+    $(document).on('mouseup touchend', function() {
+        isDragging = false;
+    });
+    
+    // Other existing functions
     function confirmDelete(id) {
         return Swal.fire({
             title: 'Delete Patient Record?',
@@ -371,13 +575,12 @@ include('footer.php');
             }
         });
     }
-</script>
 
-<script>
     function clearSearch() {
         document.getElementById("outpatientSearchInput").value = '';
         filterOutpatients();
     }
+    
     function filterOutpatients() {
         var input = document.getElementById("outpatientSearchInput").value;
         
@@ -396,7 +599,6 @@ include('footer.php');
         var tbody = $('#outpatientTable tbody');
         tbody.empty();
         
-        // Escape HTML function to prevent XSS
         const escapeHtml = (unsafe) => {
             return unsafe?.toString()?.replace(/[&<>"']/g, function(match) {
                 return {
@@ -410,10 +612,25 @@ include('footer.php');
         };
 
         data.forEach(function(row) {
-            // Doctor In-Charge display - show for all roles
+            // Calculate age from DOB
+            const dob = new Date(row.dob);
+            const age = isNaN(dob.getTime()) ? '' : Math.floor((new Date() - dob) / (365.25 * 24 * 60 * 60 * 1000));
+            
+            // Format date and time
+            const dateTime = new Date(row.date_time);
+            const formattedDateTime = isNaN(dateTime.getTime()) ? '' : 
+                dateTime.toLocaleDateString('en-US', { 
+                    month: 'long', 
+                    day: 'numeric', 
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            
+            // Doctor display logic
             const doctorDisplay = row.doctor_incharge ? 
                 escapeHtml(row.doctor_incharge) : 
-                (role == 3 ?  // Only show assign button for role 3 (staff/nurse)
+                (role == 3 ?  
                     `<button class="btn btn-primary btn-sm select-doctor-btn" 
                         data-toggle="modal" 
                         data-target="#doctorModal" 
@@ -423,8 +640,8 @@ include('footer.php');
                     ''
                 );
 
-            // View Result button - show for role 2 (doctor) and role 1 (admin)
-            const viewResultButton = (role == 2) ? 
+            // View Result button (only for doctors and admins)
+            const viewResultButton = (role == 2 || role == 1) ? 
                 `<form action="generate-result.php" method="get">
                     <input type="hidden" name="patient_id" value="${escapeHtml(row.patient_id)}">
                     <button class="btn btn-primary btn-sm custom-btn" type="submit">
@@ -433,10 +650,17 @@ include('footer.php');
                 </form>` : 
                 '';
 
-            // Action buttons based on role
+            // Radiology Images button (only for doctors and admins)
+            const radiologyImagesButton = (role == 2 || role == 1) ? 
+                `<button class="btn btn-primary btn-sm" onclick="showRadiologyImages('${escapeHtml(row.patient_id)}')">
+                    <i class="fa fa-image m-r-5"></i> View Images
+                </button>` : 
+                '';
+
+            // Action buttons
             let actionButtons = '';
             
-            // Diagnosis button for doctors (role 2) assigned to this patient
+            // Diagnosis button (only for assigned doctors)
             if (role == 2 && doctor_name === row.doctor_incharge) {
                 actionButtons += `
                     <button class="dropdown-item diagnosis-btn" 
@@ -448,7 +672,7 @@ include('footer.php');
                     </button>`;
             }
             
-            // Edit and Delete buttons for admin (role 1)
+            // Edit and Delete buttons (for admins)
             if (role == 1) {
                 actionButtons += `
                     <a class="dropdown-item" href="edit-outpatient.php?id=${escapeHtml(row.id)}">
@@ -458,8 +682,8 @@ include('footer.php');
                         <i class="fa fa-trash-o m-r-5"></i> Delete
                     </a>`;
             }
-            
-            // Treatment button for doctors (role 2)
+
+            // Treatment button (for assigned doctors)
             if (role == 2 && doctor_name === row.doctor_incharge) {
                 actionButtons += `
                     <button class="dropdown-item treatment-btn" 
@@ -470,18 +694,19 @@ include('footer.php');
                     </button>`;
             }
 
-            // Build the table row with proper HTML escaping
+            // Build the table row
             tbody.append(`<tr>
                 <td>${escapeHtml(row.patient_id)}</td>
                 <td>${escapeHtml(row.outpatient_id)}</td>
                 <td>${escapeHtml(row.patient_name)}</td>
-                <td>${escapeHtml(row.age)}</td>
+                <td>${age}</td>
                 <td>${escapeHtml(row.dob)}</td>
                 <td>${escapeHtml(row.gender)}</td>
                 <td>${doctorDisplay}</td>
                 <td>${viewResultButton}</td>
+                <td>${radiologyImagesButton}</td>
                 <td>${escapeHtml(row.diagnosis)}</td>
-                <td>${escapeHtml(row.date_time)}</td>
+                <td>${formattedDateTime}</td>
                 <td class="text-right">
                     <div class="dropdown dropdown-action">
                         <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
@@ -496,10 +721,6 @@ include('footer.php');
         });
     }
 
-    // These should be set from PHP session variables
-    var role = <?php echo json_encode($_SESSION['role']); ?>;
-    var doctor_name = <?php echo json_encode($_SESSION['name']); ?>;
-
     function searchPatients() {
         var input = document.getElementById("patientSearchInput").value;
         if (input.length < 2) {
@@ -508,7 +729,7 @@ include('footer.php');
             return;
         }
         $.ajax({
-            url: "search-outpatient.php", // Backend script to fetch patients
+            url: "search-outpatient.php",
             method: "GET",
             data: { query: input },
             success: function (data) {
@@ -519,128 +740,85 @@ include('footer.php');
         });
     }
 
-    // Select Patient from Search Results
     $(document).on("click", ".search-result", function () {
         var patientId = $(this).data("id");
         var patientName = $(this).text();
 
-        $("#patientId").val(patientId); // Set the hidden input value
-        $("#patientSearchInput").val(patientName); // Set input to selected patient name
-        $("#addPatientBtn").prop("disabled", false); // Enable the Add button
-        $("#searchResults").html("").hide(); // Clear and hide the dropdown
+        $("#patientId").val(patientId);
+        $("#patientSearchInput").val(patientName);
+        $("#addPatientBtn").prop("disabled", false);
+        $("#searchResults").html("").hide();
     });
         
     $('.dropdown-toggle').on('click', function (e) {
-    var $el = $(this).next('.dropdown-menu');
-    var isVisible = $el.is(':visible');
-    
-    // Hide all dropdowns
-    $('.dropdown-menu').slideUp('400');
-    
-    // If this wasn't already visible, slide it down
-    if (!isVisible) {
-        $el.stop(true, true).slideDown('400');
-    }
-    
-    // Close the dropdown if clicked outside of it
-    $(document).on('click', function (e) {
-        if (!$(e.target).closest('.dropdown').length) {
-            $('.dropdown-menu').slideUp('400');
+        var $el = $(this).next('.dropdown-menu');
+        var isVisible = $el.is(':visible');
+        
+        $('.dropdown-menu').slideUp('400');
+        
+        if (!isVisible) {
+            $el.stop(true, true).slideDown('400');
         }
+        
+        $(document).on('click', function (e) {
+            if (!$(e.target).closest('.dropdown').length) {
+                $('.dropdown-menu').slideUp('400');
+            }
+        });
     });
-});
-</script>
 
-<script>
-// This function will open the modal and set the outpatient_id dynamically
-$(document).on('click', '.select-doctor-btn', function() {
-    var outpatientId = $(this).data('id');
-    $('#outpatientIdDoctor').val(outpatientId);
-    $('#doctorModal').modal('show');
-});
-
-// When the form for assigning doctor is submitted
-$('#doctorForm').submit(function(e) {
-    e.preventDefault(); // Prevent default form submission
-    var outpatientId = $('#outpatientIdDoctor').val();
-    var doctorId = $('#doctor').val();
-
-    // Send the selected doctor to be updated in the database
-    $.ajax({
-        url: 'outpatients.php', // Ensure the PHP file is the correct one to process the form
-        type: 'POST',
-        data: {
-            outpatientIdDoctor: outpatientId,
-            doctorId: doctorId
-        },
-        success: function(response) {
-            // Handle success, e.g., update the table row or show a success message
-            location.reload(); // Reload the page to show the updated doctor in charge
-        },
-        error: function(xhr, status, error) {
-            // Handle any errors
-            alert('Error assigning doctor');
-        }
+    $(document).on('click', '.select-doctor-btn', function() {
+        var outpatientId = $(this).data('id');
+        $('#outpatientIdDoctor').val(outpatientId);
+        $('#doctorModal').modal('show');
     });
-});
-</script>
 
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Get all "View Result" buttons
-    const viewResultButtons = document.querySelectorAll('.view-result');
+    $('#doctorForm').submit(function(e) {
+        e.preventDefault();
+        var outpatientId = $('#outpatientIdDoctor').val();
+        var doctorId = $('#doctor').val();
 
-    // Loop through each button and add the click event listener
-    viewResultButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            var patient_id = this.getAttribute('data-id'); // Get patient_id from the button
-
-            // Send the patient_id to fetch-result.php using AJAX
-            $.ajax({
-                url: 'fetch-result.php',
-                method: 'GET',
-                data: { patient_id: patient_id },
-                success: function(response) {
-                    // Display the fetched result in the modal
-                    document.querySelector('#resultModal .modal-body').innerHTML = response;
-                    
-                    // Show the modal using Bootstrap 5's modal method
-                    var myModal = new bootstrap.Modal(document.getElementById('resultModal'));
-                    myModal.show();
-                },
-                error: function() {
-                    alert('An error occurred while fetching the lab test result.');
-                }
-            });
+        $.ajax({
+            url: 'outpatients.php',
+            type: 'POST',
+            data: {
+                outpatientIdDoctor: outpatientId,
+                doctorId: doctorId
+            },
+            success: function(response) {
+                location.reload();
+            },
+            error: function(xhr, status, error) {
+                alert('Error assigning doctor');
+            }
         });
     });
 });
 </script>
 
 <style>
-.btn-outline-primary {
-background-color:rgb(252, 252, 252);
-color: gray;
-border: 1px solid rgb(228, 228, 228);
-}
-.btn-outline-primary:hover {
-    background-color: #12369e;
-    color: #fff;
-}
-.btn-outline-secondary {
-    color:rgb(90, 90, 90);
-    border: 1px solid rgb(228, 228, 228);
-}
-.btn-outline-secondary:hover {
-    background-color: #12369e;
-    color: #fff;
-}
-.input-group-text {
-    background-color:rgb(255, 255, 255);
-    border: 1px solid rgb(228, 228, 228);
-    color: gray;
-}   
+    .btn-outline-primary {
+        background-color:rgb(252, 252, 252);
+        color: gray;
+        border: 1px solid rgb(228, 228, 228);
+    }
+    .btn-outline-primary:hover {
+        background-color: #12369e;
+        color: #fff;
+    }
+    .btn-outline-secondary {
+        color:rgb(90, 90, 90);
+        border: 1px solid rgb(228, 228, 228);
+    }
+    .btn-outline-secondary:hover {
+        background-color: #12369e;
+        color: #fff;
+    }
+    .input-group-text {
+        background-color:rgb(255, 255, 255);
+        border: 1px solid rgb(228, 228, 228);
+        color: gray;
+    }   
     .btn-primary {
             background: #12369e;
             border: none;
@@ -674,36 +852,125 @@ border: 1px solid rgb(228, 228, 228);
         width: 100%;
     }
     .search-icon-bg {
-    background-color: #fff; 
-    border: none; 
-    color: #6c757d; 
+        background-color: #fff; 
+        border: none; 
+        color: #6c757d; 
+        }
+        .dropdown-menu {
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        border-radius: 3px;
+        transform-origin: top right;
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
     }
-    .dropdown-menu {
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    border-radius: 3px;
-    transform-origin: top right;
-    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
-}
 
-.dropdown-item {
-    padding: 7px 15px;
-    color: #333;
-}
+    .dropdown-item {
+        padding: 7px 15px;
+        color: #333;
+    }
 
-.dropdown-item:hover {
-    background-color: #f8f9fa;
-    color: #12369e;
-}
+    .dropdown-item:hover {
+        background-color: #f8f9fa;
+        color: #12369e;
+    }
 
-.dropdown-item i {
-    margin-right: 8px;
-    color: #777;
-}
+    .dropdown-item i {
+        margin-right: 8px;
+        color: #777;
+    }
 
-.dropdown-item:hover i {
-    color: #12369e;
-}
+    .dropdown-item:hover i {
+        color: #12369e;
+    }
 
+    .image-container {
+        background: #000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        position: relative;
+        height: 80vh;
+    }
+
+    #modalImage {
+        transform-origin: center center;
+        transition: transform 0.15s ease-out;
+        max-height: 100%;
+        max-width: 100%;
+        position: absolute;
+    }
+
+    .modal-content {
+        user-select: none;
+    }
+
+    .zoom-controls .btn, .btn-group-sm .btn {
+        width: 32px;
+        height: 32px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .radiology-images-modal .swal2-content {
+        padding: 20px;
+    }
+
+    .radiology-images-modal .card {
+        transition: transform 0.2s;
+    }
+
+    .radiology-images-modal .card:hover {
+        transform: scale(1.02);
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .modal-footer {
+            flex-wrap: wrap;
+        }
+        
+        .zoom-controls, .btn-group {
+            margin-bottom: 8px;
+        }
+    }
+    .form-control {
+        border-radius: .375rem; /* Rounded corners */
+        border-color: #ced4da; /* Border color */
+        background-color: #f8f9fa; /* Background color */
+    }
+    select.form-control {
+        border-radius: .375rem; /* Rounded corners */
+        border: 1px solid; /* Border color */
+        border-color: #ced4da; /* Border color */
+        background-color: #f8f9fa; /* Background color */
+        padding: .375rem 2.5rem .375rem .75rem; /* Adjust padding to make space for the larger arrow */
+        font-size: 1rem; /* Font size */
+        line-height: 1.5; /* Line height */
+        height: calc(2.25rem + 2px); /* Adjust height */
+        -webkit-appearance: none; /* Remove default styling on WebKit browsers */
+        -moz-appearance: none; /* Remove default styling on Mozilla browsers */
+        appearance: none; /* Remove default styling on other browsers */
+        background: url('data:image/svg+xml;charset=UTF-8,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20"%3E%3Cpath d="M7 10l5 5 5-5z" fill="%23aaa"/%3E%3C/svg%3E') no-repeat right 0.75rem center;
+        background-size: 20px; /* Size of the custom arrow */
+    }
+
+    select.form-control:focus {
+        border-color: #12369e; /* Border color on focus */
+        box-shadow: 0 0 0 .2rem rgba(38, 143, 255, .25); /* Shadow on focus */
+    }
+    #radiologyImagesContainer .card {
+        transition: transform 0.2s;
+        cursor: pointer;
+    }
+
+    #radiologyImagesContainer .card:hover {
+        transform: scale(1.02);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+
+    #radiologyImagesContainer .card-img-top {
+        object-fit: cover;
+        height: 200px;
+    }
 </style>
-
-

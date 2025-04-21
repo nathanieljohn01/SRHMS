@@ -22,6 +22,7 @@ if (isset($_GET['patient_id'])) {
     if (!$patient_exists) {
         die("Patient not found");
     }
+
     // Fetch the number of radiology test records for the patient using prepared statements
     $fetch_radiology_tests_stmt = mysqli_prepare($connection, "SELECT COUNT(*) AS num_records FROM tbl_radiology WHERE patient_id = ?");
     mysqli_stmt_bind_param($fetch_radiology_tests_stmt, 's', $patient_id);
@@ -79,21 +80,6 @@ if (isset($_GET['patient_id'])) {
                 willOpen: () => {
                     Swal.showLoading();
                 }
-            }).then(() => {
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Success!', 
-                    text: 'Radiology status updated successfully!',
-                    confirmButtonColor: '#12369e',
-                    showClass: {
-                        popup: 'animate__animated animate__fadeInDown'
-                    },
-                    hideClass: {
-                        popup: 'animate__animated animate__fadeOutUp'
-                    }
-                }).then((result) => {
-                    window.location = 'patient-radiology-records.php?patient_id=" . $_GET['patient_id'] . "';
-                });
             });
         </script>";
     
@@ -106,10 +92,34 @@ if (isset($_GET['patient_id'])) {
     
         $update_stmt = mysqli_prepare($connection, "UPDATE tbl_radiology SET status = ?, update_date = NOW() WHERE id = ?");
         mysqli_stmt_bind_param($update_stmt, 'si', $status, $radiology_id);
-        mysqli_stmt_execute($update_stmt);
-        mysqli_stmt_close($update_stmt);
-        exit();
-    }    
+        
+        if (mysqli_stmt_execute($update_stmt)) {
+            mysqli_stmt_close($update_stmt);
+            echo "
+            <script>
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Success!',
+                    text: 'Radiology status updated successfully!',
+                    confirmButtonColor: '#12369e',
+                }).then((result) => {
+                    window.location = 'patient-radtest-records.php?patient_id=" . $_GET['patient_id'] . "';
+                });
+            </script>";
+            exit();
+        } else {
+            echo "
+            <script>
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Failed to update radiology status',
+                    confirmButtonColor: '#12369e'
+                });
+            </script>";
+            exit();
+        }
+    }
 ?>
 <!-- HTML content starts here -->
 <div class="page-wrapper">
@@ -172,9 +182,9 @@ if (isset($_GET['patient_id'])) {
                             <td>
                                 <?php if ($radiology_test_row['status'] === 'Completed'): ?>
                                     <?php if (empty($radiology_test_row['radiographic_image'])): ?>
-                                        <button class="btn btn-primary" onclick="openImageUploadModal(<?php echo $radiology_test_row['id']; ?>)">Insert Image</button>
+                                        <button class="btn btn-primary" onclick="openImageUploadModal(<?php echo $radiology_test_row['id']; ?>)"><i class="fa fa-upload m-r-5"></i>Insert Image</button>
                                     <?php else: ?>
-                                        <button class="btn btn-primary" onclick="showImage(<?php echo $radiology_test_row['id']; ?>)">View Image</button>
+                                        <button class="btn btn-primary" onclick="showImage(<?php echo $radiology_test_row['id']; ?>)"><i class="fa fa-image m-r-5"></i>View Image</button>
                                     <?php endif; ?>
                                 <?php endif; ?>
                             </td>
@@ -217,7 +227,7 @@ if (isset($_GET['patient_id'])) {
                                                     </div>
                                                     <input type="hidden" name="update_status" value="1">
                                                     <input type="hidden" name="selected_action" value="Cancelled">
-                                                    <input type="hidden" name="laborder_id" value="<?php echo $radiology_test_row['id']; ?>">
+                                                    <input type="hidden" name="radiology_id" value="<?php echo $radiology_test_row['id']; ?>">
                                                 </div>
                                                 <div class="modal-footer">
                                                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
@@ -250,7 +260,6 @@ if (isset($_GET['patient_id'])) {
             </div>
             <div class="modal-body">
                 <form id="uploadImageForm" enctype="multipart/form-data">
-                    <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
                     <input type="hidden" name="radiologyId" id="modalRadiologyId">
                     
                     <div class="form-group">
@@ -264,7 +273,7 @@ if (isset($_GET['patient_id'])) {
                     
                     <div class="preview-container text-center mb-3" style="display:none;">
                         <img id="imagePreview" src="#" class="img-thumbnail" style="max-height: 200px; display: none;">
-                        <button type="button" id="clearPreview" class="btn btn-sm btn-outline-danger mt-2" style="display:none;">
+                        <button type="button" id="clearPreview" class="btn btn-sm btn-danger mt-2" style="display:none;">
                             <i class="fas fa-times"></i> Remove
                         </button>
                     </div>
@@ -287,63 +296,46 @@ if (isset($_GET['patient_id'])) {
 </div>
 
 <!-- Enhanced Image Viewer Modal -->
+<!-- Improved Image Viewer Modal -->
 <div id="imageModal" class="modal fade" tabindex="-1" role="dialog" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-centered">
-        <div class="modal-content border-0 bg-dark text-white">
-            <div class="modal-header border-0 py-2 ">
-                <h6 class="modal-title text-white mb-0">
-                    <i class="fas fa-image mr-2"></i>
-                    <span id="imageModalTitle">Radiology Image</span>
-                </h6>
-                <div class="d-flex">
-                    <button class="btn btn-sm btn-outline-light mr-2" id="rotateLeft" title="Rotate Left">
-                        <i class="fas fa-undo"></i>
-                    </button>
-                    <button class="btn btn-sm btn-outline-light mr-2" id="rotateRight" title="Rotate Right">
-                        <i class="fas fa-redo"></i>
-                    </button>
-                    <button class="btn btn-sm btn-outline-light" data-dismiss="modal">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="imageModalTitle">Radiographic Image</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
             </div>
-            <div class="modal-body p-0 overflow-hidden">
-                <div class="image-container" style="width: 100%; height: 80vh; overflow: hidden; position: relative;">
+            <div class="modal-body p-0">
+                <div class="image-container" style="height: 80vh; overflow: hidden; position: relative;">
                     <img id="modalImage" src="" class="img-fluid" 
-                        style="position: absolute; max-width: none; cursor: grab;"
-                        draggable="false">
+                         style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
+                                max-width: none; cursor: grab; transition: transform 0.1s ease-out;">
                 </div>
             </div>
-            <div class="modal-footer border-0 py-2">
-                <div class="zoom-controls btn-group btn-group-sm mr-3">
-                    <button class="btn btn-outline-light" onclick="adjustZoom(-0.2)">
+            <div class="modal-footer d-flex justify-content-between align-items-center">
+                <div class="zoom-controls btn-group btn-group-sm">
+                    <button class="btn btn-outline-secondary zoom-out-btn" title="Zoom Out" onclick="adjustZoom(-0.2)">
                         <i class="fas fa-search-minus"></i>
                     </button>
-                    <button class="btn btn-outline-light" onclick="resetZoom()">
-                        <span id="zoomLevel">100%</span>
+                    <button class="btn btn-outline-secondary zoom-reset-btn" title="Reset Zoom" onclick="resetZoom()">
+                        <i class="fas fa-expand"></i>
                     </button>
-                    <button class="btn btn-outline-light" onclick="adjustZoom(0.2)">
+                    <button class="btn btn-outline-secondary zoom-in-btn" title="Zoom In" onclick="adjustZoom(0.2)">
                         <i class="fas fa-search-plus"></i>
                     </button>
                 </div>
-                <div class="btn-group btn-group-sm">
-                    <button class="btn btn-outline-light" id="panLeft" title="Pan Left">
-                        <i class="fas fa-arrow-left"></i>
+                <div class="rotation-controls btn-group btn-group-sm">
+                    <button class="btn btn-outline-secondary rotate-left-btn" title="Rotate Left" onclick="rotateImage(-90)">
+                        <i class="fas fa-undo"></i>
                     </button>
-                    <button class="btn btn-outline-light" id="panRight" title="Pan Right">
-                        <i class="fas fa-arrow-right"></i>
-                    </button>
-                    <button class="btn btn-outline-light" id="panUp" title="Pan Up">
-                        <i class="fas fa-arrow-up"></i>
-                    </button>
-                    <button class="btn btn-outline-light" id="panDown" title="Pan Down">
-                        <i class="fas fa-arrow-down"></i>
+                    <button class="btn btn-outline-secondary rotate-right-btn" title="Rotate Right" onclick="rotateImage(90)">
+                        <i class="fas fa-redo"></i>
                     </button>
                 </div>
                 <div class="ml-auto">
-                    <a id="downloadLink" href="#" class="btn btn-primary btn-sm">
-                        <i class="fas fa-file-download mr-2"></i>
-                        Download
+                    <a id="downloadLink" href="#" class="btn btn-primary mr-2" download>
+                        <i class="fas fa-download mr-1"></i> Download
                     </a>
                 </div>
             </div>
@@ -498,126 +490,107 @@ include('footer.php');
         });
     });
 
-    let currentZoom = 1;
-    let currentRotation = 0;
-    let posX = 0;
-    let posY = 0;
-    let isDragging = false;
-    let startX, startY;
+let currentZoom = 1;
+let currentRotation = 0;
+let isDragging = false;
+let startPos = { x: 0, y: 0 };
+let translatePos = { x: 0, y: 0 };
 
-    function showImage(imageId) {
-        const modal = $('#imageModal');
-        const img = $('#modalImage');
-        const title = $('#imageModalTitle');
-        
-        // Reset state
-        currentZoom = 1;
-        currentRotation = 0;
-        posX = posY = 0;
-        $('#zoomLevel').text('100%');
-        
-        // Show loading state
-        img.hide();
-        modal.modal('show');
-        title.html(`<i class="fas fa-spinner fa-spin mr-2"></i>Loading Image ID: ${imageId}`);
-        
-        // Load image
-        img.attr('src', `fetch-image.php?id=${imageId}`).on('load', function() {
-            $(this).fadeIn();
-            title.text(`Image ID: ${imageId}`);
-            
-            // Center the image
-            resetImagePosition();
-            
-            // Show download link
-            $('#downloadLink').attr({
-                'href': `fetch-image.php?id=${imageId}`,
-                'download': `radiology_${imageId}.jpg`
-            });
-        }).on('error', function() {
-            title.html('<i class="fas fa-exclamation-triangle text-warning mr-2"></i>Failed to load image');
-        });
-    }
-
-    // Zoom functionality
-    function adjustZoom(change) {
-        currentZoom = Math.max(0.1, currentZoom + change);
-        $('#zoomLevel').text(Math.round(currentZoom * 100) + '%');
-        updateImageTransform();
-    }
-
-    function resetZoom() {
-        currentZoom = 1;
-        $('#zoomLevel').text('100%');
+function showImage(imageId) {
+    $('#imageModal').modal('show');
+    $('#imageModalTitle').html(`<i class="fas fa-spinner fa-spin"></i> Loading Image...`);
+    
+    // Reset viewer state
+    currentZoom = 1;
+    currentRotation = 0;
+    translatePos = { x: 0, y: 0 };
+    $('.zoom-reset-btn span').text('100%');
+    
+    // Load image
+    const img = $('#modalImage');
+    img.attr('src', `fetch-image.php?id=${imageId}`).on('load', function() {
+        // Display patient name instead of image ID
+        $('#imageModalTitle').text(`Radiographic Image - <?php echo htmlspecialchars($patient_name); ?>`);
         resetImagePosition();
-    }
-
-    // Rotation functionality
-    $('#rotateLeft').click(function() {
-        currentRotation -= 90;
-        updateImageTransform();
-    });
-
-    $('#rotateRight').click(function() {
-        currentRotation += 90;
-        updateImageTransform();
-    });
-
-    // Pan functionality
-    $('#panLeft').click(function() { panImage(50, 0); });
-    $('#panRight').click(function() { panImage(-50, 0); });
-    $('#panUp').click(function() { panImage(0, 50); });
-    $('#panDown').click(function() { panImage(0, -50); });
-
-    function panImage(x, y) {
-        posX += x;
-        posY += y;
-        updateImageTransform();
-    }
-
-    // Drag to pan
-    $('#modalImage').on('mousedown touchstart', function(e) {
-        isDragging = true;
-        startX = e.pageX || e.originalEvent.touches[0].pageX;
-        startY = e.pageY || e.originalEvent.touches[0].pageY;
-        $(this).css('cursor', 'grabbing');
-    });
-
-    $(document).on('mousemove touchmove', function(e) {
-        if (!isDragging) return;
         
-        const x = e.pageX || e.originalEvent.touches[0].pageX;
-        const y = e.pageY || e.originalEvent.touches[0].pageY;
-        
-        posX += (x - startX);
-        posY += (y - startY);
-        
-        startX = x;
-        startY = y;
-        
-        updateImageTransform();
-        e.preventDefault();
-    });
-
-    $(document).on('mouseup touchend', function() {
-        isDragging = false;
-        $('#modalImage').css('cursor', 'grab');
-    });
-
-    // Update the transform function to handle centering
-    function updateImageTransform() {
-        $('#modalImage').css({
-            'transform': `translate(-50%, -50%) scale(${currentZoom}) rotate(${currentRotation}deg) translate(${posX}px, ${posY}px)`,
-            'transform-origin': 'center center'
+        // Set download link
+        $('#downloadLink').attr({
+            'href': `fetch-image.php?id=${imageId}`,
+            'download': `radiology_${imageId}.jpg`
         });
-    }
+    }).on('error', function() {
+        $('#imageModalTitle').html('<i class="fas fa-exclamation-triangle text-danger"></i> Failed to load image');
+    });
+}
 
-    function resetImagePosition() {
-        currentZoom = 1;
-        currentRotation = 0;
-        posX = posY = 0;
-        updateImageTransform();
+function adjustZoom(change) {
+    currentZoom = Math.max(0.1, Math.min(currentZoom + change, 5));
+    updateImageTransform();
+}
+
+function resetZoom() {
+    currentZoom = 1;
+    translatePos = { x: 0, y: 0 };
+    updateImageTransform();
+}
+
+function rotateImage(degrees) {
+    currentRotation += degrees;
+    updateImageTransform();
+}
+
+function updateImageTransform() {
+    const img = $('#modalImage');
+    img.css('transform', 
+        `translate(-50%, -50%) 
+         translate(${translatePos.x}px, ${translatePos.y}px)
+         scale(${currentZoom}) 
+         rotate(${currentRotation}deg)`);
+}
+
+// Drag to pan functionality
+$('.image-container').on('mousedown', function(e) {
+    if (currentZoom <= 1) return;
+    
+    isDragging = true;
+    startPos = { x: e.clientX, y: e.clientY };
+    $('#modalImage').addClass('grabbing');
+    e.preventDefault();
+});
+
+$(document).on('mousemove', function(e) {
+    if (!isDragging) return;
+    
+    const dx = e.clientX - startPos.x;
+    const dy = e.clientY - startPos.y;
+    
+    translatePos.x += dx;
+    translatePos.y += dy;
+    
+    startPos = { x: e.clientX, y: e.clientY };
+    updateImageTransform();
+    e.preventDefault();
+});
+
+$(document).on('mouseup', function() {
+    isDragging = false;
+    $('#modalImage').removeClass('grabbing');
+});
+
+function resetImagePosition() {
+    currentZoom = 1;
+    currentRotation = 0;
+    translatePos = { x: 0, y: 0 };
+    updateImageTransform();
+}
+
+// Close modal when pressing ESC
+$(document).on('keydown', function(e) {
+    if (e.key === 'Escape' && $('#imageModal').hasClass('show')) {
+        $('#imageModal').modal('hide');
     }
+});
+
     $(document).ready(function() {
     // When clicking a dropdown button
     $('.action-dropdown .btn-link').on('click', function(e) {
@@ -727,52 +700,47 @@ a.status-red {
     color: #555;
 }
 /* Image Viewer Enhancements */
-.image-container {
-    touch-action: none; /* Prevent browser touch gestures */
+/* Image Viewer Styles */
+#imageModal .modal-content {
+    border: none;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.2);
 }
 
-#modalImage {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    max-width: none;
-    cursor: grab;
-    transition: transform 0.15s ease-out;
+#imageModal .modal-header {
+    padding: 12px 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
 }
 
-.zoom-controls .btn, .btn-group-sm .btn {
+#imageModal .modal-body {
+    background-color: black;
+}
+
+#imageModal .modal-footer {
+    padding: 12px 20px;
+    border-top: 1px solid #e9ecef;
+}
+
+.zoom-controls .btn, 
+.rotation-controls .btn {
     width: 32px;
     height: 32px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
+   
 }
 
-/* Responsive adjustments */
-@media (max-width: 768px) {
-    .modal-footer {
-        flex-wrap: wrap;
-    }
-    
-    .zoom-controls, .btn-group {
-        margin-bottom: 8px;
-    }
-}
-./* Modal Enhancements */
-.modal-content {
-    border: none;
-    box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+.zoom-controls .btn:hover, 
+.rotation-controls .btn:hover {
+    background-color: #12396e;
 }
 
-.modal-header {
-    border-bottom: 1px solid rgba(0,0,0,0.1);
-    padding: 1rem 1.5rem;
+#modalImage {
+    transition: transform 0.15s ease-out;
 }
 
-.modal-footer {
-    border-top: 1px solid rgba(0,0,0,0.1);
-    padding: 1rem 1.5rem;
+#modalImage.grabbing {
+    cursor: grabbing;
 }
 
 /* Custom File Input */
@@ -787,19 +755,6 @@ a.status-red {
 
 .progress-bar {
     font-size: 12px;
-}
-
-/* Image Controls */
-.zoom-controls button {
-    width: 36px;
-    height: 36px;
-    opacity: 0.8;
-    transition: all 0.2s;
-}
-
-.zoom-controls button:hover {
-    opacity: 1;
-    transform: scale(1.1);
 }
 
 /* Responsive Adjustments */

@@ -48,7 +48,7 @@ if (isset($_POST['submit'])) {
         $contact_number = sanitize_input($connection, $_POST['contact_number']);
         $address = sanitize_input($connection, $_POST['address']);
         $date_time = sanitize_input($connection, $_POST['date_time']);
-        $status = sanitize_input($connection, $_POST['status']);
+        $status = 1;
         $message = sanitize_input($connection, $_POST['message']);
         $weight = sanitize_input($connection, $_POST['weight']);
         $height = sanitize_input($connection, $_POST['height']);
@@ -82,13 +82,16 @@ if (isset($_POST['submit'])) {
             mysqli_stmt_bind_param($insert_query, 'ssssssssssssssssss', $patient_id, $first_name, $last_name, $email, $dob, $gender, $civil_status, $patient_type, $contact_number, $address, $status, $message, $weight, $height, $temperature, $blood_pressure, $menstruation, $last_menstrual_period);
 
             if (mysqli_stmt_execute($insert_query)) {
-                echo "<script>
+                echo "
+                <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
+                <script>
                     Swal.fire({
                         icon: 'success',
                         title: 'Success',
                         text: 'Patient added successfully!',
                         showConfirmButton: true,
                         confirmButtonText: 'OK'
+                        confirmButtonColor: '#12369e'
                     }).then((result) => {
                         window.location.href = 'patients.php';
                     });
@@ -219,7 +222,7 @@ if (isset($_POST['submit'])) {
                             <div class="form-group">
                                 <label>Height</label>
                                 <div class="input-group">
-                                    <input class="form-control" type="number" name="height" required>
+                                    <input class="form-control" type="text" name="height" required>
                                     <div class="input-group-append">
                                         <span class="input-group-text">ft</span>
                                     </div>
@@ -287,70 +290,6 @@ include('footer.php');
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script type="text/javascript">
 $(document).ready(function() {
-    // Handle form submission
-    $('#addPatientForm').on('submit', function(e) {
-        e.preventDefault();
-        
-        // Basic validation
-        const required = ['first_name', 'last_name', 'dob', 'gender', 'contact_number', 'address'];
-        let isValid = true;
-        let emptyFields = [];
-        
-        required.forEach(field => {
-            if (!$(`#${field}`).val()) {
-                isValid = false;
-                emptyFields.push(field.replace('_', ' '));
-            }
-        });
-        
-        if (!isValid) {
-            showError(`Please fill in the following fields: ${emptyFields.join(', ')}`);
-            return;
-        }
-        
-        // Validate contact number
-        const contact = $('#contact_number').val();
-        if (!/^[0-9]{11}$/.test(contact)) {
-            showError('Contact number must be 11 digits');
-            return;
-        }
-        
-        // Validate date of birth
-        const dob = new Date($('#dob').val());
-        const today = new Date();
-        if (dob > today) {
-            showError('Date of birth cannot be in the future');
-            return;
-        }
-        
-        // Show loading state
-        showLoading('Saving patient information...');
-        
-        // Submit the form
-        this.submit();
-    });
-    
-    // Initialize datepicker with better UX
-    $('.datetimepicker').datetimepicker({
-        format: 'YYYY-MM-DD',
-        maxDate: new Date(),
-        icons: {
-            up: "fa fa-chevron-up",
-            down: "fa fa-chevron-down",
-            next: 'fa fa-chevron-right',
-            previous: 'fa fa-chevron-left'
-        }
-    });
-    
-    // Auto-format contact number
-    $('#contact_number').on('input', function() {
-        let value = $(this).val().replace(/\D/g, '');
-        if (value.length > 11) {
-            value = value.substr(0, 11);
-        }
-        $(this).val(value);
-    });
-    
     // Hide or show menstruation-related fields based on gender selection
     $('input[name="gender"]').on('change', function() {
         if ($(this).val() == 'Male') {
@@ -373,64 +312,23 @@ $(document).ready(function() {
     });
 });
 
-// SweetAlert2 helper functions
-function showSuccess(message, redirect = false) {
-    Swal.fire({
-        icon: 'success',
-        title: 'Success',
-        text: message,
-        showConfirmButton: false,
-        timer: 2000
-    }).then(() => {
-        if (redirect) {
-            window.location.href = 'patients.php';
-        }
-    });
-}
-
-function showError(message) {
-    Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: message,
-        showConfirmButton: false,
-        timer: 2000
-    });
-}
-
-function showLoading(message) {
-    Swal.fire({
-        title: message,
-        text: 'Please wait...',
-        allowOutsideClick: false,
-        showConfirmButton: false,
-        willOpen: () => {
-            Swal.showLoading();
-        }
-    });
-}
 </script>
 
 <style>
-    .btn-primary.submit-btn {
-        border-radius: 4px; 
-        padding: 10px 20px;
-        font-size: 16px;
-    }
-.btn-primary {
-            background: #12369e;
-            border: none;
-        }
-        .btn-primary:hover {
-            background: #05007E;
-        }
-        .form-group {
-    position: relative;
+.btn-primary.submit-btn {
+    border-radius: 4px; 
+    padding: 10px 20px;
+    font-size: 16px;
 }
-.form-control {
-    border-radius: .375rem; /* Rounded corners */
-    border-color: #ced4da; /* Border color */
-    background-color: #f8f9fa; /* Background color */
+.btn-primary {
+    background: #12369e;
+    border: none;
+}
+.btn-primary:hover {
+    background: #05007E;
+}
+.form-group {
+    position: relative;
 }
 
 .cal-icon {
@@ -451,6 +349,12 @@ function showLoading(message) {
     pointer-events: none;
     color: #aaa; /* Adjust color as needed */
 }
+.form-control {
+    border-radius: .375rem; /* Rounded corners */
+    border-color: #ced4da; /* Border color */
+    background-color: #f8f9fa; /* Background color */
+}
+
 select.form-control {
     border-radius: .375rem; /* Rounded corners */
     border: 1px solid; /* Border color */
@@ -467,4 +371,8 @@ select.form-control {
     background-size: 20px; /* Size of the custom arrow */
 }
 
+select.form-control:focus {
+    border-color: #12369e; /* Border color on focus */
+    box-shadow: 0 0 0 .2rem rgba(38, 143, 255, .25); /* Shadow on focus */
+}
 </style>

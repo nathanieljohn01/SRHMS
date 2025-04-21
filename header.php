@@ -642,76 +642,95 @@ $('.dropdown-toggle').on('click', function (e) {
 });
 </script>
 <style>   
-/* Minimalist Dropdown */
+/* Minimalist Dropdown *//* Dropdown Styling */
 .custom-dropdown {
     background-color: #fff;
     border: 1px solid #e0e0e0;
-    border-radius: 6px;
+    border-radius: 8px;
     padding: 6px 0;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
     min-width: 160px;
     opacity: 0;
-    transform: translateY(2px);
-    animation: dropdownFadeIn 0.25s ease-out forwards;
+    transform: translateY(10px);
+    animation: dropdownFadeIn 0.3s ease-out forwards;
+    transition: box-shadow 0.3s ease;
 }
 
 @keyframes dropdownFadeIn {
-    to { opacity: 1; transform: translateY(0); }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .custom-dropdown .dropdown-item {
-    padding: 8px 16px;
+    padding: 10px 18px;
     color: #333;
-    transition: background-color 0.2s ease;
+    font-size: 14px;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    cursor: pointer;
 }
 
 .custom-dropdown .dropdown-item:hover {
-    background-color: #f8f8f8;
+    background-color: #f0f4ff;
     color: #12369e;
+    padding-left: 22px;
 }
 
 .custom-dropdown .dropdown-item:active {
-    background-color: #f0f0f0;
+    background-color: #e6ebff;
 }
 
 /* Minimalist Sidebar Menu */
 .sidebar-menu a {
     display: block;
-    padding: 12px 16px;
+    padding: 14px 18px;
     color: #333;
-    transition: all 0.2s ease;
+    font-size: 15px;
+    font-weight: 400;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    border-left: 3px solid transparent;
 }
 
 .sidebar-menu a:hover {
     background-color: #f8f8f8;
     color: #12369e;
+    border-left: 3px solid #12369e;
 }
 
 .sidebar-menu .active a {
     background-color: #12369e;
     color: white;
+    border-left: 3px solid #05007E;
+    font-weight: 400;
 }
 
 .sidebar-menu .active a:hover {
     background-color: #f5f5f5;
+    color: #12369e;
+    border-left-color: #12369e;
 }
+
 /* Mobile adaptations */
 @media (max-width: 768px) {
     .sidebar {
         transform: translateX(-100%);
+        transition: transform 0.3s ease-in-out;
     }
-    
+
     .sidebar.active {
         transform: translateX(0);
     }
-    
+
     .page-wrapper {
         margin-left: 0;
     }
-    
+
     .sidebar ~ .page-wrapper {
         margin-left: 0;
     }
 }
+
 </style>
 </html>

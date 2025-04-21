@@ -78,14 +78,17 @@ $pdf->setImageScale(PDF_IMAGE_SCALE_RATIO);
 $pdf->AddPage();
 
 // Get patient information from database
-$patient_query = $connection->prepare("SELECT first_name, last_name, birthdate, gender FROM tbl_patient WHERE patient_id = ?");
+$patient_query = $connection->prepare("SELECT first_name, last_name, dob, gender FROM tbl_patient WHERE patient_id = ?");
 $patient_query->bind_param('s', $patient_id);
 $patient_query->execute();
 $patient_result = $patient_query->get_result();
 $patient_data = $patient_result->fetch_assoc();
 
 $patient_name = htmlspecialchars($patient_data['first_name'] . ' ' . $patient_data['last_name']);
-$birthdate = !empty($patient_data['birthdate']) ? date('F d, Y', strtotime($patient_data['birthdate'])) : 'N/A';
+$dob = !empty($patient_data['dob']) ? date('F d, Y', strtotime($patient_data['dob'])) : 'N/A';
+$raw_dob = str_replace('/', '-', $patient_data['dob']);
+$formatted_dob = date('Y-m-d', strtotime($raw_dob));
+$age = date_diff(date_create($formatted_dob), date_create('today'))->y;
 $gender = htmlspecialchars($patient_data['gender']);
 $current_date = date('F d, Y');
 
@@ -99,10 +102,9 @@ $pdf->Cell(40, 6, 'Patient Name:', 0, 0);
 $pdf->SetFont('helvetica', 'B', 10);
 $pdf->Cell(60, 6, $patient_name, 0, 0);
 $pdf->SetFont('helvetica', '', 10);
-$pdf->Cell(30, 6, 'Date of Birth:', 0, 0);
+$pdf->Cell(30, 6, 'Age:', 0, 0);
 $pdf->SetFont('helvetica', 'B', 10);
-$pdf->Cell(0, 6, $birthdate, 0, 1);
-
+$pdf->Cell(0, 6, $age , 0, 1);
 $pdf->SetFont('helvetica', '', 10);
 $pdf->Cell(40, 6, 'Gender:', 0, 0);
 $pdf->SetFont('helvetica', 'B', 10);
@@ -304,15 +306,6 @@ while ($row = $microResult->fetch_assoc()) {
 if (!empty($microResults)) {
     renderLabResultsTable($pdf, 'MICROSCOPIC URINALYSIS', $microResults, ['Date', 'Time', 'Results'], [25, 20, 135]);
 }
-
-// Add signature line
-$pdf->Ln(10);
-$pdf->SetFont('helvetica', 'B', 10);
-$pdf->Cell(0, 6, 'Laboratory Technologist:', 0, 1, 'R');
-$pdf->SetFont('helvetica', '', 10);
-$pdf->Cell(0, 6, '_________________________', 0, 1, 'R');
-$pdf->Cell(0, 6, 'Signature over Printed Name', 0, 1, 'R');
-$pdf->Cell(0, 6, 'License No.: _______________', 0, 1, 'R');
 
 // Output the PDF
 $pdf->Output('Lab_Results_' . $patient_name . '_' . date('Ymd') . '.pdf', 'I');

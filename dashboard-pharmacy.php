@@ -16,15 +16,6 @@ while($row = mysqli_fetch_assoc($fetch_chart_data_query)) {
     $months[] = $row['month'];
 }
 
-// Adjusted SQL query to order the months by date
-$fetch_sold_query = mysqli_query($connection, "SELECT SUM(quantity) AS sold_quantity, DATE_FORMAT(invoice_datetime, '%M') AS month, MONTH(invoice_datetime) AS month_num FROM tbl_pharmacy_invoice GROUP BY MONTH(invoice_datetime) ORDER BY month_num");
-
-$sold_data = [];
-$transaction_months = [];
-while($row = mysqli_fetch_assoc($fetch_sold_query)) {
-    $sold_data[] = $row['sold_quantity'];
-    $transaction_months[] = $row['month'];
-}
 
 ?>
 
@@ -61,14 +52,21 @@ while($row = mysqli_fetch_assoc($fetch_sold_query)) {
                 </div>
             </div>
 
-            <!-- Expiring Soon Widget -->
+            <!-- Improved Expiring Soon Widget -->
             <div class="col-md-3">
                 <div class="dash-widget">
                     <span class="dash-widget-bg3"><i class="fa fa-clock"></i></span>
                     <?php
                     $currentDate = date("Y-m-d");
-                    $oneWeekLater = date("Y-m-d", strtotime("+1 week", strtotime($currentDate)));
-                    $fetch_expiring_query = mysqli_query($connection, "SELECT COUNT(*) AS expiring_soon FROM tbl_medicines WHERE expiration_date BETWEEN '$currentDate' AND '$oneWeekLater'");
+                    $oneMonthLater = date("Y-m-d", strtotime("+1 month", strtotime($currentDate)));
+                    
+                    // Count medicines expiring within 30 days (matches your table badge logic)
+                    $fetch_expiring_query = mysqli_query($connection, 
+                        "SELECT COUNT(*) AS expiring_soon 
+                        FROM tbl_medicines 
+                        WHERE expiration_date BETWEEN '$currentDate' AND '$oneMonthLater'
+                        AND expiration_date >= '$currentDate'");
+                    
                     $expiring_soon = mysqli_fetch_assoc($fetch_expiring_query);
                     ?>
                     <div class="dash-widget-info text-right">
@@ -99,124 +97,268 @@ while($row = mysqli_fetch_assoc($fetch_sold_query)) {
             <div class="col-md-6">
                 <div class="card">
                     <div class="card-header">
-                        <h4 class="card-title">New Medicines Updated Per Month</h4>
+                        <h4 class="card-title d-inline-block">New Medicines Updated Overview</h4>
+                        <div class="float-right">
+                            <select id="newMedicineTimeRange" class="form-control">
+                                <option value="weekly">Weekly</option>
+                                <option value="monthly" selected>Monthly</option>
+                                <option value="yearly">Yearly</option>
+                            </select>
+                        </div>
                     </div>
                     <div class="card-body">
                         <canvas id="newMedicineChart"></canvas>
                     </div>
                 </div>
             </div>
-
+            
             <!-- Chart Section for Reduced Medicines -->
             <div class="col-md-6">
                 <div class="card">
                     <div class="card-header">
-                        <h4 class="card-title">Medicines Sold/Reduced Per Month</h4>
+                        <h4 class="card-title d-inline-block">Medicines Sold/Reduced Overview</h4>
+                        <div class="float-right">
+                            <select id="soldMedicineTimeRange" class="form-control">
+                                <option value="weekly">Weekly</option>
+                                <option value="monthly" selected>Monthly</option>
+                                <option value="yearly">Yearly</option>
+                            </select>
+                        </div>
                     </div>
                     <div class="card-body">
                         <canvas id="soldMedicineChart"></canvas>
                     </div>
                 </div>
             </div>
-        </div> <!-- End of Row for charts -->
+        </div>
+        <!-- End of Row for charts -->
 
     </div>
 </div>
 
 <!-- Scripts -->
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
 <script>
-// Chart.js for New Medicines Per Month
-var ctx = document.getElementById('newMedicineChart').getContext('2d');
-var newMedicineChart = new Chart(ctx, {
-    type: 'bar',
-    data: {
-        labels: <?php echo json_encode($months); ?>, // Months for new medicines added
-        datasets: [{
-            label: 'New Medicines Updated',
-            data: <?php echo json_encode($medicine_data); ?>, // New medicine data from the database
-            backgroundColor: 'rgba(15, 54, 159, 0.2)',
-            borderColor: 'rgba(15, 54, 159, 1)',
-            borderWidth: 1
-        }]
-    },
-    options: {
-            responsive: true,
-            maintainAspectRatio: false,
-        scales: {
-            y: {
-                beginAtZero: true
+$(document).ready(function() {
+    // Variables to store chart instances
+    var newMedicineChart;
+    var soldMedicineChart;
+    
+    // Function to fetch medicine data via AJAX
+    function fetchMedicineData(timeRange, dataType) {
+        return $.ajax({
+            url: 'fetch_medicine_data.php',
+            type: 'GET',
+            dataType: 'json',
+            data: {
+                timeRange: timeRange,
+                dataType: dataType
             }
-        }
+        });
     }
-});
-
-var soldCtx = document.getElementById('soldMedicineChart').getContext('2d');
-var soldMedicineChart = new Chart(soldCtx, {
-    type: 'bar', // Change chart type to bar
-    data: {
-        labels: <?php echo json_encode($transaction_months); ?>, // Months for transactions
-        datasets: [{
-            label: 'Medicines Sold/Reduced',
-            data: <?php echo json_encode($sold_data); ?>, // Quantity sold/reduced data from the database
-            backgroundColor: 'rgba(197, 16, 20, 0.2)', // Bar fill color
-            borderColor: 'rgba(197, 16, 20, 1)',       // Bar border color
-            borderWidth: 1                              // Bar border thickness
-        }]
-    },
-    options: {
-            responsive: true,
-            maintainAspectRatio: false,
-        scales: {
-            y: {
-                beginAtZero: true,                      // Start Y-axis at zero
-                ticks: {
-                    stepSize: 1                         // Adjust step size as needed
-                }
+    
+    // Function to initialize or update the new medicine chart (now as bar chart)
+    function initializeOrUpdateNewMedicineChart(timeRange = 'monthly') {
+        const ctx = document.getElementById('newMedicineChart').getContext('2d');
+        
+        // Destroy previous chart if it exists
+        if (newMedicineChart) {
+            newMedicineChart.destroy();
+        }
+        
+        // Create gradient for the bar chart
+        let gradient = ctx.createLinearGradient(0, 0, 0, 400);
+        gradient.addColorStop(0, 'rgba(15, 54, 159, 0.8)');  // Darker blue at top
+        gradient.addColorStop(0.5, 'rgba(15, 54, 159, 0.5)'); // Medium blue
+        gradient.addColorStop(1, 'rgba(15, 54, 159, 0.2)');  // Lighter blue at bottom
+        
+        // Create new BAR chart with gradient
+        newMedicineChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: [], // Will be filled via AJAX
+                datasets: [{
+                    label: 'New Medicines Updated',
+                    data: [], // Will be filled via AJAX
+                    backgroundColor: gradient,
+                    borderColor: 'rgba(15, 54, 159, 1)',
+                    borderWidth: 1,
+                    borderRadius: 6,
+                    borderSkipped: false,
+                    hoverBackgroundColor: 'rgba(15, 54, 159, 0.9)' // Darker on hover
+                }]
             },
-            x: {
-                ticks: {
-                    autoSkip: true,                     // Auto-skip labels if there are too many
-                    maxTicksLimit: 12                   // Limit number of ticks for months
-                }
-            }
-        },
-        plugins: {
-            legend: {
-                position: 'top',                        // Position legend at the top
-            },
-            tooltip: {
-                callbacks: {
-                    label: function(tooltipItem) {
-                        return 'Sold: ' + tooltipItem.raw; // Customize tooltip display
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.05)'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            usePointStyle: true,
+                            padding: 20
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(tooltipItem) {
+                                return 'New: ' + tooltipItem.raw;
+                            }
+                        }
                     }
                 }
             }
-        }
-    }
-});
-
-$('.dropdown-toggle').on('click', function (e) {
-    var $el = $(this).next('.dropdown-menu');
-    var isVisible = $el.is(':visible');
-    
-    // Hide all dropdowns
-    $('.dropdown-menu').slideUp('400');
-    
-    // If this wasn't already visible, slide it down
-    if (!isVisible) {
-        $el.stop(true, true).slideDown('400');
+        });
+        
+        // Fetch data and update chart
+        fetchMedicineData(timeRange, 'new').then(response => {
+            if (response.success) {
+                newMedicineChart.data.labels = response.labels;
+                newMedicineChart.data.datasets[0].data = response.data;
+                newMedicineChart.update();
+            }
+        }).catch(error => {
+            console.error('Error fetching new medicine data:', error);
+        });
     }
     
-    // Close the dropdown if clicked outside of it
-    $(document).on('click', function (e) {
-        if (!$(e.target).closest('.dropdown').length) {
-            $('.dropdown-menu').slideUp('400');
+    // Function to initialize or update the sold medicine chart (kept as line chart)
+    function initializeOrUpdateSoldMedicineChart(timeRange = 'monthly') {
+        const soldCtx = document.getElementById('soldMedicineChart').getContext('2d');
+        
+        // Destroy previous chart if it exists
+        if (soldMedicineChart) {
+            soldMedicineChart.destroy();
         }
+        
+        // Create gradient for the chart
+        let gradient = soldCtx.createLinearGradient(0, 0, 0, 400);
+        gradient.addColorStop(0, 'rgba(197, 16, 20, 0.8)');
+        gradient.addColorStop(1, 'rgba(197, 16, 20, 0.2)');
+        
+        // Create new chart with placeholder data
+        soldMedicineChart = new Chart(soldCtx, {
+            type: 'line',
+            data: {
+                labels: [], // Will be filled via AJAX
+                datasets: [{
+                    label: 'Medicines Sold/Reduced',
+                    data: [], // Will be filled via AJAX
+                    backgroundColor: gradient,
+                    borderColor: 'rgba(197, 16, 20, 1)',
+                    borderWidth: 2,
+                    tension: 0.3,
+                    fill: true,
+                    pointBackgroundColor: 'rgba(197, 16, 20, 1)',
+                    pointRadius: 4,
+                    pointHoverRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.05)'
+                        },
+                        ticks: {
+                            stepSize: 1
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        },
+                        ticks: {
+                            autoSkip: true,
+                            maxTicksLimit: 12
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            usePointStyle: true,
+                            padding: 20
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(tooltipItem) {
+                                return 'Sold: ' + tooltipItem.raw;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Fetch data and update chart
+        fetchMedicineData(timeRange, 'sold').then(response => {
+            if (response.success) {
+                soldMedicineChart.data.labels = response.labels;
+                soldMedicineChart.data.datasets[0].data = response.data;
+                soldMedicineChart.update();
+            }
+        }).catch(error => {
+            console.error('Error fetching sold medicine data:', error);
+        });
+    }
+    
+    // Initialize charts on page load
+    initializeOrUpdateNewMedicineChart();
+    initializeOrUpdateSoldMedicineChart();
+    
+    // Add event listeners for time range selectors
+    $('#newMedicineTimeRange').change(function() {
+        initializeOrUpdateNewMedicineChart($(this).val());
+    });
+    
+    $('#soldMedicineTimeRange').change(function() {
+        initializeOrUpdateSoldMedicineChart($(this).val());
+    });
+    
+    // Dropdown toggle functionality
+    $('.dropdown-toggle').on('click', function (e) {
+        var $el = $(this).next('.dropdown-menu');
+        var isVisible = $el.is(':visible');
+        
+        // Hide all dropdowns
+        $('.dropdown-menu').slideUp('400');
+        
+        // If this wasn't already visible, slide it down
+        if (!isVisible) {
+            $el.stop(true, true).slideDown('400');
+        }
+        
+        // Close the dropdown if clicked outside of it
+        $(document).on('click', function (e) {
+            if (!$(e.target).closest('.dropdown').length) {
+                $('.dropdown-menu').slideUp('400');
+            }
+        });
     });
 });
-</script> 
+</script>
 
 <?php 
 include('footer.php');
@@ -224,7 +366,7 @@ include('footer.php');
 
 <!-- Custom Button Styling -->
 <style>
-dash-widget {
+.dash-widget {
     border-radius: 12px;
     overflow: hidden;
     box-shadow: 0 4px 12px rgba(0,0,0,0.08);
@@ -321,5 +463,33 @@ canvas {
 
 .card-body {
     padding: 25px;
+}
+.form-control {
+    border-radius: .375rem;
+    border-color: #ced4da;
+    background-color: #f8f9fa;
+    transition: all 0.3s ease;
+}
+
+select.form-control {
+    border-radius: .375rem;
+    border: 1px solid #ced4da;
+    background-color: #f8f9fa;
+    padding: .375rem 2.5rem .375rem .75rem;
+    font-size: 1rem;
+    line-height: 1.5;
+    height: calc(2.25rem + 2px);
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-image: url('data:image/svg+xml;charset=UTF-8,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20"%3E%3Cpath d="M7 10l5 5 5-5z" fill="%23aaa"/%3E%3C/svg%3E');
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 20px;
+}
+
+select.form-control:focus {
+    border-color: #12369e;
+    box-shadow: 0 0 0 .2rem rgba(18, 54, 158, 0.25);
 }
 </style>

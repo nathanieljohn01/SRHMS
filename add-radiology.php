@@ -64,8 +64,8 @@ if (isset($_POST['add-radiology'])) {
                     // Insert radiology order
                     $insert_stmt = mysqli_prepare($connection, "
                         INSERT INTO tbl_radiology 
-                        (radiology_id, patient_id, patient_name, patient_type, gender, dob, exam_type, test_type, status, requested_date, price) 
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'In-Progress', NOW(), ?)
+                        (radiology_id, patient_id, patient_name, patient_type, gender, dob, exam_type, test_type, status, shift, requested_date, price) 
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'In-Progress', ?, NOW(), ?)
                     ");
                     mysqli_stmt_bind_param(
                         $insert_stmt,
@@ -78,6 +78,7 @@ if (isset($_POST['add-radiology'])) {
                         $dob,
                         $exam_type,
                         $test_type,
+                        $shift,
                         $price
                     );
 
@@ -158,6 +159,19 @@ if (isset($_POST['add-radiology'])) {
                     <label>Patient Name</label>
                     <input type="text" class="form-control" id="patient-search" name="patient_name" placeholder="Search for patient" required>
                     <div id="patient-list" class="patient-list"></div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label>Shift</label>
+                        <select class="form-control" name="shift" required>
+                            <option value="">Select Shift</option>
+                            <option value="Morning">Morning</option>
+                            <option value="Afternoon">Afternoon</option>
+                            <option value="Night">Night</option>
+                        </select>
+                    </div>
                 </div>
             </div>
             <div class="table-responsive">

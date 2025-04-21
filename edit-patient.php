@@ -308,229 +308,45 @@ include('footer.php');
     });
 });
 
-// Handle form submission
-$('#editPatientForm').on('submit', function(e) {
-    e.preventDefault();
-    
-    // Basic validation
-    const required = ['first_name', 'last_name', 'dob', 'gender', 'contact_number', 'address'];
-    let isValid = true;
-    let emptyFields = [];
-    
-    required.forEach(field => {
-        if (!$(`#${field}`).val()) {
-            isValid = false;
-            emptyFields.push(field.replace('_', ' '));
-        }
-    });
-    
-    if (!isValid) {
-        Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: `Please fill in the following fields: ${emptyFields.join(', ')}`,
-            showConfirmButton: false,
-            timer: 2000
-        });
-        return;
-    }
-    
-    // Validate contact number
-    const contact = $('#contact_number').val();
-    if (!/^[0-9]{11}$/.test(contact)) {
-        Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: 'Contact number must be 11 digits',
-            showConfirmButton: false,
-            timer: 2000
-        });
-        return;
-    }
-    
-    // Validate date of birth
-    const dob = new Date($('#dob').val());
-    const today = new Date();
-    if (dob > today) {
-        Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: 'Date of birth cannot be in the future',
-            showConfirmButton: false,
-            timer: 2000
-        });
-        return;
-    }
-    
-    // Show loading state
-    Swal.fire({
-        title: 'Updating patient information...',
-        text: 'Please wait...',
-        allowOutsideClick: false,
-        showConfirmButton: false,
-        willOpen: () => {
-            Swal.showLoading();
-        }
-    });
-    
-    // Submit the form
-    this.submit();
-});
-
-// Initialize datepicker with better UX
-$('#dob').datetimepicker({
-    format: 'YYYY-MM-DD',
-    maxDate: new Date(),
-    icons: {
-        up: "fa fa-chevron-up",
-        down: "fa fa-chevron-down",
-        next: 'fa fa-chevron-right',
-        previous: 'fa fa-chevron-left'
-    }
-});
-
-// Auto-format contact number
-$('#contact_number').on('input', function() {
-    let value = $(this).val().replace(/\D/g, '');
-    if (value.length > 11) {
-        value = value.substr(0, 11);
-    }
-    $(this).val(value);
-});
-
-// Handle changes in patient type
-$('#patient_type').on('change', function() {
-    const type = $(this).val();
-    if (type === 'Inpatient') {
-        // Show room selection modal
-        Swal.fire({
-            title: 'Select Room',
-            html: `
-                <div class="form-group">
-                    <label>Room Number</label>
-                    <select class="form-control" id="room_no">
-                        <option value="">Select Room</option>
-                        <?php
-                        // Get available rooms
-                        $room_query = mysqli_query($connection, "SELECT * FROM tbl_rooms WHERE status='Available'");
-                        while ($room = mysqli_fetch_array($room_query)) {
-                            echo "<option value='" . $room['room_no'] . "'>" . $room['room_no'] . "</option>";
-                        }
-                        ?>
-                    </select>
-                </div>
-            `,
-            showCancelButton: true,
-            confirmButtonText: 'Confirm',
-            cancelButtonText: 'Cancel',
-            preConfirm: () => {
-                const room = $('#room_no').val();
-                if (!room) {
-                    Swal.showValidationMessage('Please select a room');
-                }
-                return room;
-            }
-        }).then((result) => {
-            if (result.value) {
-                $('#room_no_hidden').val(result.value);
-            } else {
-                $(this).val('Outpatient');
-            }
-        });
-    }
-});
-
-// Confirm before leaving page with unsaved changes
-window.onbeforeunload = function() {
-    if ($('#editPatientForm').data('changed')) {
-        return "You have unsaved changes. Are you sure you want to leave?";
-    }
-};
-
-// Track form changes
-$('#editPatientForm :input').on('change', function() {
-    $('#editPatientForm').data('changed', true);
-});
-
-// Clear form change tracking on submit
-$('#editPatientForm').on('submit', function() {
-    $(this).data('changed', false);
-});
-
-// SweetAlert2 helper functions
-function showSuccess(message, redirect = false) {
-    Swal.fire({
-        icon: 'success',
-        title: 'Success',
-        text: message,
-        showConfirmButton: false,
-        timer: 2000
-    }).then(() => {
-        if (redirect) {
-            window.location.href = 'patients.php';
-        }
-    });
-}
-
-function showError(message) {
-    Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: message,
-        showConfirmButton: false,
-        timer: 2000
-    });
-}
-
-function showLoading(message) {
-    Swal.fire({
-        title: message,
-        text: 'Please wait...',
-        allowOutsideClick: false,
-        showConfirmButton: false,
-        willOpen: () => {
-            Swal.showLoading();
-        }
-    });
-}
 </script>
 
 <style>
-    .btn-primary.submit-btn {
-        border-radius: 4px; 
-        padding: 10px 20px;
-        font-size: 16px;
-    }
-    .btn-primary {
-            background: #12369e;
-            border: none;
-        }
-        .btn-primary:hover {
-            background: #05007E;
-        }
-        .form-control {
+.btn-primary.submit-btn {
+    border-radius: 4px; 
+    padding: 10px 20px;
+    font-size: 16px;
+}
+.btn-primary {
+    background: #12369e;
+    border: none;
+}
+.btn-primary:hover {
+    background: #05007E;
+}
+.form-control {
     border-radius: .375rem; /* Rounded corners */
     border-color: #ced4da; /* Border color */
     background-color: #f8f9fa; /* Background color */
 }
-select.form-control {
-            border-radius: .375rem; /* Rounded corners */
-            border: 1px solid; /* Border color */
-            border-color: #ced4da; /* Border color */
-            background-color: #f8f9fa; /* Background color */
-            padding: .375rem 2.5rem .375rem .75rem; /* Adjust padding to make space for the larger arrow */
-            font-size: 1rem; /* Font size */
-            line-height: 1.5; /* Line height */
-            height: calc(2.25rem + 2px); /* Adjust height */
-            -webkit-appearance: none; /* Remove default styling on WebKit browsers */
-            -moz-appearance: none; /* Remove default styling on Mozilla browsers */
-            appearance: none; /* Remove default styling on other browsers */
-            background: url('data:image/svg+xml;charset=UTF-8,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20"%3E%3Cpath d="M7 10l5 5 5-5z" fill="%23aaa"/%3E%3C/svg%3E') no-repeat right 0.75rem center;
-            background-size: 20px; /* Size of the custom arrow */
-        }
 
-        select.form-control:focus {
-            border-color: #12369e; /* Border color on focus */
-            box-shadow: 0 0 0 .2rem rgba(38, 143, 255, .25); /* Shadow on focus */
-        }
+select.form-control {
+    border-radius: .375rem; /* Rounded corners */
+    border: 1px solid; /* Border color */
+    border-color: #ced4da; /* Border color */
+    background-color: #f8f9fa; /* Background color */
+    padding: .375rem 2.5rem .375rem .75rem; /* Adjust padding to make space for the larger arrow */
+    font-size: 1rem; /* Font size */
+    line-height: 1.5; /* Line height */
+    height: calc(2.25rem + 2px); /* Adjust height */
+    -webkit-appearance: none; /* Remove default styling on WebKit browsers */
+    -moz-appearance: none; /* Remove default styling on Mozilla browsers */
+    appearance: none; /* Remove default styling on other browsers */
+    background: url('data:image/svg+xml;charset=UTF-8,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20"%3E%3Cpath d="M7 10l5 5 5-5z" fill="%23aaa"/%3E%3C/svg%3E') no-repeat right 0.75rem center;
+    background-size: 20px; /* Size of the custom arrow */
+}
+
+select.form-control:focus {
+    border-color: #12369e; /* Border color on focus */
+    box-shadow: 0 0 0 .2rem rgba(38, 143, 255, .25); /* Shadow on focus */
+}
 </style>

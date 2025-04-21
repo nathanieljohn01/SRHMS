@@ -364,6 +364,36 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 
 <style>
+    #patient-search {
+        position: relative; /* Makes sure the patient list is positioned below */
+        }
+    /* Styling the patient list */
+    .patient-list {
+        max-height: 200px; /* Maximum height to prevent list overflow */
+        overflow-y: auto; /* Scrollable if the list is long */
+        border: 1px solid #ddd; /* Border color */
+        border-radius: 5px; /* Rounded corners */
+        background: #fff; /* Background color */
+        position: absolute; /* Absolute positioning below the input */
+        z-index: 1000; /* Ensures the list is on top of other elements */
+        width: 93%; /* Adjust the width to match the input field */
+        display: none; /* Initially hidden */
+        box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1); /* Add subtle shadow */
+    }
+
+    /* Styling individual list items */
+    .patient-list .patient-option {
+        padding: 8px 12px;
+        cursor: pointer;
+        list-style: none;
+        border-bottom: 1px solid #ddd;
+    }
+
+    /* Hover effect on list items */
+    .patient-list .patient-option:hover {
+        background-color: #12369e;
+        color: white;
+    }  
     /* STAT Switch Styling */
     .switch {
         position: relative;
