@@ -311,9 +311,6 @@ include('includes/connection.php');
                 margin: 0;
             }
 
-            .card-body {
-                padding: 20px;
-            }
             .specialization {
                 color: rgba(15, 54, 159, 1);
                 margin: 5px 0;

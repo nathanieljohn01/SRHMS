@@ -182,7 +182,7 @@ $dashboardLink = ($role == 1) ? 'dashboard.php' : (($role == 5) ? 'dashboard-lab
             var tests = {
                 "Hematology": ["Complete Blood Count", "Peripheral Blood Smear","PTPTT"],
                 "Clinical Microscopy": ["Urinalysis", "Fecalysis"],
-                "Clinical Chemistry": ["Electrolytes", "Chemistry Panel"],
+                "Clinical Chemistry": ["Electrolytes", "Chemistry Panel", "OGTT"],
                 "Serology": ["Dengue Duo", "Anti-HBs"],
                 "Blood Bank": ["Crossmatching"],
             };
@@ -211,7 +211,8 @@ $dashboardLink = ($role == 1) ? 'dashboard.php' : (($role == 5) ? 'dashboard-lab
                 "Anti-HBs": "anti-hbs.php",
                 "Peripheral Blood Smear": "pbs.php",
                 "PTPTT": "ptptt.php",
-                "Chemistry Panel": "chemistry-panel.php"
+                "Chemistry Panel": "chemistry-panel.php",
+                "OGTT": "ogtt.php"
                 
                 
                 

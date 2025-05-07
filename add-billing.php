@@ -235,7 +235,7 @@ if (isset($_POST['add-billing'])) {
             discount_amount, professional_fee, pwd_discount_amount, readers_fee, others_fee, rad_fee, 
             vat_exempt_discount_amount, first_case, second_case, philhealth_pf, philhealth_hb,
             room_discount, lab_discount, rad_discount, med_discount, or_discount, supplies_discount, 
-            other_discount, pf_discount, readers_discount, remaining_balance) 
+            other_discount, pf_discount, readers_discount, remaining_balance, status) 
             VALUES ('".$safe_billing_id."', 
                     '".$patient_id."', 
                     '".$safe_patient_name."', 
@@ -272,8 +272,9 @@ if (isset($_POST['add-billing'])) {
                     '".mysqli_real_escape_string($connection, $other_discount)."', 
                     '".mysqli_real_escape_string($connection, $pf_discount)."', 
                     '".mysqli_real_escape_string($connection, $readers_discount)."', 
-                    '".mysqli_real_escape_string($connection, $remaining_balance)."')";
-
+                    '".mysqli_real_escape_string($connection, $remaining_balance)."',
+                    'Pending')"; // Added status here
+        
         } elseif ($patient_type == 'hemodialysis') {
             $query = "INSERT INTO tbl_billing_hemodialysis
             (billing_id, patient_id, patient_name, dob, gender, admission_date, discharge_date, diagnosis, address,
@@ -281,7 +282,7 @@ if (isset($_POST['add-billing'])) {
             discount_amount, professional_fee, pwd_discount_amount, readers_fee, others_fee, rad_fee,
             vat_exempt_discount_amount, first_case, second_case, philhealth_pf, philhealth_hb,
             room_discount, lab_discount, rad_discount, med_discount, or_discount, supplies_discount,
-            other_discount, pf_discount, readers_discount, remaining_balance)
+            other_discount, pf_discount, readers_discount, remaining_balance, status)
             VALUES ('".$safe_billing_id."', 
                     '".$patient_id."', 
                     '".$safe_patient_name."', 
@@ -318,8 +319,9 @@ if (isset($_POST['add-billing'])) {
                     '".mysqli_real_escape_string($connection, $other_discount)."', 
                     '".mysqli_real_escape_string($connection, $pf_discount)."', 
                     '".mysqli_real_escape_string($connection, $readers_discount)."', 
-                    '".mysqli_real_escape_string($connection, $remaining_balance)."')";
-
+                    '".mysqli_real_escape_string($connection, $remaining_balance)."',
+                    'Pending')"; // Added status here
+        
         } elseif ($patient_type == 'newborn') {
             $query = "INSERT INTO tbl_billing_newborn
             (billing_id, newborn_id, patient_name, dob, gender, admission_date, discharge_date, diagnosis, address,
@@ -327,7 +329,7 @@ if (isset($_POST['add-billing'])) {
             discount_amount, professional_fee, pwd_discount_amount, readers_fee, others_fee, rad_fee,
             vat_exempt_discount_amount, first_case, second_case, philhealth_pf, philhealth_hb,
             room_discount, lab_discount, rad_discount, med_discount, or_discount, supplies_discount,
-            other_discount, pf_discount, readers_discount, remaining_balance)
+            other_discount, pf_discount, readers_discount, remaining_balance, status)
             VALUES ('".$safe_billing_id."', 
                     '".$newborn_id."', 
                     '".$safe_patient_name."', 
@@ -364,7 +366,8 @@ if (isset($_POST['add-billing'])) {
                     '".mysqli_real_escape_string($connection, $other_discount)."', 
                     '".mysqli_real_escape_string($connection, $pf_discount)."', 
                     '".mysqli_real_escape_string($connection, $readers_discount)."', 
-                    '".mysqli_real_escape_string($connection, $remaining_balance)."')";
+                    '".mysqli_real_escape_string($connection, $remaining_balance)."',
+                    'Pending')"; // Added status here
         }
 
         if (mysqli_query($connection, $query)) {
@@ -400,8 +403,8 @@ if (isset($_POST['add-billing'])) {
         $msg = "Error: Patient not found.";
     }
 }
-
 ?>
+
 <div class="page-wrapper">
     <div class="content">
         <div class="row">

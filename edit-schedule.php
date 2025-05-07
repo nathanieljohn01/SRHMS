@@ -116,7 +116,7 @@ if (isset($_POST['save-schedule'])) {
                     <div class="col-md-6">
                             <div class="form-group">
                                 <label>Doctor Name</label>
-                                <select class="select" name="doctor_name">
+                                <select class="form-control" name="doctor_name">
                                     <?php
                                 $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_schedule WHERE id='$id'");
                                 $schedule= mysqli_fetch_array($fetch_query);
@@ -132,28 +132,31 @@ if (isset($_POST['save-schedule'])) {
                         <div class="col-md-6">
                             <div class="form-group">
                                 <label>Available Days</label>
-                                <select class="select" multiple name="days[]" required>
-                                    <option value="">Select Days</option>
-                                    <?php
-                                
-                                $days = explode(", ", $row["available_days"]);
-                                $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_week");
-                                while ($rows = mysqli_fetch_array($fetch_query))
-                                 {
-                                if (in_array($rows["name"], $days))
-                                $selected = "selected";
-                                else
-                                $selected = "";
-                                ?>
-                                    <option value="<?=$rows["name"];?>" <?php echo $selected; ?>><?=$rows["name"];?>
-                                    </option>
-                                    <?php 
-                                    }
-                                    ?>
-                                </select>
+                                <div class="dropdown">
+                                    <button class="form-control dropdown-toggle text-left" type="button" id="daysDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                        Select Days
+                                    </button>
+                                    <div class="dropdown-menu dropdown-menu-right w-100" aria-labelledby="daysDropdown">
+                                        <?php
+                                        $days = explode(", ", $row["available_days"]);
+                                        $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_week");
+                                        while ($rows = mysqli_fetch_array($fetch_query)) {
+                                            $checked = in_array($rows["name"], $days) ? "checked" : "";
+                                        ?>
+                                        <div class="dropdown-item">
+                                            <div class="custom-control custom-checkbox">
+                                                <input type="checkbox" class="custom-control-input day-checkbox" id="day_<?= $rows["name"]; ?>" 
+                                                    name="days[]" value="<?= $rows["name"]; ?>" <?= $checked; ?>>
+                                                <label class="custom-control-label" for="day_<?= $rows["name"]; ?>"><?= $rows["name"]; ?></label>
+                                            </div>
+                                        </div>
+                                        <?php } ?>
+                                    </div>
+                                </div>
+                                <input type="hidden" id="selectedDaysDisplay" class="form-control mt-2" readonly>
                             </div>
                         </div>
-                    </div>
+                    </div>  
                     <div class="row">
                         <div class="col-md-6">
                             <div class="form-group">
@@ -209,43 +212,122 @@ include('footer.php');
           echo 'swal("' . $msg . '");';
       }
  ?>
+
+ // Days dropdown functionality
+$(document).ready(function() {
+    // Initialize the selected days display
+    updateSelectedDays();
+    
+    // Handle checkbox changes
+    $('.day-checkbox').on('change', function() {
+        updateSelectedDays();
+    });
+    
+    // Update the display of selected days
+    function updateSelectedDays() {
+        var selectedDays = [];
+        $('.day-checkbox:checked').each(function() {
+            selectedDays.push($(this).val());
+        });
+        
+        if (selectedDays.length > 0) {
+            $('#daysDropdown').text(selectedDays.join(', '));
+            $('#selectedDaysDisplay').val(selectedDays.join(', '));
+        } else {
+            $('#daysDropdown').text('Select Days');
+            $('#selectedDaysDisplay').val('');
+        }
+    }
+    
+    // Close the dropdown if clicked outside of it
+    $(document).on('click', function(e) {
+        if (!$(e.target).closest('.dropdown').length) {
+            $('.dropdown-menu').slideUp('400');
+        }
+    });
+    
+    // Toggle dropdown
+    $('.dropdown-toggle').on('click', function(e) {
+        var $el = $(this).next('.dropdown-menu');
+        var isVisible = $el.is(':visible');
+        
+        // Hide all dropdowns
+        $('.dropdown-menu').slideUp('400');
+        
+        // If this wasn't already visible, slide it down
+        if (!isVisible) {
+            $el.stop(true, true).slideDown('400');
+        }
+    });
+});
+
 </script>
 <style>
-    .btn-primary.submit-btn {
-        border-radius: 4px; 
-        padding: 10px 20px;
-        font-size: 16px;
-    }
+.dropdown-menu {
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    transform-origin: top right;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    padding: 8px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.dropdown-item {
+    padding: 7px 15px;
+    color: #333;
+}
+
+.dropdown-item:hover {
+    background-color: #f8f9fa;
+    color: #12369e;
+}
+
+.dropdown-toggle::after {
+    float: right;
+    margin-top: 8px;
+}
+
+.custom-control-input:checked ~ .custom-control-label::before {
+    background-color: #12369e;
+    border-color: #12369e;
+}
+
+.btn-primary.submit-btn {
+    border-radius: 4px; 
+    padding: 10px 20px;
+    font-size: 16px;
+}
 .btn-primary {
-            background: #12369e;
-            border: none;
-        }
-        .btn-primary:hover {
-            background: #05007E;
-        }
-        .form-control {
+    background: #12369e;
+    border: none;
+}
+.btn-primary:hover {
+    background: #05007E;
+}
+.form-control {
     border-radius: .375rem; /* Rounded corners */
     border-color: #ced4da; /* Border color */
     background-color: #f8f9fa; /* Background color */
 }
 select.form-control {
-            border-radius: .375rem; /* Rounded corners */
-            border: 1px solid; /* Border color */
-            border-color: #ced4da; /* Border color */
-            background-color: #f8f9fa; /* Background color */
-            padding: .375rem 2.5rem .375rem .75rem; /* Adjust padding to make space for the larger arrow */
-            font-size: 1rem; /* Font size */
-            line-height: 1.5; /* Line height */
-            height: calc(2.25rem + 2px); /* Adjust height */
-            -webkit-appearance: none; /* Remove default styling on WebKit browsers */
-            -moz-appearance: none; /* Remove default styling on Mozilla browsers */
-            appearance: none; /* Remove default styling on other browsers */
-            background: url('data:image/svg+xml;charset=UTF-8,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20"%3E%3Cpath d="M7 10l5 5 5-5z" fill="%23aaa"/%3E%3C/svg%3E') no-repeat right 0.75rem center;
-            background-size: 20px; /* Size of the custom arrow */
-        }
+    border-radius: .375rem; /* Rounded corners */
+    border: 1px solid; /* Border color */
+    border-color: #ced4da; /* Border color */
+    background-color: #f8f9fa; /* Background color */
+    padding: .375rem 2.5rem .375rem .75rem; /* Adjust padding to make space for the larger arrow */
+    font-size: 1rem; /* Font size */
+    line-height: 1.5; /* Line height */
+    height: calc(2.25rem + 2px); /* Adjust height */
+    -webkit-appearance: none; /* Remove default styling on WebKit browsers */
+    -moz-appearance: none; /* Remove default styling on Mozilla browsers */
+    appearance: none; /* Remove default styling on other browsers */
+    background: url('data:image/svg+xml;charset=UTF-8,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20"%3E%3Cpath d="M7 10l5 5 5-5z" fill="%23aaa"/%3E%3C/svg%3E') no-repeat right 0.75rem center;
+    background-size: 20px; /* Size of the custom arrow */
+}
 
-        select.form-control:focus {
-            border-color: #12369e; /* Border color on focus */
-            box-shadow: 0 0 0 .2rem rgba(38, 143, 255, .25); /* Shadow on focus */
-        }
+select.form-control:focus {
+    border-color: #12369e; /* Border color on focus */
+    box-shadow: 0 0 0 .2rem rgba(38, 143, 255, .25); /* Shadow on focus */
+}
 </style>

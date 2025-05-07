@@ -322,30 +322,30 @@ ob_end_flush();
                                 <?php } ?>
                             </td>
                             <td>
-                                <?php if ($_SESSION['role'] == 2 ||  $_SESSION['role'] == 1) { ?>
+                                <?php if ($_SESSION['role'] == 2 || $_SESSION['role'] == 1) { ?>
                                 <form action="generate-result.php" method="get">
                                     <input type="hidden" name="patient_id" value="<?php echo htmlspecialchars($row['patient_id']); ?>">
-                                    <button class="btn btn-primary btn-sm custom-btn" type="submit">
+                                    <button class="btn btn-primary btn-sm" type="submit">
                                         <i class="fa fa-file-pdf-o m-r-5"></i> View Result
                                     </button>
                                 </form>
                                 <?php } ?>
                             </td>
                             <?php if ($_SESSION['role'] == 2 || $_SESSION['role'] == 1) { ?>
-                                <td id="img-btn-<?php echo $row['patient_id']; ?>">
-                                    <?php 
-                                    $rad_query = $connection->prepare("SELECT COUNT(*) as count FROM tbl_radiology WHERE patient_id = ? AND radiographic_image IS NOT NULL AND radiographic_image != '' AND deleted = 0");
-                                    $rad_query->bind_param("s", $row['patient_id']);
-                                    $rad_query->execute();
-                                    $rad_result = $rad_query->get_result();
-                                    $rad_count = $rad_result->fetch_assoc()['count'];
-                                    if ($rad_count > 0) {
-                                    ?>
-                                        <button class="btn btn-primary custom-btn" onclick="showRadiologyImages('<?php echo $row['patient_id']; ?>')">
-                                            <i class="fa fa-image m-r-5"></i> View Images
-                                        </button>
-                                    <?php } ?>
-                                </td>
+                            <td id="img-btn-<?php echo $row['patient_id']; ?>">
+                                <?php 
+                                $rad_query = $connection->prepare("SELECT COUNT(*) as count FROM tbl_radiology WHERE patient_id = ? AND radiographic_image IS NOT NULL AND radiographic_image != '' AND deleted = 0");
+                                $rad_query->bind_param("s", $row['patient_id']);
+                                $rad_query->execute();
+                                $rad_result = $rad_query->get_result();
+                                $rad_count = $rad_result->fetch_assoc()['count'];
+                                if ($rad_count > 0) {
+                                ?>
+                                <button class="btn btn-primary btn-sm" onclick="showRadiologyImages('<?php echo $row['patient_id']; ?>')">
+                                    <i class="fa fa-image m-r-5"></i> View Images
+                                </button>
+                                <?php } ?>
+                            </td>
                             <?php } ?>
                             <td><?php echo htmlspecialchars($row['diagnosis']); ?></td>
                             <td>
@@ -454,7 +454,6 @@ ob_end_flush();
         <div class="modal-content">
             <div class="modal-header">
                 <h4 class="modal-title">Diagnosis</h4>
-                <button type="button" class="close" data-dismiss="modal">&times;</button>
             </div>
             <div class="modal-body">
                 <!-- Form for diagnosis -->
@@ -479,7 +478,6 @@ ob_end_flush();
         <div class="modal-content">
             <div class="modal-header">
                 <h4 class="modal-title">Select Doctor</h4>
-                <button type="button" class="close" data-dismiss="modal">&times;</button>
             </div>
             <div class="modal-body">
                 <!-- List of doctors -->
@@ -768,23 +766,23 @@ $('.treatment-btn').on('click', function () {
                 );
 
             // View Result button - show for role 2 (doctor)
-            var viewResultButton = (role == 2 || role == 1) ? 
+            const viewResultButton = (role == 2 || role == 1) ? 
                 `<form action="generate-result.php" method="get">
-                    <input type="hidden" name="patient_id" value="${row.patient_id}">
-                    <button class="btn btn-primary btn-sm custom-btn" type="submit">
+                    <input type="hidden" name="patient_id" value="${escapeHtml(row.patient_id)}">
+                    <button class="btn btn-primary btn-sm" type="submit">
                         <i class="fa fa-file-pdf-o m-r-5"></i> View Result
                     </button>
                 </form>` : 
                 '';
 
-            // Radiographic Images button - show for role 2 (doctor) and 1 (admin)
-            var radiologyButton = '';
-            if ((role == 2 || role == 1) && row.has_radiology_images) {
-                radiologyButton = `
-                    <button class="btn btn-primary custom-btn" onclick="showRadiologyImages('${row.patient_id}')">
-                        <i class="fa fa-image m-r-5"></i> View Images
-                    </button>`;
-            }
+                        // Radiology Images button - show for role 2 (doctor) and 1 (admin)
+                        var radiologyButton = '';
+                        if ((role == 2 || role == 1) && row.has_radiology_images) {
+                            radiologyButton = `
+                                <button class="btn btn-primary btn-sm" onclick="showRadiologyImages('${escapeHtml(row.patient_id)}')">
+                                    <i class="fa fa-image m-r-5"></i> View Images
+                                </button>`;
+                        }
 
             // Treatment display - show for role 2 (doctor)
             var treatmentContent = row.treatments && row.treatments !== 'No treatments added' ? 
@@ -1301,4 +1299,11 @@ select.form-control:focus {
 .radiology-images-modal .card:hover {
     transform: scale(1.02);
 }
+.btn-sm {
+    min-width: 110px; /* Adjust as needed */
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+
 </style>

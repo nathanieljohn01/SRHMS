@@ -83,8 +83,7 @@ include('includes/connection.php');
                                 "5" => ['text' => 'Medtech', 'color' => 'emp-medtech', 'icon' => 'fa-microscope'],
                                 "6" => ['text' => 'Radtech', 'color' => 'emp-radtech', 'icon' => 'fa-x-ray'],
                                 "7" => ['text' => 'Billing Clerk', 'color' => 'emp-billing', 'icon' => 'fa-file-invoice-dollar'],
-                                "8" => ['text' => 'Cashier', 'color' => 'emp-cashier', 'icon' => 'fa-cash-register'],
-                                "9" => ['text' => 'Housekeeping', 'color' => 'emp-housekeeping', 'icon' => 'fa-broom']
+                                "8" => ['text' => 'Cashier', 'color' => 'emp-cashier', 'icon' => 'fa-cash-register']
                             ];
                             
                             if (isset($roleBadges[$row['role']])) {

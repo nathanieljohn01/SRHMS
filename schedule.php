@@ -94,7 +94,7 @@ if (isset($_GET['ids'])) {
             <div class="col-sm-8 col-9 text-right m-b-20">
                 <?php 
                 // Check user role
-                if ($_SESSION['role'] == 1) {
+                if ($_SESSION['role'] == 1 || $_SESSION['role'] == 2) {
                     // Show Add Schedule button for roles 1 and 2
                     echo '<a href="add-schedule.php" class="btn btn-primary float-right"><i class="fa fa-plus"></i> Add Schedule</a>';
                 }

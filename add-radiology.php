@@ -291,7 +291,7 @@ if (isset($_POST['add-radiology'])) {
             const query = searchInput.value.trim();
             if (query.length > 2) {
                 // Create the AJAX request
-                fetch('search-lab.php?query=' + query)  // This will call the search-ipt.php file
+                fetch('search-radiology.php?query=' + query)  // This will call the search-ipt.php file
                     .then(response => response.text())
                     .then(data => {
                         patientList.innerHTML = '';  // Clear previous results

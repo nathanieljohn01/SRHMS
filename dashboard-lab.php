@@ -162,7 +162,6 @@ $stat_tests = mysqli_fetch_row(mysqli_query($connection, "
                         <h4 class="card-title d-inline-block">Lab Test Distribution</h4>
                         <div class="float-right">
                             <select id="labTestDistributionRange" class="form-control">
-                                <option value="weekly">Weekly</option>
                                 <option value="monthly" selected>Monthly</option>
                                 <option value="yearly">Yearly</option>
                             </select>
@@ -174,7 +173,7 @@ $stat_tests = mysqli_fetch_row(mysqli_query($connection, "
                 </div>
             </div>
         </div>
-        </div>
+    </div>
 
 <?php include('footer.php'); ?>
 
@@ -562,6 +561,7 @@ updateTime();
 
 // Add these variables at the top of your script
 var labTestDistributionChart;
+// Update the lab test distribution chart function
 function initializeOrUpdateLabTestDistributionChart(timeRange = 'monthly', shift = null) {
     const ctx = document.getElementById('labTestDistributionChart').getContext('2d');
 
@@ -572,24 +572,17 @@ function initializeOrUpdateLabTestDistributionChart(timeRange = 'monthly', shift
 
     // Create gradient colors
     const gradients = [
-        createGradient(ctx, '#36A2EB', '#1e90ff'),
-        createGradient(ctx, '#FF6384', '#ff416c'),
-        createGradient(ctx, '#FFCE56', '#ffb347'),
-        createGradient(ctx, '#4BC0C0', '#2bd2ff'),
-        createGradient(ctx, '#9966FF', '#8e44ad'),
-        createGradient(ctx, '#FF9F40', '#ff7f50'),
-        createGradient(ctx, '#C7C7C7', '#aaaaaa'),
-        createGradient(ctx, '#5366FF', '#3a4fff'),
-        createGradient(ctx, '#289F40', '#43e97b'),
-        createGradient(ctx, '#D2C7C7', '#999999')
+        '#36A2EB', '#FF6384', '#FFCE56', '#4BC0C0', '#9966FF',
+        '#FF9F40', '#C7C7C7', '#5366FF', '#289F40', '#D2C7C7'
     ];
 
+    // Create empty chart first
     labTestDistributionChart = new Chart(ctx, {
         type: 'pie',
         data: {
-            labels: [], // Will be filled via AJAX
+            labels: ['Loading...'],
             datasets: [{
-                data: [],
+                data: [1],
                 backgroundColor: gradients,
                 borderColor: '#ffffff',
                 borderWidth: 1
@@ -634,90 +627,133 @@ function initializeOrUpdateLabTestDistributionChart(timeRange = 'monthly', shift
     });
 
     // Fetch data and update chart
-    fetchLabTestDistribution(timeRange, shift).then(data => {
-        labTestDistributionChart.data.labels = data.labels;
-        labTestDistributionChart.data.datasets[0].data = data.values;
-        labTestDistributionChart.update();
-    }).catch(error => {
-        console.error('Error fetching lab test distribution data:', error);
-    });
+    fetchLabTestDistribution(timeRange, shift)
+        .then(data => {
+            console.log('Weekly data fetched:', data); // Debug log
+            
+            // If no data returned, show message
+            if (!data.labels || data.labels.length === 0 || 
+                (data.labels.length === 1 && data.labels[0] === 'No Data')) {
+                labTestDistributionChart.data.labels = ['No Data Available'];
+                labTestDistributionChart.data.datasets[0].data = [1];
+                labTestDistributionChart.data.datasets[0].backgroundColor = ['#C7C7C7'];
+            } else {
+                labTestDistributionChart.data.labels = data.labels;
+                labTestDistributionChart.data.datasets[0].data = data.values;
+                
+                // Ensure we have enough colors for all labels
+                const colors = [
+                    '#36A2EB', '#FF6384', '#FFCE56', '#4BC0C0', '#9966FF',
+                    '#FF9F40', '#C7C7C7', '#5366FF', '#289F40', '#D2C7C7'
+                ];
+                labTestDistributionChart.data.datasets[0].backgroundColor = 
+                    data.labels.map((_, i) => colors[i % colors.length]);
+            }
+            
+            labTestDistributionChart.update();
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            labTestDistributionChart.data.labels = ['Error Loading Data'];
+            labTestDistributionChart.data.datasets[0].data = [1];
+            labTestDistributionChart.data.datasets[0].backgroundColor = ['#FF6384'];
+            labTestDistributionChart.update();
+        });
 }
 
-// Helper to create a gradient
-function createGradient(ctx, colorStart, colorEnd) {
-    const gradient = ctx.createLinearGradient(0, 0, 300, 300);
-    gradient.addColorStop(0, colorStart);
-    gradient.addColorStop(1, colorEnd);
-    return gradient;
-}
-
-// Function to fetch lab test distribution data
+// Update the fetch function with better error handling
 function fetchLabTestDistribution(timeRange, shift = null) {
     return new Promise((resolve, reject) => {
-        const params = {
-            timeRange: timeRange,
-            dataType: 'labTestDistribution'
-        };
+        const params = new URLSearchParams();
+        params.append('timeRange', timeRange);
         
         if (shift) {
-            params.shift = shift;
+            params.append('shift', shift);
         }
         
-        $.ajax({
-            url: 'fetch_lab_distribution.php',
-            type: 'GET',
-            data: params,
-            success: function(response) {
-                try {
-                    const data = typeof response === 'string' ? JSON.parse(response) : response;
-                    resolve(data);
-                } catch (e) {
-                    console.error('Error parsing response:', e);
-                    reject(e);
+        console.log('Fetching data with params:', params.toString());
+        
+        fetch(`fetch_lab_distribution.php?${params.toString()}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
                 }
-            },
-            error: function(error) {
-                console.error('AJAX Error:', error);
+                return response.json();
+            })
+            .then(data => {
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                resolve(data);
+            })
+            .catch(error => {
+                console.error('Fetch error:', error);
                 reject(error);
-            }
-        });
+            });
     });
 }
 
 // Add this to your document ready function
 $(document).ready(function() {
-    // Existing code...
-    
-    // Initialize lab test distribution chart
+    // Initialize all charts
+    initializeOrUpdateCompletedTestsChart();
+    initializeOrUpdateCancelledTestsChart();
     initializeOrUpdateLabTestDistributionChart();
     
-    // Add event listener for lab test distribution time range selector
+    // Current time range and shift
+    let currentTimeRange = 'monthly';
+    let currentShift = '<?php echo strtolower($currentShift); ?>';
+    
+    // Lab Test Distribution Time Range Selector
     $('#labTestDistributionRange').change(function() {
-        const timeRange = $(this).val();
-        // Update the active time filter button to match
+        currentTimeRange = $(this).val();
+        const activeShift = $('.shift-filter.active').data('shift') || 'current';
+        
+        // Update UI
         $('.time-filter').removeClass('active');
-        $(`.time-filter[data-range="${timeRange}"]`).addClass('active');
-        initializeOrUpdateLabTestDistributionChart(timeRange);
+        $(`.time-filter[data-range="${currentTimeRange}"]`).addClass('active');
+        
+        // Update chart with proper parameters
+        initializeOrUpdateLabTestDistributionChart(
+            currentTimeRange, 
+            activeShift === 'current' ? null : activeShift
+        );
     });
     
-    // Update the shift filter button click handler to also update the lab test distribution chart
+    // Shift Filter Handler
     $('.shift-filter').click(function() {
-        // Existing code...
+        $('.shift-filter').removeClass('active');
+        $(this).addClass('active');
         
-        // Update lab test distribution chart
-        initializeOrUpdateLabTestDistributionChart(timeRange, shift === 'current' ? null : shift);
+        const shift = $(this).data('shift');
+        currentShift = shift;
+        
+        updateShiftDisplay(shift);
+        initializeOrUpdateLabTestDistributionChart(
+            currentTimeRange,
+            shift === 'current' ? null : shift
+        );
     });
     
-    // Update the time filter button click handler to also update the lab test distribution chart
+    // Time Filter Buttons
     $('.time-filter').click(function() {
-        // Existing code...
+        currentTimeRange = $(this).data('range');
         
-        // Update lab test distribution chart
-        initializeOrUpdateLabTestDistributionChart(timeRange, shift === 'current' ? null : shift);
+        $('.time-filter').removeClass('active');
+        $(this).addClass('active');
         
-        // Update dropdown to match
-        $('#labTestDistributionRange').val(timeRange);
+        $('#labTestDistributionRange').val(currentTimeRange);
+        
+        const activeShift = $('.shift-filter.active').data('shift') || 'current';
+        initializeOrUpdateLabTestDistributionChart(
+            currentTimeRange,
+            activeShift === 'current' ? null : activeShift
+        );
     });
+    
+    // Initialize time display
+    updateTime();
+    setInterval(updateTime, 1000);
 });
 
 </script>

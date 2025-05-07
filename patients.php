@@ -89,8 +89,10 @@ include('includes/connection.php');
                                     <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><i class="fa fa-ellipsis-v"></i></a>
                                     <div class="dropdown-menu dropdown-menu-right">
                                     <?php 
-                                    if ($_SESSION['role'] == 1) {
+                                    if ($_SESSION['role'] == 3 ) {
+                                        }
                                         echo '<a class="dropdown-item" href="edit-patient.php?id='.$row['id'].'"><i class="fa fa-pencil m-r-5"></i> Edit</a>';
+                                    if ($_SESSION['role'] == 1 ) {
                                         echo '<a class="dropdown-item" href="#" onclick="return confirmDelete(\''.$row['id'].'\')"><i class="fa fa-trash-o m-r-5"></i> Delete</a>';
                                     }
                                     ?>

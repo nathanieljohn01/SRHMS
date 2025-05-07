@@ -13,6 +13,21 @@ function sanitize($connection, $input) {
     return mysqli_real_escape_string($connection, htmlspecialchars(strip_tags(trim($input)), ENT_QUOTES, 'UTF-8'));
 }
 
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['diagnosis']) && isset($_POST['patientId'])) {
+    $diagnosis = sanitize($connection, $_POST['diagnosis']);
+    $patientId = sanitize($connection, $_POST['patientId']);
+    
+    $update_query = $connection->prepare("UPDATE tbl_newborn SET diagnosis=? WHERE newborn_id=?");
+    $update_query->bind_param("ss", $diagnosis, $patientId);
+
+    if ($update_query->execute()) {
+        echo "<script>showSuccess('Diagnosis added successfully.', true);</script>";
+    } else {
+        echo "<script>showError('Error adding diagnosis.');</script>";
+    }
+    $update_query->close();
+}
+
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['selectedMedicines']) && isset($_POST['newbornIdTreatment'])) {
     $newbornId = sanitize($connection, $_POST['newbornIdTreatment']);
     $selectedMedicines = json_decode($_POST['selectedMedicines'], true);
@@ -131,11 +146,12 @@ ob_end_flush();
                         <th>Time of Birth</th>
                         <th>Birth Weight</th>
                         <th>Birth Height</th>
+                        <th>Physician</th>
+                        <th>Diagnosis</th>
                         <th>Medications</th>
                         <th>Room Type</th>
                         <th>Admission Date and Time</th>
                         <th>Discharge Date and Time</th>
-                        <th>Physician</th>
                         <th>Action</th>
                     </tr>
                 </thead>
@@ -189,34 +205,41 @@ ob_end_flush();
                             <td><?= htmlspecialchars($row['tob']); ?></td>
                             <td><?= htmlspecialchars($row['birth_weight']); ?></td>
                             <td><?= htmlspecialchars($row['birth_height']); ?></td>
+                            <td><?= htmlspecialchars($row['physician']); ?></td>
+                            <td><?= htmlspecialchars($row['diagnosis']); ?></td>
                             <td>
                                 <?php if (!empty($row['treatments'])): ?>
                                     <div><?= nl2br(strip_tags($row['treatments'], '<br>')); ?></div>
-                                <?php else: ?>
-                                    <button class="btn btn-primary btn-sm treatment-btn mt-2" data-toggle="modal" data-target="#treatmentModal" data-id="<?= htmlspecialchars($row['newborn_id']); ?>">
-                                        <i class="fa fa-stethoscope m-r-5"></i> Add/Edit Treatments
-                                    </button>
                                 <?php endif; ?>
                             </td>
                             <td><?= htmlspecialchars($row['room_type']); ?></td>
                             <td><?= $admission_date; ?></td>
                             <td><?= $discharge_date; ?></td>
-                            <td><?= htmlspecialchars($row['physician']); ?></td>
                             <td class="text-right">
-                                <div class="dropdown dropdown-action">
-                                    <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
-                                        <i class="fa fa-ellipsis-v"></i>
-                                    </a>
-                                    <div class="dropdown-menu dropdown-menu-right">
-                                        <?php if ($_SESSION['role'] == 1 || $_SESSION['role'] == 3): ?>
-                                            <a class="dropdown-item" href="edit-newborn.php?id=<?= htmlspecialchars($row['id']); ?>">
-                                                <i class="fa fa-pencil m-r-5"></i> Edit
-                                            </a>
-                                            <a class="dropdown-item" href="#" onclick="return confirmDelete('<?php echo $row['id']; ?>')"><i class="fa fa-trash-o m-r-5"></i> Delete</a>
-                                        <?php endif; ?>
-                                    </div>
-                                </div>
-                            </td>
+    <div class="dropdown dropdown-action">
+        <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
+            <i class="fa fa-ellipsis-v"></i>
+        </a>
+        <div class="dropdown-menu dropdown-menu-right">
+            <?php if ($_SESSION['role'] == 2) { ?>
+                <button class="dropdown-item diagnosis-btn" data-toggle="modal" data-target="#diagnosisModal" data-id="<?php echo $row['newborn_id']; ?>" <?php echo !empty($row['diagnosis']) ? 'disabled' : ''; ?>>
+                    <i class="fa fa-stethoscope m-r-5"></i> Diagnosis
+                </button>
+                <button class="dropdown-item treatment-btn" data-toggle="modal" data-target="#treatmentModal" data-id="<?php echo $row['newborn_id']; ?>" <?php echo !empty($row['treatments']) ? 'disabled' : ''; ?>>
+                    <i class="fa fa-pills m-r-5"></i> Treatments
+                </button>
+            <?php } ?>
+            <?php if ($_SESSION['role'] == 1 || $_SESSION['role'] == 3): ?>
+                <a class="dropdown-item" href="edit-newborn.php?id=<?= htmlspecialchars($row['id']); ?>">
+                    <i class="fa fa-pencil m-r-5"></i> Edit
+                </a>
+                <a class="dropdown-item" href="#" onclick="return confirmDelete('<?php echo $row['id']; ?>')">
+                    <i class="fa fa-trash-o m-r-5"></i> Delete
+                </a>
+            <?php endif; ?>
+        </div>
+    </div>
+</td>
                         </tr>
                     <?php endwhile; ?>
                 </tbody>
@@ -225,6 +248,27 @@ ob_end_flush();
     </div>
 </div>
 
+<!-- Diagnosis Modal -->
+<div id="diagnosisModal" class="modal fade" role="dialog">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title">Diagnosis</h4>
+            </div>
+            <div class="modal-body">
+                <form id="diagnosisForm" method="post" action="newborn.php">
+                    <div class="form-group">
+                        <label for="diagnosis">Enter Diagnosis:</label>
+                        <input type="text" class="form-control" id="diagnosis" name="diagnosis">
+                    </div>
+                    <input type="hidden" id="newbornId" name="patientId">
+                    <button type="submit" class="btn btn-primary">Submit</button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
 
 <div id="treatmentModal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="treatmentModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg" role="document">
@@ -411,14 +455,18 @@ function removeMedicineFromList(index) {
 }
 
 // Reset selected medicines when opening the modal
-$('.treatment-btn').on('click', function () {
-    const newbornId = $(this).data('id');
+$(document).on('click', '.treatment-btn', function(){
+    var newbornId = $(this).data('id');
     $('#newbornIdTreatment').val(newbornId);
     selectedMedicines = []; // Clear the array
     $('#selectedMedicinesList').html(''); // Clear the UI
     $('#selectedMedicines').val(''); // Clear the hidden input
 });
 
+$(document).on('click', '.diagnosis-btn', function() {
+    var newbornId = $(this).data('id');
+    $('#newbornId').val(newbornId); // Update the hidden field with newborn ID
+});
 $('.dropdown-toggle').on('click', function (e) {
     var $el = $(this).next('.dropdown-menu');
     var isVisible = $el.is(':visible');

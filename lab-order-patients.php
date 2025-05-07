@@ -50,7 +50,7 @@ include('includes/connection.php');
                 </thead>
                 <tbody>
                     <?php
-                    $fetch_patients_query = mysqli_query($connection, "SELECT patient_id, patient_type, first_name, last_name, dob, gender, date_time FROM tbl_patient ORDER BY last_name ASC") or die(mysqli_error($connection));
+                    $fetch_patients_query = mysqli_query($connection, "SELECT patient_id, patient_type, first_name, last_name, dob, gender, date_time FROM tbl_patient WHERE patient_type IN ('Inpatient', 'Outpatient') ORDER BY last_name ASC") or die(mysqli_error($connection));
                     while ($patient_row = mysqli_fetch_array($fetch_patients_query)) {
                         $dob = $patient_row['dob'];
                         $dob = date('Y-m-d', strtotime(str_replace('/', '-', $dob)));

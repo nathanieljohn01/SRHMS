@@ -1,103 +1,130 @@
 <?php
 session_start();
-if (empty($_SESSION['name']) || $_SESSION['role'] != 1) {
+if (empty($_SESSION['name'])) {
     header('location:index.php');
     exit();
 }
 include('header.php');
 include('includes/connection.php');
 
-// Define the sanitize function
 function sanitize($connection, $input) {
     return mysqli_real_escape_string($connection, trim(htmlspecialchars($input, ENT_QUOTES, 'UTF-8')));
 }
 
 if (isset($_POST['add-employee'])) {
-    // Sanitize inputs
-    $first_name = sanitize($connection, $_POST['first_name']);
-    $last_name = sanitize($connection, $_POST['last_name']);
-    $username = sanitize($connection, $_POST['username']);
-    $emailid = sanitize($connection, $_POST['emailid']);
-    $pwd = sanitize($connection, $_POST['pwd']); // Plain password
-    $dob = sanitize($connection, $_POST['dob']);
-    $joining_date = sanitize($connection, $_POST['joining_date']);
-    $gender = sanitize($connection, $_POST['gender']);
-    $phone = sanitize($connection, $_POST['phone']);
-    $address = sanitize($connection, $_POST['address']);
-    $specialization = sanitize($connection, $_POST['specialization']);
-    $bio = sanitize($connection, $_POST['bio']);
-    $role = sanitize($connection, $_POST['role']);
-    $status = sanitize($connection, $_POST['status']);
+    // Sanitize all inputs
+    $employee_data = [
+        'first_name' => sanitize($connection, $_POST['first_name']),
+        'last_name' => sanitize($connection, $_POST['last_name']),
+        'username' => sanitize($connection, $_POST['username']),
+        'emailid' => sanitize($connection, $_POST['emailid']),
+        'pwd' => password_hash(sanitize($connection, $_POST['pwd']), PASSWORD_DEFAULT),
+        'dob' => sanitize($connection, $_POST['dob']),
+        'joining_date' => sanitize($connection, $_POST['joining_date']),
+        'gender' => sanitize($connection, $_POST['gender']),
+        'phone' => sanitize($connection, $_POST['phone']),
+        'address' => sanitize($connection, $_POST['address']),
+        'specialization' => sanitize($connection, $_POST['specialization']),
+        'bio' => sanitize($connection, $_POST['bio']),
+        'role' => sanitize($connection, $_POST['role']),
+        'status' => sanitize($connection, $_POST['status'])
+    ];
 
-    // Hash the password before inserting it into the database
-    $hashed_pwd = password_hash($pwd, PASSWORD_DEFAULT);
-
-    // Handle file upload
-    $profile_picture = null; // Default to null
+    // Handle profile picture upload
+    $profile_picture = null;
+    $upload_error = null;
+    
     if (isset($_FILES['profile_picture']) && $_FILES['profile_picture']['error'] === UPLOAD_ERR_OK) {
-        $fileTmpPath = $_FILES['profile_picture']['tmp_name'];
-        $fileType = $_FILES['profile_picture']['type'];
+        // Validate file
+        $allowed_types = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/gif' => 'gif'];
+        $file_type = $_FILES['profile_picture']['type'];
+        $file_size = $_FILES['profile_picture']['size'];
+        $max_size = 2 * 1024 * 1024; // 2MB
 
-        // Validate image file types
-        $validTypes = ['image/jpeg', 'image/png', 'image/gif'];
-        if (in_array($fileType, $validTypes)) {
-            $profile_picture = file_get_contents($fileTmpPath);
+        if (array_key_exists($file_type, $allowed_types)) {
+            if ($file_size <= $max_size) {
+                // Generate unique filename
+                $file_ext = $allowed_types[$file_type];
+                $new_filename = uniqid('profile_', true) . '.' . $file_ext;
+                $upload_path = 'uploads/profiles/' . $new_filename;
+                
+                // Move uploaded file
+                if (move_uploaded_file($_FILES['profile_picture']['tmp_name'], $upload_path)) {
+                    // Store only the path in database (recommended approach)
+                    $profile_picture = $upload_path;
+                } else {
+                    $upload_error = "Failed to move uploaded file";
+                }
+            } else {
+                $upload_error = "File size exceeds 2MB limit";
+            }
         } else {
-            $msg = "Invalid file type. Only JPEG, PNG, and GIF are allowed.";
+            $upload_error = "Only JPG, PNG, and GIF files are allowed";
         }
+    } else {
+        $upload_error = $_FILES['profile_picture']['error'] ?? 'No file uploaded';
     }
 
-    if (!isset($msg)) {
-        // Prepared statement for inserting employee data
-        $stmt = mysqli_prepare($connection, "INSERT INTO tbl_employee (first_name, last_name, specialization, username, emailid, password, dob, joining_date, gender, address, phone, bio, role, status, profile_picture) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-    
-        // Bind parameters (updated with hashed password and correct binary type)
-        mysqli_stmt_bind_param($stmt, 'ssssssssssssssb', $first_name, $last_name, $specialization, $username, $emailid, $hashed_pwd, $dob, $joining_date, $gender, $address, $phone, $bio, $role, $status, $profile_picture);
-    
-        // Send the binary data for `profile_picture` (index 16)
-        if ($profile_picture) {
-            mysqli_stmt_send_long_data($stmt, 15, $profile_picture);
-        }
-    
-        // Execute the statement and check for success
-        if (mysqli_stmt_execute($stmt)) {
-            $msg = "Employee created successfully.";
-            // SweetAlert success message
-            echo "
-            <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
-            <script>
-                document.addEventListener('DOMContentLoaded', function() {
-                    var style = document.createElement('style');
-                    style.innerHTML = '.swal2-confirm { background-color: #12369e !important; color: white !important; border: none !important; } .swal2-confirm:hover { background-color: #05007E !important; } .swal2-confirm:focus { box-shadow: 0 0 0 0.2rem rgba(18, 54, 158, 0.5) !important; }';
-                    document.head.appendChild(style);
-    
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Success!',
-                        text: '$msg',
-                        confirmButtonColor: '#12369e'
-                    }).then(() => {
-                        window.location.href = 'employees.php'; // Adjust the redirection URL as needed
-                    });
+    if ($upload_error) {
+        echo "<script>
+            Swal.fire({
+                icon: 'error',
+                title: 'Upload Error',
+                text: '".addslashes($upload_error)."'
+            });
+        </script>";
+    } else {
+        // Prepare SQL (storing file path instead of BLOB)
+        $stmt = $connection->prepare("INSERT INTO tbl_employee 
+            (first_name, last_name, specialization, username, emailid, password, dob, 
+             joining_date, gender, address, phone, bio, role, status, profile_picture) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        
+        $stmt->bind_param("sssssssssssssss", 
+            $employee_data['first_name'], 
+            $employee_data['last_name'], 
+            $employee_data['specialization'], 
+            $employee_data['username'], 
+            $employee_data['emailid'], 
+            $employee_data['pwd'], 
+            $employee_data['dob'], 
+            $employee_data['joining_date'], 
+            $employee_data['gender'], 
+            $employee_data['address'], 
+            $employee_data['phone'], 
+            $employee_data['bio'], 
+            $employee_data['role'], 
+            $employee_data['status'], 
+            $profile_picture);
+
+        if ($stmt->execute()) {
+            $msg = "Employee created successfully!";
+            echo "<script>
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Success',
+                    text: '".addslashes($msg)."'
+                }).then(() => {
+                    window.location.href = 'employees.php';
                 });
             </script>";
         } else {
-            $msg = "Error: " . mysqli_error($connection);
-            // SweetAlert error message
-            echo "
-            <script>
-                document.addEventListener('DOMContentLoaded', function() {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error',
-                        text: '$msg'
-                    });
+            // Delete uploaded file if database insert failed
+            if ($profile_picture && file_exists($profile_picture)) {
+                unlink($profile_picture);
+            }
+            
+            echo "<script>
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Database Error',
+                    text: '".addslashes($stmt->error)."'
                 });
             </script>";
         }
-    
-        mysqli_stmt_close($stmt);
-    }    
+        
+        $stmt->close();
+    }
 }
 ?>
 
@@ -119,7 +146,8 @@ if (isset($_POST['add-employee'])) {
                         <div class="col-sm-6">
                             <div class="form-group">
                                 <label>Profile Picture</label>
-                                <input type="file" class="form-control-file" name="profile_picture" required>
+                                <input type="file" class="form-control-file" name="profile_picture" required
+                                    accept="image/jpeg,image/png,image/gif">
                             </div>
                         </div>
                         <!-- First Name -->

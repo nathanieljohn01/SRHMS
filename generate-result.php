@@ -198,7 +198,7 @@ $pbsQuery = $connection->prepare("
                'Platelet Count: ', platelet_count, ' K/uL\n',
                'Toxic Granules: ', toxic_granules, '\n',
                'Abnormal Cells: ', abnormal_cells, '\n',
-               'Segmenters: ', segments, ' %\n',
+               'Segmenters: ', segmenters, ' %\n',
                'Lymphocytes: ', lymphocytes, ' %\n',
                'Monocytes: ', monocytes, ' %\n',
                'Eosinophils: ', eosinophils, ' %\n',

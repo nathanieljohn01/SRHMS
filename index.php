@@ -204,11 +204,10 @@ if (isset($_REQUEST['login'])) {
                         header('location: dashboard-rad.php');
                         break;
                     case '7':
-                    case '8':
-                        header('location: dashboard-pharmacy.php');
+                        header('location: dashboard-billing.php');
                         break;
-                    case '9':
-                        header('location: dashboard-lab.php');
+                    case '8':
+                        header('location: dashboard-cashier.php');
                         break;
                     default:
                         echo "<script>alert('Invalid role');</script>";

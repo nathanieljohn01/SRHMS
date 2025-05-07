@@ -12,34 +12,34 @@ function sanitize($connection, $input) {
     return mysqli_real_escape_string($connection, htmlspecialchars(trim($input), ENT_QUOTES, 'UTF-8'));
 }
 
-// Get electrolytes test ID for fetching existing data
+// Get OGTT test ID for fetching existing data
 if (isset($_GET['id'])) {
-    $electrolytes_id = sanitize($connection, $_GET['id']);
+    $ogtt_id = sanitize($connection, $_GET['id']);
 
-    // Fetch existing electrolytes data using prepared statement
-    $fetch_query = mysqli_prepare($connection, "SELECT * FROM tbl_electrolytes WHERE electrolytes_id = ?");
-    mysqli_stmt_bind_param($fetch_query, "s", $electrolytes_id);
+    // Fetch existing OGTT data using prepared statement
+    $fetch_query = mysqli_prepare($connection, "SELECT * FROM tbl_ogtt WHERE ogtt_id = ?");
+    mysqli_stmt_bind_param($fetch_query, "s", $ogtt_id);
     mysqli_stmt_execute($fetch_query);
     $result = mysqli_stmt_get_result($fetch_query);
-    $electrolytes_data = mysqli_fetch_array($result);
+    $ogtt_data = mysqli_fetch_array($result);
     mysqli_stmt_close($fetch_query);
 
-    if (!$electrolytes_data) {
-        echo "Electrolytes test data not found.";
+    if (!$ogtt_data) {
+        echo "OGTT test data not found.";
         exit;
     }
 }
 
-// Handle form submission for editing electrolytes test data
-if (isset($_POST['edit-electrolytes'])) {
+// Handle form submission for editing OGTT test data
+if (isset($_POST['edit-ogtt'])) {
     // Sanitize inputs
-    $electrolytes_id = sanitize($connection, $_POST['electrolytes_id']);
+    $ogtt_id = sanitize($connection, $_POST['ogtt_id']);
     $patient_name = sanitize($connection, $_POST['patient_name']);
     $date_time = sanitize($connection, $_POST['date_time']);
-    $sodium = sanitize($connection, $_POST['sodium'] ?? NULL);
-    $potassium = sanitize($connection, $_POST['potassium'] ?? NULL);
-    $chloride = sanitize($connection, $_POST['chloride'] ?? NULL);
-    $calcium = sanitize($connection, $_POST['calcium'] ?? NULL);
+    $fbs = sanitize($connection, $_POST['fbs'] ?? NULL);
+    $first_hour = sanitize($connection, $_POST['first_hour'] ?? NULL);
+    $second_hour = sanitize($connection, $_POST['second_hour'] ?? NULL);
+    $third_hour = sanitize($connection, $_POST['third_hour'] ?? NULL);
 
     // Fetch patient information using prepared statement
     $patient_query = mysqli_prepare($connection, "SELECT patient_id, gender, dob FROM tbl_patient WHERE CONCAT(first_name, ' ', last_name) = ?");
@@ -53,11 +53,11 @@ if (isset($_POST['edit-electrolytes'])) {
     $gender = $row['gender'];
     $dob = $row['dob'];
 
-    // Update electrolytes data using prepared statement
-    $update_query = mysqli_prepare($connection, "UPDATE tbl_electrolytes SET patient_name = ?, dob = ?, gender = ?, date_time = ?, sodium = ?, potassium = ?, chloride = ?, calcium = ? WHERE electrolytes_id = ?");
+    // Update OGTT data using prepared statement
+    $update_query = mysqli_prepare($connection, "UPDATE tbl_ogtt SET patient_name = ?, dob = ?, gender = ?, date_time = ?, fbs = ?, first_hour = ?, second_hour = ?, third_hour = ? WHERE ogtt_id = ?");
 
     // Bind all parameters as strings
-    mysqli_stmt_bind_param($update_query, "sssssssss", $patient_name, $dob, $gender, $date_time, $sodium, $potassium, $chloride, $calcium, $electrolytes_id);
+    mysqli_stmt_bind_param($update_query, "sssssssss", $patient_name, $dob, $gender, $date_time, $fbs, $first_hour, $second_hour, $third_hour, $ogtt_id);
 
     // Execute the update query
     if (mysqli_stmt_execute($update_query)) {
@@ -69,11 +69,11 @@ if (isset($_POST['edit-electrolytes'])) {
                 Swal.fire({
                     icon: 'success',
                     title: 'Success',
-                    text: 'Electrolytes test updated successfully!',
+                    text: 'OGTT test updated successfully!',
                     confirmButtonColor: '#12369e'
                 }).then(() => {
                     // Redirect to the relevant page or refresh
-                    window.location.href = 'electrolytes.php';
+                    window.location.href = 'ogtt.php';
                 });
             });
         </script>";
@@ -86,7 +86,7 @@ if (isset($_POST['edit-electrolytes'])) {
                 Swal.fire({
                     icon: 'error',
                     title: 'Error',
-                    text: 'Error updating the electrolytes test!',
+                    text: 'Error updating the OGTT test!',
                     confirmButtonColor: '#12369e'
                 });
             });
@@ -102,10 +102,10 @@ if (isset($_POST['edit-electrolytes'])) {
     <div class="content">
         <div class="row">
             <div class="col-sm-4">
-                <h4 class="page-title">Edit Electrolytes Result</h4>
+                <h4 class="page-title">Edit OGTT Result</h4>
             </div>
             <div class="col-sm-8 text-right mb-3">
-                <a href="electrolytes.php" class="btn btn-primary"><i class="fa fa-arrow-left"></i> Back</a>
+                <a href="ogtt.php" class="btn btn-primary"><i class="fa fa-arrow-left"></i> Back</a>
             </div>
         </div>
         <div class="row">
@@ -113,43 +113,45 @@ if (isset($_POST['edit-electrolytes'])) {
                 <form method="post">
                     <div class="form-group row">
                         <div class="col-sm-6">
-                            <label for="electrolytes_id">Electrolytes ID</label>
-                            <input class="form-control" type="text" name="electrolytes_id" id="electrolytes_id" value="<?php echo htmlspecialchars($electrolytes_data['electrolytes_id']); ?>" readonly>
+                            <label for="ogtt_id">OGTT ID</label>
+                            <input class="form-control" type="text" name="ogtt_id" id="ogtt_id" value="<?php echo htmlspecialchars($ogtt_data['ogtt_id']); ?>" readonly>
                         </div>
                         <div class="col-sm-6">
                             <label for="patient_name">Patient Name</label>
-                            <input class="form-control" type="text" name="patient_name" id="patient_name" value="<?php echo htmlspecialchars($electrolytes_data['patient_name']); ?>" readonly>
+                            <input class="form-control" type="text" name="patient_name" id="patient_name" value="<?php echo htmlspecialchars($ogtt_data['patient_name']); ?>" readonly>
                         </div>
                     </div>
                     <div class="form-group">
                         <label for="date_time">Date and Time</label>
-                        <input type="datetime-local" class="form-control" name="date_time" id="date_time" value="<?php echo date('Y-m-d\TH:i', strtotime($electrolytes_data['date_time'])); ?>">
+                        <input type="datetime-local" class="form-control" name="date_time" id="date_time" value="<?php echo date('Y-m-d\TH:i', strtotime($ogtt_data['date_time'])); ?>">
                     </div>
+                    
                     <div class="form-group">
-                        <label for="sodium">Sodium (Na<sup>+</sup>)</label>
-                        <input class="form-control" type="number" name="sodium" id="sodium" value="<?php echo htmlspecialchars($electrolytes_data['sodium']); ?>" 
-                            step="0.01" min="100" max="200" required>
+                        <label for="fbs">Fasting Blood Sugar (FBS)</label>
+                        <input class="form-control" type="number" name="fbs" id="fbs" value="<?php echo htmlspecialchars($ogtt_data['fbs']); ?>" 
+                            step="0.01" min="2" max="20">
                     </div>
 
                     <div class="form-group">
-                        <label for="potassium">Potassium (K<sup>+</sup>)</label>
-                        <input class="form-control" type="number" name="potassium" id="potassium" value="<?php echo htmlspecialchars($electrolytes_data['potassium']); ?>" 
-                            step="0.01" min="2.5" max="6.5" required>
+                        <label for="first_hour">1-Hour Sample</label>
+                        <input class="form-control" type="number" name="first_hour" id="first_hour" value="<?php echo htmlspecialchars($ogtt_data['first_hour']); ?>" 
+                            step="0.01" min="2" max="20">
                     </div>
 
                     <div class="form-group">
-                        <label for="chloride">Chloride (Cl<sup>-</sup>)</label>
-                        <input class="form-control" type="number" name="chloride" id="chloride" value="<?php echo htmlspecialchars($electrolytes_data['chloride']); ?>" 
-                            step="0.01" min="70" max="130" required>
+                        <label for="second_hour">2-Hour Sample</label>
+                        <input class="form-control" type="number" name="second_hour" id="second_hour" value="<?php echo htmlspecialchars($ogtt_data['second_hour']); ?>" 
+                            step="0.01" min="2" max="20">
                     </div>
 
                     <div class="form-group">
-                        <label for="calcium">Calcium (Ca<sup>2+</sup>)</label>
-                        <input class="form-control" type="number" name="calcium" id="calcium" value="<?php echo htmlspecialchars($electrolytes_data['calcium']); ?>" 
-                            step="0.01" min="1.0" max="3.0" required>
+                        <label for="third_hour">3-Hour Sample</label>
+                        <input class="form-control" type="number" name="third_hour" id="third_hour" value="<?php echo htmlspecialchars($ogtt_data['third_hour']); ?>" 
+                            step="0.01" min="2" max="20">
                     </div>
+                    
                     <div class="text-center mt-4">
-                        <button class="btn btn-primary submit-btn" name="edit-electrolytes"><i class="fas fa-save mr-2"></i>Update Result</button>
+                        <button class="btn btn-primary submit-btn" name="edit-ogtt"><i class="fas fa-save mr-2"></i>Update Result</button>
                     </div>
                 </form>
             </div>
@@ -160,7 +162,6 @@ if (isset($_POST['edit-electrolytes'])) {
 <?php
 include('footer.php');
 ?>
-
 
 <script src="assets/js/moment.min.js"></script>
 <script src="assets/js/bootstrap-datetimepicker.js"></script>

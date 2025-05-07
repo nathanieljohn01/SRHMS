@@ -16,8 +16,8 @@ function sanitize($connection, $input) {
 }
 
 $msg = null;
-
 $role = isset($_SESSION['role']) ? $_SESSION['role'] : null;
+$doctor_name = isset($_SESSION['name']) ? $_SESSION['name'] : null;
 
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['selectedMedicines']) && isset($_POST['hemopatientIdTreatment'])) {
     $hemopatientId = sanitize($connection, $_POST['hemopatientIdTreatment']);
@@ -82,6 +82,31 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['selectedMedicines']) &
     }
 }
 
+// Assign doctor to hemodialysis patient
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['hemopatientIdDoctor']) && isset($_POST['doctorId'])) {
+    $hemopatientId = sanitize($connection, $_POST['hemopatientIdDoctor']);
+    $doctorId = sanitize($connection, $_POST['doctorId']);
+
+    $doctor_query = $connection->prepare("SELECT first_name, last_name FROM tbl_employee WHERE id = ?");
+    $doctor_query->bind_param("s", $doctorId);
+    $doctor_query->execute();
+    $doctor_result = $doctor_query->get_result();
+    $doctor = $doctor_result->fetch_array(MYSQLI_ASSOC);
+    $doctor_name = $doctor['first_name'] . ' ' . $doctor['last_name'];
+
+    $update_query = $connection->prepare("UPDATE tbl_hemodialysis SET doctor_incharge = ? WHERE hemopatient_id = ?");
+    $update_query->bind_param("ss", $doctor_name, $hemopatientId);
+
+    if ($update_query->execute()) {
+        echo "<script>showSuccess('Doctor assigned successfully.', true);</script>";
+    } else {
+        echo "<script>showError('Error assigning doctor.');</script>";
+    }
+
+    $doctor_query->close();
+    $update_query->close();
+}
+
 // Fetch patient details from tbl_patient based on patient_id
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['patientId'])) {
     // Sanitize the patient ID input
@@ -104,6 +129,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['patientId'])) {
         $name = sanitize($connection, $patient['first_name']) . ' ' . sanitize($connection, $patient['last_name']);
         $gender = sanitize($connection, $patient['gender']);
         $dob = sanitize($connection, $patient['dob']);
+        $doctor_incharge = "";
 
         // Fetch the last hemo-patient ID to generate a new one
         $last_hemopatient_query = $connection->prepare("SELECT hemopatient_id FROM tbl_hemodialysis ORDER BY id DESC LIMIT 1");
@@ -128,15 +154,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['patientId'])) {
 
         // Insert the new hemodialysis record
         $insert_query = $connection->prepare("
-           INSERT INTO tbl_hemodialysis (hemopatient_id, patient_id, patient_name, gender, dob, dialysis_report, date_time, deleted) 
-            VALUES (?, ?, ?, ?, ?, ?, NOW(), 0)
+           INSERT INTO tbl_hemodialysis (hemopatient_id, patient_id, patient_name, gender, dob, dialysis_report, doctor_incharge, date_time, deleted) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), 0)
         ");
         if ($insert_query === false) {
             die('Error in prepared statement: ' . $connection->error);
         }
 
         // Bind sanitized values for insertion
-        $insert_query->bind_param("ssssss", $new_hemopatient_id, $patient_id, $name, $gender, $dob, $dialysis_report);
+        $insert_query->bind_param("sssssss", $new_hemopatient_id, $patient_id, $name, $gender, $dob, $dialysis_report, $doctor_incharge);
 
         // Execute the insert query
         if ($insert_query->execute()) {
@@ -212,7 +238,9 @@ ob_end_flush(); // Flush output buffer
                         <th>Age</th>
                         <th>Birthdate</th>
                         <th>Gender</th>
+                        <th>Doctor In-Charge</th>
                         <th>Date and Time</th>
+                        <th>Lab Result</th>
                         <th>Medications</th>
                         <th>Dialysis Report</th>
                         <th>Follow-up Date</th>
@@ -231,15 +259,32 @@ ob_end_flush(); // Flush output buffer
                         $update_query->execute();
                         echo "<script>showSuccess('Record deleted successfully.', true);</script>";
                     }
-                    $fetch_query = mysqli_query($connection, "
-                        SELECT h.*, 
-                        GROUP_CONCAT(CONCAT(t.medicine_name, ' (', t.medicine_brand, ') - ', t.total_quantity, ' pcs') SEPARATOR '<br>') AS treatments
-                        FROM tbl_hemodialysis h
-                        LEFT JOIN tbl_treatment t ON h.hemopatient_id = t.hemopatient_id 
-                        WHERE h.deleted = 0
-                        GROUP BY h.hemopatient_id
-                    ");
-                    while($row = mysqli_fetch_array($fetch_query))
+                    
+                    // Modify the fetch query to include doctor_incharge and filter by role if needed
+                    if ($role == 2) {
+                        $fetch_query = $connection->prepare("
+                            SELECT h.*, 
+                            GROUP_CONCAT(CONCAT(t.medicine_name, ' (', t.medicine_brand, ') - ', t.total_quantity, ' pcs') SEPARATOR '<br>') AS treatments
+                            FROM tbl_hemodialysis h
+                            LEFT JOIN tbl_treatment t ON h.hemopatient_id = t.hemopatient_id 
+                            WHERE h.deleted = 0 AND h.doctor_incharge = ?
+                            GROUP BY h.hemopatient_id
+                        ");
+                        $fetch_query->bind_param("s", $doctor_name);
+                        $fetch_query->execute();
+                        $fetch_result = $fetch_query->get_result();
+                    } else {
+                        $fetch_query = mysqli_query($connection, "
+                            SELECT h.*, 
+                            GROUP_CONCAT(CONCAT(t.medicine_name, ' (', t.medicine_brand, ') - ', t.total_quantity, ' pcs') SEPARATOR '<br>') AS treatments
+                            FROM tbl_hemodialysis h
+                            LEFT JOIN tbl_treatment t ON h.hemopatient_id = t.hemopatient_id 
+                            WHERE h.deleted = 0
+                            GROUP BY h.hemopatient_id
+                        ");
+                    }
+                    
+                    while($row = ($role == 2 ? $fetch_result->fetch_array(MYSQLI_ASSOC) : mysqli_fetch_array($fetch_query)))
                     {
                         $dob = $row['dob'];
                         $date = str_replace('/', '-', $dob); 
@@ -256,7 +301,20 @@ ob_end_flush(); // Flush output buffer
                             <td><?php echo $year; ?></td>
                             <td><?php echo $row['dob']; ?></td>
                             <td><?php echo $row['gender']; ?></td>
+                            <td>
+                                <?php echo htmlspecialchars($row['doctor_incharge']); ?>
+                            </td>
                             <td><?php echo $date_time; ?></td>
+                            <td>
+                                <?php if ($_SESSION['role'] == 2 || $_SESSION['role'] == 1) { ?>
+                                <form action="generate-result.php" method="get">
+                                    <input type="hidden" name="patient_id" value="<?php echo $row['patient_id']; ?>">
+                                    <button class="btn btn-primary btn-sm" type="submit">
+                                        <i class="fa fa-file-pdf-o m-r-5"></i> View Result
+                                    </button>
+                                </form>
+                                <?php } ?>
+                            </td>
                             <td>
                                 <?php if (!empty($row['treatments'])): ?>
                                     <!-- Display Treatment Details if Present -->
@@ -303,6 +361,11 @@ ob_end_flush(); // Flush output buffer
                                             <i class="fa fa-trash-o m-r-5"></i> Delete
                                         </a>
                                     <?php endif; ?>
+                                    <?php if ($_SESSION['role'] == 3 && empty($row['doctor_incharge'])): ?>
+                                        <a class="dropdown-item select-doctor-btn" data-toggle="modal" data-target="#doctorModal" data-id="<?php echo htmlspecialchars($row['hemopatient_id']); ?>">
+                                            <i class="fa fa-user-md m-r-5"></i> Select Doctor
+                                        </a>
+                                    <?php endif; ?>
                                     </div>
                                 </div>
                             </td>
@@ -310,6 +373,36 @@ ob_end_flush(); // Flush output buffer
                     <?php } ?>
                 </tbody>
             </table>
+        </div>
+    </div>
+</div>
+
+<!-- Doctor Modal -->
+<div id="doctorModal" class="modal fade" role="dialog">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title">Select Doctor</h4>
+            </div>
+            <div class="modal-body">
+                <form id="doctorForm" method="post" action="hemodialysis.php">
+                    <input type="hidden" id="hemopatientIdDoctor" name="hemopatientIdDoctor">
+                    <div class="form-group">
+                        <label for="doctor">Select Doctor:</label>
+                        <select class="form-control" id="doctor" name="doctor">
+                            <?php
+                            $doctor_query = mysqli_query($connection, "SELECT id, first_name, last_name FROM tbl_employee WHERE role = 2");
+                            while ($doctor = mysqli_fetch_array($doctor_query)) {
+                                $doctor_name = $doctor['first_name'] . ' ' . $doctor['last_name'];
+                                echo "<option value='".$doctor['id']."'>".$doctor_name."</option>";
+                            }
+                            ?>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Assign Doctor</button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                </form>
+            </div>
         </div>
     </div>
 </div>
@@ -497,6 +590,34 @@ $('.treatment-btn').on('click', function () {
     $('#selectedMedicines').val(''); 
 });
 
+// Doctor assignment functionality
+$(document).on('click', '.select-doctor-btn', function() {
+    var hemopatientId = $(this).data('id');
+    $('#hemopatientIdDoctor').val(hemopatientId);
+    $('#doctorModal').modal('show');
+});
+
+$('#doctorForm').submit(function(e) {
+    e.preventDefault();
+    var hemopatientId = $('#hemopatientIdDoctor').val();
+    var doctorId = $('#doctor').val();
+
+    $.ajax({
+        url: 'hemodialysis.php',
+        type: 'POST',
+        data: {
+            hemopatientIdDoctor: hemopatientId,
+            doctorId: doctorId
+        },
+        success: function(response) {
+            location.reload();
+        },
+        error: function(xhr, status, error) {
+            alert('Error assigning doctor');
+        }
+    });
+});
+
 </script>
 
 <script>
@@ -529,11 +650,23 @@ $('.treatment-btn').on('click', function () {
         tbody.empty();
         
         data.forEach(function(record) {
+            var doctorContent = record.doctor_incharge ? 
+                record.doctor_incharge : 
+                (role == 3 ? 
+                    `<button class="btn btn-primary btn-sm select-doctor-btn" data-toggle="modal" data-target="#doctorModal" data-id="${record.hemopatient_id}">
+                        Select Doctor
+                    </button>` : 
+                    ''
+                );
+
             var treatmentContent = record.treatments !== 'No treatments added' ?
                 `<div>${record.treatments}</div>` :
-                `<button class="btn btn-primary btn-sm treatment-btn mt-2" data-toggle="modal" data-target="#treatmentModal" data-id="${record.hemopatient_id}">
-                    <i class="fa fa-stethoscope m-r-5"></i> Add/Edit Treatments
-                </button>`;
+                (role == 3 ? 
+                    `<button class="btn btn-primary btn-sm treatment-btn mt-2" data-toggle="modal" data-target="#treatmentModal" data-id="${record.hemopatient_id}">
+                        <i class="fa fa-stethoscope m-r-5"></i> Add/Edit Treatments
+                    </button>` : 
+                    'No treatments added'
+                );
 
             tbody.append(`
                 <tr>
@@ -543,7 +676,16 @@ $('.treatment-btn').on('click', function () {
                     <td>${record.age}</td>
                     <td>${record.dob}</td>
                     <td>${record.gender}</td>
+                    <td>${doctorContent}</td>
                     <td>${record.date_time}</td>
+                    <td>
+                        <form action="generate-result.php" method="get">
+                            <input type="hidden" name="patient_id" value="${record.patient_id}">
+                            <button class="btn btn-primary btn-sm" type="submit">
+                                <i class="fa fa-file-pdf-o m-r-5"></i> View Result
+                            </button>
+                        </form>
+                    </td>
                     <td>${treatmentContent}</td>
                     <td><div class="dialysis-report">${record.dialysis_report}</div></td>
                     <td>${record.follow_up_date}</td>
@@ -562,18 +704,40 @@ $('.treatment-btn').on('click', function () {
         });
     }
 
-    function getActionButtons(id) {
+    function getActionButtons(id, hemopatientId, doctorIncharge, role) {
+        let buttons = '';
+
+        // Show Update & Delete for roles 1 or 3
         if (role == 1 || role == 3) {
-            return `
+            buttons += `
                 <a class="dropdown-item" href="edit-hemo.php?id=${id}">
                     <i class="fa fa-pencil m-r-5"></i> Update
                 </a>
-                <a class="dropdown-item" href="hemodialysis.php?ids=${id}" onclick="return confirmDelete()">
+            `;
+        }
+
+        // Show Delete only for role 1 (Admin)
+        if (role == 1) {
+            buttons += `
+                <a class="dropdown-item" href="#" onclick="return confirmDelete('${id}')">
                     <i class="fa fa-trash-o m-r-5"></i> Delete
                 </a>
             `;
         }
-        return '';
+
+        // Show "Select Doctor" for role 3 (Nurse) if no doctor is assigned
+        if (role == 3 && (!doctorIncharge || doctorIncharge.trim() === '')) {
+            buttons += `
+                <a class="dropdown-item select-doctor-btn" 
+                data-toggle="modal" 
+                data-target="#doctorModal" 
+                data-id="${hemopatientId}">
+                    <i class="fa fa-user-md m-r-5"></i> Select Doctor
+                </a>
+            `;
+        }
+
+        return buttons;
     }
 
     function searchPatients() {
@@ -628,6 +792,12 @@ $('.treatment-btn').on('click', function () {
 </script>
 
 <style>
+.btn-sm {
+    min-width: 110px; /* Adjust as needed */
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
+}    
 .dropdown-item {
     padding: 7px 15px;
     color: #333;
@@ -710,11 +880,6 @@ background-color: #fff;
 border: none; 
 color: #6c757d; 
 }
-#hemopatientTable td {
-word-wrap: break-word; /* Allow long text to break into multiple lines */
-max-width: 300px; /* Optional: set a maximum width for the column */
-}
-
 #treatmentModal .modal-content {
     box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
     border: none;

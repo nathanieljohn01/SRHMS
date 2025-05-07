@@ -198,6 +198,9 @@
                                     </li>
                                 </ul>
                             </li>
+                            <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'ehr.php') ? 'active' : ''; ?>">
+                                <a href="ehr.php"><i class="fas fa-notes-medical"></i> <span>EHR</span></a>
+                            </li>
                         </ul>
                     <?php } else if ($_SESSION['role'] == 2) { ?>
                         <ul>
@@ -258,9 +261,6 @@
                                     <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'schedule.php') ? 'active' : ''; ?>">
                                         <a href="schedule.php"><i class="fa-solid fa-calendar"></i> <span>Doctors Schedule</span></a>
                                     </li>
-                                    <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'visitor-pass.php') ? 'active' : ''; ?>">
-                                        <a href="visitor-pass.php"><i class="fa-solid fa-user"></i> <span>Visitor Pass</span></a>
-                                    </li>
                                 </ul>
                             </li>
                             <li class="sidenav">
@@ -278,61 +278,6 @@
                                         <a href="hemodialysis.php"><i class="fa-solid fa-user"></i> <span>Hemodialysis Section</span></a>
                                     </li>
                                 </ul>
-                            </li>
-                            <li class="sidenav">
-                                <a href="#wardmanagementSubmenu" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle" aria-haspopup="true">
-                                    <i class="fa-solid fa-clipboard-user"></i> <span>Ward Management</span>
-                                </a>
-                                <ul class="collapse list-unstyled" id="wardmanagementSubmenu">
-                                    <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'visitor-pass.php') ? 'active' : ''; ?>">
-                                        <a href="visitor-pass.php"><i class="fa-solid fa-user"></i> <span>Visitor Pass</span></a>
-                                    </li>
-                                    <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'inpatient-record.php') ? 'active' : ''; ?>">
-                                        <a href="inpatient-record.php"><i class="fa-solid fa-id-card-clip"></i> <span>Inpatient Record</span></a>
-                                    </li>
-                                    <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'bed-transfer.php') ? 'active' : ''; ?>">
-                                        <a href="bed-transfer.php"><i class="fa-solid fa-bed"></i> <span>Bed Transfer</span></a>
-                                    </li>
-                                </ul>
-                            </li>
-                            <li class="sidenav">
-                                <a href="#bedmanagementSubmenu" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle" aria-haspopup="true">
-                                    <i class="fa-solid fa-bed"></i> <span>Bed Management</span>
-                                </a>
-                                <ul class="collapse list-unstyled" id="bedmanagementSubmenu">
-                                    <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'bedallotment.php') ? 'active' : ''; ?>">
-                                        <a href="bedallotment.php"><i class="fa-solid fa-bed"></i> <span>Bed Allotment</span></a>
-                                    </li>
-                                    <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'housekeeping-schedule.php') ? 'active' : ''; ?>">
-                                        <a href="housekeeping-schedule.php"><i class="fa-solid fa-calendar"></i> <span>Housekeeping Schedule</span></a>
-                                    </li>
-                                </ul>
-                            </li>
-                            <li class="sidenav">
-                                <a href="#patientcareSubmenu" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle" aria-haspopup="true">
-                                    <i class="fa-solid fa-hospital-user"></i> <span>Patient Care</span>
-                                </a>
-                                <ul class="collapse list-unstyled" id="patientcareSubmenu">
-                                    <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'newborn.php') ? 'active' : ''; ?>">
-                                        <a href="newborn.php"><i class="fa-solid fa-baby"></i> <span>Newborn</span></a>
-                                    </li>
-                                    <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'deceased.php') ? 'active' : ''; ?>">
-                                        <a href="deceased.php"><i class="fa-solid fa-skull"></i> <span>Deceased</span></a>
-                                    </li>
-                                </ul>
-                            </li>
-                            <li class="sidenav">
-                                <a href="#laboratorySubmenu" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle" aria-haspopup="true"> 
-                                    <i class="fa-solid fa-syringe"></i><span>Laboratory Information</span>
-                                </a>
-                                <ul class="collapse list-unstyled" id="laboratorySubmenu">
-                                    <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'lab-result.php') ? 'active' : ''; ?>">
-                                        <a href="lab-result.php"> <i class="fa-solid fa-clipboard-check"></i> <span>Lab Result</span></a>
-                                    </li>
-                                </ul>
-                            </li>
-                            <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'operating-room.php') ? 'active' : ''; ?>">
-                                <a href="operating-room.php"><i class="fa fa-exclamation-triangle"></i> <span>Operating Room</span></a>
                             </li>
                         </ul>
                     <?php } else if ($_SESSION['role'] == 10) { ?>
@@ -480,19 +425,32 @@
                         </ul>
                             <?php } else if ($_SESSION['role'] == 7) { ?>
                         <ul>
-                            <li class="active">
-                                <a href="dashboard.php"><i class="fa fa-dashboard"></i> <span>Dashboard</span></a>
+                            <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'dashboard-billing.php') ? 'active' : ''; ?>">
+                                <a href="dashboard-billing.php"><i class="fa fa-dashboard"></i> <span>Dashboard</span></a>
                             </li>
+                            <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'billing.php') ? 'active' : ''; ?>">
+                                <a href="billing.php"><i class="fa-solid fa-money-bill-wave"></i> <span>Billing</span></a>
+                            </li>
+                        </ul>
                             <?php } else if ($_SESSION['role'] == 8) { ?>
                         <ul>
                             <li class="active">
-                                <a href="dashboard.php"><i class="fa fa-dashboard"></i> <span>Dashboard</span></a>
+                                <a href="dashboard-cashier.php"><i class="fa fa-dashboard"></i> <span>Dashboard</span></a>
                             </li>
-                            <?php } else if ($_SESSION['role'] == 9) { ?>
-                        <ul>
-                            <li class="active">
-                                <a href="dashboard.php"><i class="fa fa-dashboard"></i> <span>Dashboard</span></a>
+                            <li class="sidenav">
+                                <a href="#cashierSubmenu" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle" aria-haspopup="true">
+                                    <i class="fa-solid fa-cash-register"></i><span>Cashier</span>
+                                </a>
+                                <ul class="collapse list-unstyled" id="cashierSubmenu">
+                                    <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'payment-processing.php') ? 'active' : ''; ?>">
+                                        <a href="payment-processing.php"> <i class="fa-solid fa-credit-card"></i> <span>Payment Processing</span></a>
+                                    </li>
+                                    <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'lab-order-patients.php') ? 'active' : ''; ?>">
+                                        <a href="patient-ledger.php"> <i class="fa-solid fa-file-invoice-dollar"></i> <span>Patient Ledger</span></a>
+                                    </li>
+                                </ul>
                             </li>
+                        </ul>
                     <?php } else { ?>
                         <ul>
                             <li> 
