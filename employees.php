@@ -41,7 +41,6 @@ include('includes/connection.php');
                         <th>Name</th>
                         <th>Username</th>
                         <th>Email</th>
-                        <th>Mobile</th>
                         <th>Specialization</th>
                         <th>Join Date</th>
                         <th>Role</th>
@@ -69,7 +68,6 @@ include('includes/connection.php');
                         <td><?php echo $row['first_name']." ".$row['last_name']; ?></td>
                         <td><?php echo $row['username']; ?></td>
                         <td><?php echo $row['emailid']; ?></td>
-                        <td><?php echo $row['phone']; ?></td>
                         <td><?php echo $row['specialization']; ?></td>
                         <td><?php echo $row['joining_date']; ?></td>
                         <td>
@@ -102,7 +100,7 @@ include('includes/connection.php');
                                 <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><i class="fa fa-ellipsis-v"></i></a>
                                 <div class="dropdown-menu dropdown-menu-right">
                                     <a class="dropdown-item" href="edit-employee.php?id=<?php echo $row['id'];?>"><i class="fa fa-pencil m-r-5"></i> Edit</a>
-                                    <a class="dropdown-item" href="#" onclick="return confirmDelete('<?php echo $row['id']; ?>')"><i class="fa fa-trash-o m-r-5"></i> Delete </a>
+                                    <a class="dropdown-item" href="#" onclick="return confirmDelete('<?php echo $row['id']; ?>')"><i class="fa fa-trash m-r-5"></i> Delete </a>
                                 </div>
                             </div>
                         </td>
@@ -175,7 +173,7 @@ function updateEmployeeTable(data) {
                                 <i class="fa fa-pencil m-r-5"></i> Edit
                             </a>
                             <a class="dropdown-item delete-btn" data-id="${record.id}" href="#">
-                                <i class="fa fa-trash-o m-r-5"></i> Delete
+                                <i class="fa fa-trash m-r-5"></i> Delete
                             </a>
                         </div>
                     </div>
@@ -256,9 +254,35 @@ $('.dropdown-toggle').on('click', function (e) {
     color: #fff;
 }
 .input-group-text {
-    background-color:rgb(255, 255, 255);
-    border: 1px solid rgb(228, 228, 228);
+    background-color:rgb(249, 249, 249);
+    border: 1px solid rgb(212, 212, 212);
+    color: gray;
 }
+.form-control {
+    border-radius: .375rem; /* Rounded corners */
+    border-color: #ced4da; /* Border color */
+    background-color: #f8f9fa; /* Background color */
+}
+select.form-control {
+    border-radius: .375rem; /* Rounded corners */
+    border: 1px solid; /* Border color */
+    border-color: #ced4da; /* Border color */
+    background-color: #f8f9fa; /* Background color */
+    padding: .375rem 2.5rem .375rem .75rem; /* Adjust padding to make space for the larger arrow */
+    font-size: 1rem; /* Font size */
+    line-height: 1.5; /* Line height */
+    height: calc(2.25rem + 2px); /* Adjust height */
+    -webkit-appearance: none; /* Remove default styling on WebKit browsers */
+    -moz-appearance: none; /* Remove default styling on Mozilla browsers */
+    appearance: none; /* Remove default styling on other browsers */
+    background: url('data:image/svg+xml;charset=UTF-8,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20"%3E%3Cpath d="M7 10l5 5 5-5z" fill="%23aaa"/%3E%3C/svg%3E') no-repeat right 0.75rem center;
+    background-size: 20px; /* Size of the custom arrow */
+}
+
+select.form-control:focus {
+    border-color: #12369e; /* Border color on focus */
+    box-shadow: 0 0 0 .2rem rgba(38, 143, 255, .25); /* Shadow on focus */
+} 
 /* Employee Badge System */
 .emp-badge {
     padding: 6px 12px;

@@ -179,7 +179,7 @@ if (isset($_REQUEST['save-newborn'])) {
                             <div class="form-group">
                                 <label> Birth Weight</label>
                                 <div class="input-group">
-                                    <input class="form-control" type="text" name="birth_weight">
+                                    <input class="form-control" type="number" step="0.01" min="0"  name="birth_weight">
                                     <div class="input-group-append">
                                         <span class="input-group-text">kg</span>
                                     </div>
@@ -190,9 +190,9 @@ if (isset($_REQUEST['save-newborn'])) {
                             <div class="form-group">
                                 <label>Birth Height</label>
                                 <div class="input-group">
-                                    <input class="form-control" type="text" name="birth_height">
+                                    <input class="form-control" type="number" step="0.01" min="0" name="birth_height">
                                     <div class="input-group-append">
-                                        <span class="input-group-text">ft</span>
+                                        <span class="input-group-text">cm</span>
                                     </div>
                                 </div>
                             </div>

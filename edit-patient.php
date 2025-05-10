@@ -206,15 +206,15 @@ if (isset($_POST['save-patient'])) {
                         <div class="col-sm-6">
                             <div class="form-group">
                                 <label>Weight</label>
-                                <input class="form-control" type="number" name="weight" value="<?php echo $row['weight']; ?>">
+                                <input class="form-control" type="number" step="0.01" min="0" name="weight" value="<?php echo $row['weight']; ?>">
                                 <span class="input-group-text">kg</span>
                             </div>
                         </div>
                         <div class="col-sm-6">
                             <div class="form-group">
                                 <label>Height</label>
-                                <input class="form-control" type="number" name="height" value="<?php echo $row['height']; ?>">
-                                <span class="input-group-text">ft</span>
+                                <input class="form-control" type="number" step="0.01" min="0" name="height" value="<?php echo $row['height']; ?>">
+                                <span class="input-group-text">cm</span>
                             </div>
                         </div>
                         <div class="col-sm-6">

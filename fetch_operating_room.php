@@ -1,7 +1,7 @@
 <?php
 include('includes/connection.php');
 
-$query = isset($_GET['query']) ? trim($_GET['query']) : '';
+$query = isset($_GET['query']) ? mysqli_real_escape_string($connection, $_GET['query']) : '';
 $query = mysqli_real_escape_string($connection, $query);
 
 $sql = "SELECT * FROM tbl_operating_room 

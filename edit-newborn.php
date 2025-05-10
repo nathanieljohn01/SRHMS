@@ -22,6 +22,18 @@ mysqli_stmt_execute($fetch_query);
 $result = mysqli_stmt_get_result($fetch_query);
 $row = mysqli_fetch_assoc($result);
 
+// Convert DOB from "Month Day, Year" format to "DD/MM/YYYY" for the form
+$dob_for_form = '';
+if (!empty($row['dob'])) {
+    $dob_timestamp = strtotime($row['dob']);
+    if ($dob_timestamp !== false) {
+        $dob_for_form = date('d/m/Y', $dob_timestamp);
+    } else {
+        // If strtotime fails, keep the original value
+        $dob_for_form = $row['dob'];
+    }
+}
+
 $msg = ''; // Initialize the message variable
 
 if (isset($_REQUEST['update-newborn'])) {
@@ -30,18 +42,32 @@ if (isset($_REQUEST['update-newborn'])) {
     $last_name = sanitize($connection, $_REQUEST['last_name']);
 
     // Convert date of birth from DD/MM/YYYY to September 10, 2024 format
-    $dob = DateTime::createFromFormat('d/m/Y', sanitize($connection, $_REQUEST['dob']))->format('F j, Y');
+    $dob_input = sanitize($connection, $_REQUEST['dob']);
+    try {
+        $dob_date = DateTime::createFromFormat('d/m/Y', $dob_input);
+        if ($dob_date) {
+            $dob = $dob_date->format('F j, Y');
+        } else {
+            // If conversion fails, keep the original input
+            $dob = $dob_input;
+        }
+    } catch (Exception $e) {
+        // If an exception occurs, keep the original input
+        $dob = $dob_input;
+    }
 
     // Convert time of birth
     $tob = date("g:i A", strtotime(sanitize($connection, $_REQUEST['tob'])));
     $gender = sanitize($connection, $_REQUEST['gender']);
-    $birth_weight = sanitize($connection, $_REQUEST['birth_weight']);
-    $birth_height = sanitize($connection, $_REQUEST['birth_height']);
+
+    // Convert birth weight and height to integers
+    $birth_weight = sanitize($connection, $_POST['weight']);
+    $birth_height = sanitize($connection, $_POST['height']);
     $physician = sanitize($connection, $_REQUEST['physician']);
 
     // Prepare the update statement
     $update_query = mysqli_prepare($connection, "UPDATE tbl_newborn SET first_name = ?, last_name = ?, dob = ?, tob = ?, gender = ?, birth_weight = ?, birth_height = ?, physician = ? WHERE id = ?");
-    mysqli_stmt_bind_param($update_query, "sssssssss", $first_name, $last_name, $dob, $tob, $gender, $birth_weight, $birth_height, $physician, $id);
+    mysqli_stmt_bind_param($update_query, "ssssssssi", $first_name, $last_name, $dob, $tob, $gender, $birth_weight, $birth_height, $physician, $id);
 
     // Execute the update query and check if it was successful
     if (mysqli_stmt_execute($update_query)) {
@@ -58,8 +84,8 @@ if (isset($_REQUEST['update-newborn'])) {
                     text: 'Newborn details updated successfully.',
                     confirmButtonColor: '#12369e'
                 }).then(() => {
-                    // Optional: Redirect after success
-                    window.location.href = 'newborn.php'; // Adjust URL to your relevant page
+                    // Redirect with success parameter and newborn ID
+                    window.location.href = 'newborn.php?updated=true&id=" . $id . "'; 
                 });
             });
         </script>";
@@ -82,7 +108,6 @@ if (isset($_REQUEST['update-newborn'])) {
 
     // Close the update statement
     mysqli_stmt_close($update_query);
-
 }
 
 // Close the fetch statement
@@ -106,7 +131,7 @@ mysqli_stmt_close($fetch_query);
                         <div class="col-sm-6">
                             <div class="form-group">
                                 <label>Newborn ID</label>
-                                <input class="form-control" type="text" name="newborn_id" value="<?php echo htmlspecialchars($row['id']); ?>" disabled>
+                                <input class="form-control" type="text" name="newborn_id" value="<?php echo htmlspecialchars($row['newborn_id']); ?>" disabled>
                             </div>
                         </div>
                         <div class="col-sm-6">
@@ -125,7 +150,7 @@ mysqli_stmt_close($fetch_query);
                             <div class="form-group">
                                 <label>Date of Birth</label>
                                 <div class="cal-icon">
-                                    <input type="text" class="form-control datetimepicker" name="dob" value="<?php echo htmlspecialchars($row['dob']); ?>" required>
+                                    <input type="text" class="form-control datetimepicker" name="dob" value="<?php echo htmlspecialchars($dob_for_form); ?>" required>
                                 </div>
                             </div>
                         </div>
@@ -152,7 +177,7 @@ mysqli_stmt_close($fetch_query);
                             <div class="form-group">
                                 <label>Birth Weight</label>
                                 <div class="input-group">
-                                    <input class="form-control" type="text" name="birth_weight" value="<?php echo htmlspecialchars($row['birth_weight']); ?>">
+                                    <input class="form-control" type="number" name="weight" step="0.01" min="0" name="birth_weight" value="<?php echo htmlspecialchars($row['birth_weight']); ?>">
                                     <div class="input-group-append">
                                         <span class="input-group-text">kg</span>
                                     </div>
@@ -163,9 +188,9 @@ mysqli_stmt_close($fetch_query);
                             <div class="form-group">
                                 <label>Birth Height</label>
                                 <div class="input-group">
-                                    <input class="form-control" type="text" name="birth_height" value="<?php echo htmlspecialchars($row['birth_height']); ?>">
+                                    <input class="form-control" type="number" name="height" step="0.01" min="0" name="birth_height" value="<?php echo htmlspecialchars($row['birth_height']); ?>">
                                     <div class="input-group-append">
-                                        <span class="input-group-text">ft</span>
+                                        <span class="input-group-text">cm</span>
                                     </div>
                                 </div>
                             </div>
@@ -186,19 +211,12 @@ mysqli_stmt_close($fetch_query);
     </div>
 </div>
 
+
 <?php 
 include('footer.php');
 ?>
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script type="text/javascript">
-    <?php
-    if(isset($msg)) {
-        echo 'swal("' . $msg . '");';
-    }
-    ?>
-</script>
-
 <style>
     .btn-primary.submit-btn {
         border-radius: 4px; 

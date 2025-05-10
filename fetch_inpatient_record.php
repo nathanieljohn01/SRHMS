@@ -2,9 +2,9 @@
 session_start();
 include('includes/connection.php');
 
-$query = isset($_GET['query']) ? $_GET['query'] : '';
-$currentUser = $_SESSION['name'] ?? '';
-$role = $_SESSION['role'] ?? 0;
+$query = isset($_GET['query']) ? mysqli_real_escape_string($connection, $_GET['query']) : '';
+$currentUser = isset($_SESSION['name']) ? mysqli_real_escape_string($connection, $_SESSION['name']) : '';
+$role = isset($_SESSION['role']) ? (int)$_SESSION['role'] : 0;
 
 // Base query
 $sql = "SELECT r.*, i.discharge_date, 
@@ -50,7 +50,7 @@ while ($row = mysqli_fetch_assoc($result)) {
     $treatmentDetails = $row['treatments'] ?: 'No treatments added';
 
     $data[] = array(
-        'id' => $row['id'], // Added ID for delete functionality
+        'id' => $row['id'], 
         'patient_id' => $row['patient_id'],
         'inpatient_id' => $row['inpatient_id'], 
         'patient_name' => $row['patient_name'],
@@ -63,7 +63,8 @@ while ($row = mysqli_fetch_assoc($result)) {
         'room_number' => $row['room_number'],
         'bed_number' => $row['bed_number'],
         'admission_date' => $admission_date_time,
-        'discharge_date' => $discharge_date_time
+        'discharge_date' => $discharge_date_time,
+        'user_role' => $role  // Add user role to response
     );
 }
 

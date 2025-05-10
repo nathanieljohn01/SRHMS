@@ -306,7 +306,7 @@ ob_end_flush(); // Flush output buffer
                             </td>
                             <td><?php echo $date_time; ?></td>
                             <td>
-                                <?php if ($_SESSION['role'] == 2 || $_SESSION['role'] == 1) { ?>
+                                <?php if ($_SESSION['role'] == 2) { ?>
                                 <form action="generate-result.php" method="get">
                                     <input type="hidden" name="patient_id" value="<?php echo $row['patient_id']; ?>">
                                     <button class="btn btn-primary btn-sm" type="submit">
@@ -320,11 +320,7 @@ ob_end_flush(); // Flush output buffer
                                     <!-- Display Treatment Details if Present -->
                                     <div><?php echo nl2br(strip_tags($row['treatments'], '<br>')); ?></div>
                                 <?php else: ?>
-                                    <?php if ($_SESSION['role'] == 3) { ?>
-                                    <button class="btn btn-primary btn-sm treatment-btn mt-2" data-toggle="modal" data-target="#treatmentModal" data-id="<?php echo htmlspecialchars($row['hemopatient_id']); ?>">
-                                        <i class="fa fa-stethoscope m-r-5"></i> Add/Edit Treatments
-                                    </button>
-                                    <?php } ?>
+                                    <div>No treatments added</div>
                                 <?php endif; ?>
                             </td>
                             <td>
@@ -351,21 +347,26 @@ ob_end_flush(); // Flush output buffer
                                 <div class="dropdown dropdown-action">
                                     <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><i class="fa fa-ellipsis-v"></i></a>
                                     <div class="dropdown-menu dropdown-menu-right">
-                                    <?php 
-                                    if ($_SESSION['role'] == 1 | $_SESSION['role'] == 3) {
-                                        echo '<a class="dropdown-item" href="edit-hemo.php?id='.$row['id'].'"><i class="fa fa-pencil m-r-5"></i> Update</a>';
-                                    };
-                                    ?>
-                                    <?php if ($_SESSION['role'] == 1): ?>
-                                        <a class="dropdown-item" href="#" onclick="return confirmDelete('<?php echo $row['id']; ?>')">
-                                            <i class="fa fa-trash-o m-r-5"></i> Delete
-                                        </a>
-                                    <?php endif; ?>
-                                    <?php if ($_SESSION['role'] == 3 && empty($row['doctor_incharge'])): ?>
-                                        <a class="dropdown-item select-doctor-btn" data-toggle="modal" data-target="#doctorModal" data-id="<?php echo htmlspecialchars($row['hemopatient_id']); ?>">
-                                            <i class="fa fa-user-md m-r-5"></i> Select Doctor
-                                        </a>
-                                    <?php endif; ?>
+                                        <?php 
+                                        if ($_SESSION['role'] == 1 || $_SESSION['role'] == 3) {
+                                            echo '<a class="dropdown-item" href="edit-hemo.php?id='.$row['id'].'"><i class="fa fa-pencil m-r-5"></i> Update</a>';
+                                        }
+                                        ?>
+                                        <?php if ($_SESSION['role'] == 3): ?>
+                                            <button class="dropdown-item treatment-btn" data-toggle="modal" data-target="#treatmentModal" data-id="<?php echo htmlspecialchars($row['hemopatient_id']); ?>">
+                                                <i class="fa fa-stethoscope m-r-5"></i> Add/Edit Treatments
+                                            </button>
+                                        <?php endif; ?>
+                                        <?php if ($_SESSION['role'] == 1): ?>
+                                            <a class="dropdown-item" href="#" onclick="return confirmDelete('<?php echo $row['id']; ?>')">
+                                                <i class="fa fa-trash m-r-5"></i> Delete
+                                            </a>
+                                        <?php endif; ?>
+                                        <?php if ($_SESSION['role'] == 3 && empty($row['doctor_incharge'])): ?>
+                                            <a class="dropdown-item select-doctor-btn" data-toggle="modal" data-target="#doctorModal" data-id="<?php echo htmlspecialchars($row['hemopatient_id']); ?>">
+                                                <i class="fa fa-user-md m-r-5"></i> Select Doctor
+                                            </a>
+                                        <?php endif; ?>
                                     </div>
                                 </div>
                             </td>
@@ -627,6 +628,7 @@ $('#doctorForm').submit(function(e) {
     }
 
     var role = <?php echo json_encode($_SESSION['role']); ?>;
+    var doctor_name = <?php echo json_encode($_SESSION['name']); ?>;
 
     function filterHemopatients() {
         var input = document.getElementById("hemopatientSearchInput").value;
@@ -650,23 +652,72 @@ $('#doctorForm').submit(function(e) {
         tbody.empty();
         
         data.forEach(function(record) {
+            // Lab Result button - only show for role 2 (doctor) and if they are the doctor in charge
+            var labResultContent = '';
+            if (record.user_role == 2 && record.doctor_incharge == doctor_name) {
+                labResultContent = `
+                    <form action="generate-result.php" method="get">
+                        <input type="hidden" name="patient_id" value="${record.patient_id}">
+                        <button class="btn btn-primary btn-sm" type="submit">
+                            <i class="fa fa-file-pdf-o m-r-5"></i> View Result
+                        </button>
+                    </form>
+                `;
+            }
+
+            // Doctor assignment content
             var doctorContent = record.doctor_incharge ? 
                 record.doctor_incharge : 
-                (role == 3 ? 
+                (record.user_role == 3 ? 
                     `<button class="btn btn-primary btn-sm select-doctor-btn" data-toggle="modal" data-target="#doctorModal" data-id="${record.hemopatient_id}">
                         Select Doctor
                     </button>` : 
                     ''
                 );
 
+            // Treatment content
             var treatmentContent = record.treatments !== 'No treatments added' ?
                 `<div>${record.treatments}</div>` :
-                (role == 3 ? 
-                    `<button class="btn btn-primary btn-sm treatment-btn mt-2" data-toggle="modal" data-target="#treatmentModal" data-id="${record.hemopatient_id}">
+                `<div>No treatments added</div>`;
+
+            // Generate action buttons based on role
+            let actionButtons = '';
+            
+            // Update button for roles 1 or 3
+            if (record.user_role == 1 || record.user_role == 3) {
+                actionButtons += `
+                    <a class="dropdown-item" href="edit-hemo.php?id=${record.id}">
+                        <i class="fa fa-pencil m-r-5"></i> Update
+                    </a>
+                `;
+            }
+            
+            // Add/Edit Treatments button for role 3
+            if (record.user_role == 3) {
+                actionButtons += `
+                    <button class="dropdown-item treatment-btn" data-toggle="modal" data-target="#treatmentModal" data-id="${record.hemopatient_id}">
                         <i class="fa fa-stethoscope m-r-5"></i> Add/Edit Treatments
-                    </button>` : 
-                    'No treatments added'
-                );
+                    </button>
+                `;
+            }
+            
+            // Delete button for role 1
+            if (record.user_role == 1) {
+                actionButtons += `
+                    <a class="dropdown-item" href="#" onclick="return confirmDelete('${record.id}')">
+                        <i class="fa fa-trash m-r-5"></i> Delete
+                    </a>
+                `;
+            }
+            
+            // Select Doctor button for role 3 if no doctor assigned
+            if (record.user_role == 3 && (!record.doctor_incharge || record.doctor_incharge.trim() === '')) {
+                actionButtons += `
+                    <a class="dropdown-item select-doctor-btn" data-toggle="modal" data-target="#doctorModal" data-id="${record.hemopatient_id}">
+                        <i class="fa fa-user-md m-r-5"></i> Select Doctor
+                    </a>
+                `;
+            }
 
             tbody.append(`
                 <tr>
@@ -678,14 +729,7 @@ $('#doctorForm').submit(function(e) {
                     <td>${record.gender}</td>
                     <td>${doctorContent}</td>
                     <td>${record.date_time}</td>
-                    <td>
-                        <form action="generate-result.php" method="get">
-                            <input type="hidden" name="patient_id" value="${record.patient_id}">
-                            <button class="btn btn-primary btn-sm" type="submit">
-                                <i class="fa fa-file-pdf-o m-r-5"></i> View Result
-                            </button>
-                        </form>
-                    </td>
+                    <td>${labResultContent}</td>
                     <td>${treatmentContent}</td>
                     <td><div class="dialysis-report">${record.dialysis_report}</div></td>
                     <td>${record.follow_up_date}</td>
@@ -695,7 +739,7 @@ $('#doctorForm').submit(function(e) {
                                 <i class="fa fa-ellipsis-v"></i>
                             </a>
                             <div class="dropdown-menu dropdown-menu-right">
-                                ${getActionButtons(record.id)}
+                                ${actionButtons}
                             </div>
                         </div>
                     </td>
@@ -703,6 +747,7 @@ $('#doctorForm').submit(function(e) {
             `);
         });
     }
+
 
     function getActionButtons(id, hemopatientId, doctorIncharge, role) {
         let buttons = '';
@@ -716,11 +761,20 @@ $('#doctorForm').submit(function(e) {
             `;
         }
 
+        // Add the "Add/Edit Treatments" button for role 3
+        if (role == 3) {
+            buttons += `
+                <button class="dropdown-item treatment-btn" data-toggle="modal" data-target="#treatmentModal" data-id="${hemopatientId}">
+                    <i class="fa fa-stethoscope m-r-5"></i> Add/Edit Treatments
+                </button>
+            `;
+        }
+
         // Show Delete only for role 1 (Admin)
         if (role == 1) {
             buttons += `
                 <a class="dropdown-item" href="#" onclick="return confirmDelete('${id}')">
-                    <i class="fa fa-trash-o m-r-5"></i> Delete
+                    <i class="fa fa-trash m-r-5"></i> Delete
                 </a>
             `;
         }
@@ -840,10 +894,35 @@ $('#doctorForm').submit(function(e) {
     color: #fff;
 }
 .input-group-text {
-    background-color:rgb(255, 255, 255);
-    border: 1px solid rgb(228, 228, 228);
+    background-color:rgb(249, 249, 249);
+    border: 1px solid rgb(212, 212, 212);
     color: gray;
-}   
+}
+.form-control {
+    border-radius: .375rem; /* Rounded corners */
+    border-color: #ced4da; /* Border color */
+    background-color: #f8f9fa; /* Background color */
+}
+select.form-control {
+    border-radius: .375rem; /* Rounded corners */
+    border: 1px solid; /* Border color */
+    border-color: #ced4da; /* Border color */
+    background-color: #f8f9fa; /* Background color */
+    padding: .375rem 2.5rem .375rem .75rem; /* Adjust padding to make space for the larger arrow */
+    font-size: 1rem; /* Font size */
+    line-height: 1.5; /* Line height */
+    height: calc(2.25rem + 2px); /* Adjust height */
+    -webkit-appearance: none; /* Remove default styling on WebKit browsers */
+    -moz-appearance: none; /* Remove default styling on Mozilla browsers */
+    appearance: none; /* Remove default styling on other browsers */
+    background: url('data:image/svg+xml;charset=UTF-8,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20"%3E%3Cpath d="M7 10l5 5 5-5z" fill="%23aaa"/%3E%3C/svg%3E') no-repeat right 0.75rem center;
+    background-size: 20px; /* Size of the custom arrow */
+}
+
+select.form-control:focus {
+    border-color: #12369e; /* Border color on focus */
+    box-shadow: 0 0 0 .2rem rgba(38, 143, 255, .25); /* Shadow on focus */
+} 
 .btn-primary {
     background: #12369e;
     border: none;
@@ -956,3 +1035,7 @@ color: #6c757d;
     background-color: rgba(18, 54, 158, 0.03);
 }
 </style>
+
+
+
+

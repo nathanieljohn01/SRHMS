@@ -32,7 +32,6 @@ if (isset($_POST['save-emp'])) {
     $dob = sanitize($connection, $_POST['dob']);
     $joining_date = sanitize($connection, $_POST['joining_date']);
     $gender = sanitize($connection, $_POST['gender']);
-    $phone = sanitize($connection, $_POST['phone']);
     $address = sanitize($connection, $_POST['address']);
     $bio = sanitize($connection, $_POST['bio']);
     $role = sanitize($connection, $_POST['role']);
@@ -70,10 +69,10 @@ if (isset($_POST['save-emp'])) {
             mysqli_stmt_bind_param($stmt, 'sssssssssssssssi', $first_name, $last_name, $specialization, $username, $emailid, $hashed_password, $dob, $joining_date, $gender, $address, $phone, $bio, $role, $status, $profile_picture, $id);
         } else {
             // Update employee data without profile picture
-            $stmt = mysqli_prepare($connection, "UPDATE tbl_employee SET first_name=?, last_name=?, specialization=?, username=?, emailid=?, password=?, dob=?, joining_date=?, gender=?, address=?, phone=?, bio=?, role=?, status=? WHERE id=?");
+            $stmt = mysqli_prepare($connection, "UPDATE tbl_employee SET first_name=?, last_name=?, specialization=?, username=?, emailid=?, password=?, dob=?, joining_date=?, gender=?, address=?, bio=?, role=?, status=? WHERE id=?");
     
             // Bind parameters excluding 'profile_picture'
-            mysqli_stmt_bind_param($stmt, 'ssssssssssssssi', $first_name, $last_name, $specialization, $username, $emailid, $hashed_password, $dob, $joining_date, $gender, $address, $phone, $bio, $role, $status, $id);
+            mysqli_stmt_bind_param($stmt, 'sssssssssssssi', $first_name, $last_name, $specialization, $username, $emailid, $hashed_password, $dob, $joining_date, $gender, $address, $bio, $role, $status, $id);
         }
     
         // Execute the query and check for errors
@@ -132,7 +131,7 @@ if (isset($_POST['save-emp'])) {
                 <form method="post" enctype="multipart/form-data">
                     <div class="row">
                         <!-- Profile Picture -->
-                        <div class="col-sm-6">
+                        <div class="col-sm-12">
                             <div class="form-group profile-picture-group">
                                 <label>Profile Picture</label>
                                 <input type="file" class="form-control-file" name="profile_picture">
@@ -208,17 +207,9 @@ if (isset($_POST['save-emp'])) {
                                 <input class="form-control datetimepicker" name="dob" required value="<?php echo $row['dob']; ?>">
                             </div>
                         </div>
-                        
-                        <!-- Phone -->
-                        <div class="col-sm-6">
-                            <div class="form-group">
-                                <label>Phone</label>
-                                <input class="form-control" type="text" name="phone" value="<?php echo $row['phone']; ?>">
-                            </div>
-                        </div>
-                        
+                                    
                         <!-- Gender -->
-                        <div class="col-sm-6">
+                        <div class="col-sm-12">
                             <div class="form-group gender-select">
                                 <label>Gender:</label>
                                 <div class="form-check form-check-inline">

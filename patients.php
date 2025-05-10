@@ -93,7 +93,7 @@ include('includes/connection.php');
                                         }
                                         echo '<a class="dropdown-item" href="edit-patient.php?id='.$row['id'].'"><i class="fa fa-pencil m-r-5"></i> Edit</a>';
                                     if ($_SESSION['role'] == 1 ) {
-                                        echo '<a class="dropdown-item" href="#" onclick="return confirmDelete(\''.$row['id'].'\')"><i class="fa fa-trash-o m-r-5"></i> Delete</a>';
+                                        echo '<a class="dropdown-item" href="#" onclick="return confirmDelete(\''.$row['id'].'\')"><i class="fa fa-trash m-r-5"></i> Delete</a>';
                                     }
                                     ?>
                                     </div>
@@ -130,7 +130,7 @@ include('includes/connection.php');
                             <td><?php echo $row['email']; ?></td>
                             <td><?php echo $row['contact_number']; ?></td>
                             <td><?php echo $row['weight']; ?> kg</td>
-                            <td><?php echo $row['height']; ?> ft</td>
+                            <td><?php echo $row['height']; ?> cm</td>
                             <td><?php echo $row['temperature']; ?> °C</td>
                             <td><?php echo $row['blood_pressure']; ?></td>
                             <td><?php echo $row['menstruation']; ?></td>
@@ -244,7 +244,7 @@ function getActionButtons(id) {
                 <i class="fa fa-pencil m-r-5"></i> Edit
             </a>
             <a class="dropdown-item" href="patients.php?ids=${id}" onclick="return confirmDelete()">
-                <i class="fa fa-trash-o m-r-5"></i> Delete
+                <i class="fa fa-trash m-r-5"></i> Delete
             </a>
         `;
     }
@@ -292,10 +292,35 @@ $('.dropdown-toggle').on('click', function (e) {
     color: #fff;
 }
 .input-group-text {
-    background-color:rgb(255, 255, 255);
-    border: 1px solid rgb(228, 228, 228);
+    background-color:rgb(249, 249, 249);
+    border: 1px solid rgb(212, 212, 212);
     color: gray;
 }
+.form-control {
+    border-radius: .375rem; /* Rounded corners */
+    border-color: #ced4da; /* Border color */
+    background-color: #f8f9fa; /* Background color */
+}
+select.form-control {
+    border-radius: .375rem; /* Rounded corners */
+    border: 1px solid; /* Border color */
+    border-color: #ced4da; /* Border color */
+    background-color: #f8f9fa; /* Background color */
+    padding: .375rem 2.5rem .375rem .75rem; /* Adjust padding to make space for the larger arrow */
+    font-size: 1rem; /* Font size */
+    line-height: 1.5; /* Line height */
+    height: calc(2.25rem + 2px); /* Adjust height */
+    -webkit-appearance: none; /* Remove default styling on WebKit browsers */
+    -moz-appearance: none; /* Remove default styling on Mozilla browsers */
+    appearance: none; /* Remove default styling on other browsers */
+    background: url('data:image/svg+xml;charset=UTF-8,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20"%3E%3Cpath d="M7 10l5 5 5-5z" fill="%23aaa"/%3E%3C/svg%3E') no-repeat right 0.75rem center;
+    background-size: 20px; /* Size of the custom arrow */
+}
+
+select.form-control:focus {
+    border-color: #12369e; /* Border color on focus */
+    box-shadow: 0 0 0 .2rem rgba(38, 143, 255, .25); /* Shadow on focus */
+} 
 #patientTable2_length, #patientTable_paginate .paginate_button {
     display: none;
 }

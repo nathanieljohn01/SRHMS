@@ -33,7 +33,7 @@ if (isset($_GET['msg'])) {
                     <!-- Search Icon -->
                     <i class="fa fa-search position-absolute text-secondary" style="top: 50%; left: 12px; transform: translateY(-50%);"></i>
                     <!-- Input Field -->
-                    <input class="form-control" type="text" id="patientSearchInput" onkeyup="filterpatients()" placeholder="Search" style="padding-left: 35px; padding-right: 35px;">
+                    <input class="form-control" type="text" id="patientSearchInput" onkeyup="filterSchedules()" placeholder="Search" style="padding-left: 35px; padding-right: 35px;">
                     <!-- Clear Button -->
                     <button class="position-absolute border-0 bg-transparent text-secondary" type="button" onclick="clearSearch()" style="top: 50%; right: 10px; transform: translateY(-50%);">
                         <i class="fa fa-times"></i>
@@ -41,6 +41,7 @@ if (isset($_GET['msg'])) {
                 </div>
             </div>
         </div>
+        <div class="table-responsive">
             <table class="datatable table table-hover" id="patientTable">
                 <thead style="background-color: #CCCCCC;">
                     <tr>
@@ -88,7 +89,7 @@ if (isset($_GET['msg'])) {
                                     <?php endif; ?>
                                         <a class="dropdown-item edit-link <?php echo $isEditable; ?>" href="edit-housekeeping-schedule.php?id=<?php echo $row['id']; ?>"><i class="fa fa-pencil m-r-5"></i> Edit</a>
                                         <?php if ($_SESSION['role'] == 1): ?>   
-                                        <a class="dropdown-item" href="#" onclick="return confirmDelete('<?php echo $row['id']; ?>')"><i class="fa fa-trash-o m-r-5"></i> Delete </a>
+                                        <a class="dropdown-item" href="#" onclick="return confirmDelete('<?php echo $row['id']; ?>')"><i class="fa fa-trash m-r-5"></i> Delete </a>
                                         <?php endif; ?>
                                     </div>
                                 </div>
@@ -160,6 +161,90 @@ include('footer.php');
         });
     }
 
+
+    var userRole = <?php echo json_encode($_SESSION['role']); ?>;
+
+    function filterSchedules() {
+        var input = document.getElementById("patientSearchInput").value;
+        
+        $.ajax({
+            url: 'fetch_housekeeping_schedule.php',
+            type: 'GET',
+            data: { query: input },
+            success: function(response) {
+                var data = JSON.parse(response);
+                updateScheduleTable(data);
+            },
+            error: function(xhr, status, error) {
+                alert('Error fetching data. Please try again.');
+            }
+        });
+    }
+
+    function updateScheduleTable(data) {
+        var tbody = $('#patientTable tbody');
+        tbody.empty();
+        
+        data.forEach(function(record) {
+            // Check if bed is available to determine if buttons should be disabled
+            var isEditable = record.bed_status === 'Available' ? 'disabled' : '';
+            var isDisabled = record.bed_status === 'Available' ? 'disabled' : '';
+            
+            // Create action buttons based on user role
+            var actionButtons = '';
+            
+            // Complete Task button for roles 1 and 3
+            if (userRole == 1 || userRole == 3) {
+                actionButtons += `
+                    <a class="dropdown-item ${isDisabled}" href="#" onclick="return confirmCompletion(${record.id});">
+                        <i class="fa fa-check m-r-5"></i> Complete Task
+                    </a>
+                `;
+            }
+            
+            // Edit button for all roles
+            actionButtons += `
+                <a class="dropdown-item edit-link ${isEditable}" href="edit-housekeeping-schedule.php?id=${record.id}">
+                    <i class="fa fa-pencil m-r-5"></i> Edit
+                </a>
+            `;
+            
+            // Delete button only for role 1 (admin)
+            if (userRole == 1) {
+                actionButtons += `
+                    <a class="dropdown-item" href="#" onclick="return confirmDelete('${record.id}')">
+                        <i class="fa fa-trash m-r-5"></i> Delete
+                    </a>
+                `;
+            }
+            
+            tbody.append(`
+                <tr>
+                    <td>${record.room_type}</td>
+                    <td>${record.room_number}</td>
+                    <td>${record.bed_number}</td>
+                    <td>${record.schedule_date_time}</td>
+                    <td>${record.task_description}</td>
+                    <td class="text-right">
+                        <div class="dropdown dropdown-action">
+                            <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
+                                <i class="fa fa-ellipsis-v"></i>
+                            </a>
+                            <div class="dropdown-menu dropdown-menu-right">
+                                ${actionButtons}
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            `);
+        });
+    }
+
+    function clearSearch() {
+        document.getElementById("patientSearchInput").value = '';
+        filterSchedules();
+    }
+
     $('.dropdown-toggle').on('click', function (e) {
     var $el = $(this).next('.dropdown-menu');
     var isVisible = $el.is(':visible');
@@ -206,9 +291,35 @@ include('footer.php');
     color: #fff;
 }
 .input-group-text {
-    background-color:rgb(255, 255, 255);
-    border: 1px solid rgb(228, 228, 228);
+    background-color:rgb(249, 249, 249);
+    border: 1px solid rgb(212, 212, 212);
+    color: gray;
 }
+.form-control {
+    border-radius: .375rem; /* Rounded corners */
+    border-color: #ced4da; /* Border color */
+    background-color: #f8f9fa; /* Background color */
+}
+select.form-control {
+    border-radius: .375rem; /* Rounded corners */
+    border: 1px solid; /* Border color */
+    border-color: #ced4da; /* Border color */
+    background-color: #f8f9fa; /* Background color */
+    padding: .375rem 2.5rem .375rem .75rem; /* Adjust padding to make space for the larger arrow */
+    font-size: 1rem; /* Font size */
+    line-height: 1.5; /* Line height */
+    height: calc(2.25rem + 2px); /* Adjust height */
+    -webkit-appearance: none; /* Remove default styling on WebKit browsers */
+    -moz-appearance: none; /* Remove default styling on Mozilla browsers */
+    appearance: none; /* Remove default styling on other browsers */
+    background: url('data:image/svg+xml;charset=UTF-8,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20"%3E%3Cpath d="M7 10l5 5 5-5z" fill="%23aaa"/%3E%3C/svg%3E') no-repeat right 0.75rem center;
+    background-size: 20px; /* Size of the custom arrow */
+}
+
+select.form-control:focus {
+    border-color: #12369e; /* Border color on focus */
+    box-shadow: 0 0 0 .2rem rgba(38, 143, 255, .25); /* Shadow on focus */
+} 
 .dropdown-item {
     padding: 7px 15px;
     color: #333;

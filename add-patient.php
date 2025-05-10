@@ -222,7 +222,7 @@ if (isset($_POST['submit'])) {
                             <div class="form-group">
                                 <label>Height</label>
                                 <div class="input-group">
-                                    <input class="form-control" type="text" name="height" required>
+                                    <input class="form-control" type="number" name="weight" step="0.01" min="0" required>
                                     <div class="input-group-append">
                                         <span class="input-group-text">ft</span>
                                     </div>

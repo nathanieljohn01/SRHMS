@@ -160,14 +160,6 @@ include('footer.php');
 <!-- Include jQuery -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
-<script type="text/javascript">
-<?php
-if(isset($msg)) {
-    echo 'swal("' . $msg . '");';
-}
-?>
-</script>
-
 <style>
 .btn-primary.submit-btn {
     border-radius: 4px; 

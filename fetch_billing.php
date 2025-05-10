@@ -1,8 +1,8 @@
 <?php
 include('includes/connection.php');
 
-$query = isset($_GET['query']) ? $_GET['query'] : '';
-$patientType = isset($_GET['patient_type']) ? $_GET['patient_type'] : 'inpatient';
+$query = isset($_GET['query']) ? mysqli_real_escape_string($connection, $_GET['query']) : '';
+$patientType = isset($_GET['patient_type']) ? mysqli_real_escape_string($connection, $_GET['patient_type']) : 'inpatient';
 
 // Base query selection based on patient type
 if ($patientType === 'hemodialysis') {

@@ -14,24 +14,17 @@
     <link rel="shortcut icon" type="image/x-icon" href="assets/img/srchlogo.png">
     <title>Santa Rosa Community HMS</title>
 
-    <!-- Preconnect to external domains -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
-    <link rel="preconnect" href="https://cdn.datatables.net" crossorigin>
-    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
-
     <!-- Consolidated FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 
     <!-- Core styles with defer -->
     <link rel="stylesheet" href="assets/css/bootstrap.min.css">
     <link rel="stylesheet" href="assets/css/style.css">
-    <link rel="stylesheet" href="assets/css/font-awesome.min.css">
     <link rel="stylesheet" href="assets/css/fontawesome.min.css">
     
     <!-- Third-party components -->
     <link rel="stylesheet" href="assets/css/select2.min.css">
     <link rel="stylesheet" href="assets/css/bootstrap-datetimepicker.min.css">
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
 
     <!-- Material Icons with preload -->
@@ -280,42 +273,10 @@
                                 </ul>
                             </li>
                         </ul>
-                    <?php } else if ($_SESSION['role'] == 10) { ?>
+                    <?php } else if ($_SESSION['role'] == 9) { ?>
                         <ul>
                             <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'dashboard-nurse.php') ? 'active' : ''; ?>">
                                 <a href="dashboard-nurse.php"><i class="fa fa-dashboard"></i> <span>Dashboard</span></a>
-                            </li>
-                            <li class="sidenav">
-                                <a href="#triageSubmenu" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle" aria-haspopup="true">
-                                    <i class="fa-solid fa-laptop-medical"></i> <span>Triage</span>
-                                </a>
-                                <ul class="collapse list-unstyled" id="triageSubmenu">
-                                    <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'patients.php') ? 'active' : ''; ?>">
-                                        <a href="patients.php"><i class="fa-solid fa-wheelchair"></i> <span>Patient Registration</span></a>
-                                    </li>
-                                    <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'schedule.php') ? 'active' : ''; ?>">
-                                        <a href="schedule.php"><i class="fa-solid fa-calendar"></i> <span>Doctors Schedule</span></a>
-                                    </li>
-                                    <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'visitor-pass.php') ? 'active' : ''; ?>">
-                                        <a href="visitor-pass.php"><i class="fa-solid fa-user"></i> <span>Visitor Pass</span></a>
-                                    </li>
-                                </ul>
-                            </li>
-                            <li class="sidenav">
-                                <a href="#patientsSubmenu" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle" aria-haspopup="true"> 
-                                    <i class="fa fa-user"></i> <span>Patients</span>
-                                </a>
-                                <ul class="collapse list-unstyled" id="patientsSubmenu">
-                                    <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'outpatients.php') ? 'active' : ''; ?>">
-                                        <a href="outpatients.php"><i class="fa-solid fa-user"></i> <span>Outpatient Section</span></a>
-                                    </li>
-                                    <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'inpatients.php') ? 'active' : ''; ?>">
-                                        <a href="inpatients.php"><i class="fa-solid fa-user"></i> <span>Inpatient Section</span></a>
-                                    </li>
-                                    <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'hemodialysis.php') ? 'active' : ''; ?>">
-                                        <a href="hemodialysis.php"><i class="fa-solid fa-user"></i> <span>Hemodialysis Section</span></a>
-                                    </li>
-                                </ul>
                             </li>
                             <li class="sidenav">
                                 <a href="#wardmanagementSubmenu" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle" aria-haspopup="true">
@@ -358,19 +319,6 @@
                                         <a href="deceased.php"><i class="fa-solid fa-skull"></i> <span>Deceased</span></a>
                                     </li>
                                 </ul>
-                            </li>
-                            <li class="sidenav">
-                                <a href="#laboratorySubmenu" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle" aria-haspopup="true"> 
-                                    <i class="fa-solid fa-syringe"></i><span>Laboratory Information</span>
-                                </a>
-                                <ul class="collapse list-unstyled" id="laboratorySubmenu">
-                                    <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'lab-result.php') ? 'active' : ''; ?>">
-                                        <a href="lab-result.php"> <i class="fa-solid fa-clipboard-check"></i> <span>Lab Result</span></a>
-                                    </li>
-                                </ul>
-                            </li>
-                            <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'operating-room.php') ? 'active' : ''; ?>">
-                                <a href="operating-room.php"><i class="fa fa-exclamation-triangle"></i> <span>Operating Room</span></a>
                             </li>
                         </ul>
                     <?php } else if ($_SESSION['role'] == 4) { ?>

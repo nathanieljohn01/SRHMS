@@ -1,7 +1,8 @@
 <?php
 include('includes/connection.php');
 
-$query = isset($_GET['query']) ? trim($_GET['query']) : '';
+$query = isset($_GET['query']) ? mysqli_real_escape_string($connection, $_GET['query']) : '';
+
 $search_term = "%{$query}%";
 
 $sql = "SELECT exam_type, test_type, price 

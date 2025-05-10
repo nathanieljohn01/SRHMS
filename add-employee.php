@@ -22,7 +22,6 @@ if (isset($_POST['add-employee'])) {
         'dob' => sanitize($connection, $_POST['dob']),
         'joining_date' => sanitize($connection, $_POST['joining_date']),
         'gender' => sanitize($connection, $_POST['gender']),
-        'phone' => sanitize($connection, $_POST['phone']),
         'address' => sanitize($connection, $_POST['address']),
         'specialization' => sanitize($connection, $_POST['specialization']),
         'bio' => sanitize($connection, $_POST['bio']),
@@ -77,8 +76,8 @@ if (isset($_POST['add-employee'])) {
         // Prepare SQL (storing file path instead of BLOB)
         $stmt = $connection->prepare("INSERT INTO tbl_employee 
             (first_name, last_name, specialization, username, emailid, password, dob, 
-             joining_date, gender, address, phone, bio, role, status, profile_picture) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+             joining_date, gender, address, bio, role, status, profile_picture) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
         
         $stmt->bind_param("sssssssssssssss", 
             $employee_data['first_name'], 
@@ -91,7 +90,6 @@ if (isset($_POST['add-employee'])) {
             $employee_data['joining_date'], 
             $employee_data['gender'], 
             $employee_data['address'], 
-            $employee_data['phone'], 
             $employee_data['bio'], 
             $employee_data['role'], 
             $employee_data['status'], 
@@ -203,13 +201,6 @@ if (isset($_POST['add-employee'])) {
                                 </div>
                             </div>
                         </div>
-                        <!-- Phone -->
-                        <div class="col-sm-6">
-                            <div class="form-group">
-                                <label>Phone</label>
-                                <input class="form-control" type="text" name="phone">
-                            </div>
-                        </div>
                         <!-- Gender -->
                         <div class="col-sm-6">
                             <div class="form-group gender-select">
@@ -226,20 +217,6 @@ if (isset($_POST['add-employee'])) {
                                 </div>
                             </div>
                         </div>
-                        <!-- Address -->
-                        <div class="col-sm-12">
-                            <div class="form-group">
-                                <label>Address</label>
-                                <input type="text" class="form-control" name="address" required>
-                            </div>
-                        </div>
-                        <!-- Short Biography -->
-                        <div class="col-sm-12">
-                            <div class="form-group">
-                                <label>Short Biography</label>
-                                <textarea class="form-control" rows="3" cols="30" name="bio"></textarea>
-                            </div>
-                        </div>
                         <!-- Role -->
                         <div class="col-sm-6">
                             <div class="form-group">
@@ -253,6 +230,20 @@ if (isset($_POST['add-employee'])) {
                                     <option value="<?php echo $roleData['role']; ?>"><?php echo $roleData['title']; ?></option>
                                     <?php } ?>
                                 </select>
+                            </div>
+                        </div>
+                        <!-- Address -->
+                        <div class="col-sm-12">
+                            <div class="form-group">
+                                <label>Address</label>
+                                <input type="text" class="form-control" name="address" required>
+                            </div>
+                        </div>
+                        <!-- Short Biography -->
+                        <div class="col-sm-12">
+                            <div class="form-group">
+                                <label>Short Biography</label>
+                                <textarea class="form-control" rows="3" cols="30" name="bio"></textarea>
                             </div>
                         </div>
                         <!-- Specialization (conditionally displayed) -->

@@ -193,13 +193,13 @@ ob_end_flush();
             <div class="col-sm-4 col-3">
                 <h4 class="page-title">Inpatient Record</h4>
             </div>
-            <?php if ($_SESSION['role'] == 1 || $_SESSION['role'] == 3): ?>
+            <?php if ($_SESSION['role'] == 1 || $_SESSION['role'] == 9): ?>
                 <div class="col-sm-10 col-9 m-b-20">
                     <form method="POST" action="inpatient-record.php" id="addPatientForm" class="form-inline">
                         <div class="input-group w-50">
                             <div class="input-group-prepend">
                                 <span class="input-group-text">
-                                    <i class="fas fa-search"></i> <!-- Search icon -->
+                                    <i class="fas fa-search text-secondary"></i> <!-- Search icon -->
                                 </span>
                             </div>
                             <input
@@ -247,7 +247,6 @@ ob_end_flush();
                         <th>Gender</th>
                         <th>Doctor Incharge</th>
                         <th>Lab Result</th>
-                        <th>Radiographic Images</th>
                         <th>Diagnosis</th>
                         <th>Medications</th>
                         <th>Room Type</th>
@@ -314,50 +313,24 @@ ob_end_flush();
                             <td><?php echo htmlspecialchars($row['patient_name']); ?></td>
                             <td><?php echo $year; ?></td>
                             <td><?php echo htmlspecialchars($row['gender']); ?></td>
+                            <td> <?php echo htmlspecialchars($row['doctor_incharge']); ?></td>
                             <td>
-                                <?php if (empty($row['doctor_incharge'])) { ?>
-                                    <button class="btn btn-primary btn-sm select-doctor-btn" data-toggle="modal" data-target="#doctorModal" data-id="<?php echo htmlspecialchars($row['inpatient_id']); ?>">Select Doctor</button>
-                                <?php } else { ?>
-                                    <?php echo htmlspecialchars($row['doctor_incharge']); ?>
-                                <?php } ?>
-                            </td>
-                            <td>
-                                <?php if ($_SESSION['role'] == 2 || $_SESSION['role'] == 1) { ?>
+                                <?php if ($_SESSION['role'] == 2) { ?>
                                 <form action="generate-result.php" method="get">
-                                    <input type="hidden" name="patient_id" value="<?php echo htmlspecialchars($row['patient_id']); ?>">
-                                    <button class="btn btn-primary btn-sm" type="submit">
+                                    <input type="hidden" name="patient_id" value="<?php echo $row['patient_id']; ?>">
+                                    <button class="btn btn-primary btn-sm custom-btn" type="submit">
                                         <i class="fa fa-file-pdf-o m-r-5"></i> View Result
                                     </button>
                                 </form>
                                 <?php } ?>
                             </td>
-                            <?php if ($_SESSION['role'] == 2 || $_SESSION['role'] == 1) { ?>
-                            <td id="img-btn-<?php echo $row['patient_id']; ?>">
-                                <?php 
-                                $rad_query = $connection->prepare("SELECT COUNT(*) as count FROM tbl_radiology WHERE patient_id = ? AND radiographic_image IS NOT NULL AND radiographic_image != '' AND deleted = 0");
-                                $rad_query->bind_param("s", $row['patient_id']);
-                                $rad_query->execute();
-                                $rad_result = $rad_query->get_result();
-                                $rad_count = $rad_result->fetch_assoc()['count'];
-                                if ($rad_count > 0) {
-                                ?>
-                                <button class="btn btn-primary btn-sm" onclick="showRadiologyImages('<?php echo $row['patient_id']; ?>')">
-                                    <i class="fa fa-image m-r-5"></i> View Images
-                                </button>
-                                <?php } ?>
-                            </td>
-                            <?php } ?>
                             <td><?php echo htmlspecialchars($row['diagnosis']); ?></td>
                             <td>
                                 <?php if (!empty($row['treatments'])): ?>
                                     <!-- Display Treatment Details if Present -->
                                     <div><?php echo nl2br(strip_tags($row['treatments'], '<br>')); ?></div>
                                 <?php else: ?>
-                                    <?php if ($_SESSION['role'] == 10) { ?>
-                                    <button class="btn btn-primary btn-sm treatment-btn mt-2" data-toggle="modal" data-target="#treatmentModal" data-id="<?php echo htmlspecialchars($row['inpatient_id']); ?>">
-                                        <i class="fa fa-stethoscope m-r-5"></i> Add/Edit Treatments
-                                    </button>
-                                    <?php } ?>
+                                    <div>No treatments added</div>
                                 <?php endif; ?>
                             </td>
                             <td><?php echo htmlspecialchars($row['room_type']); ?></td>
@@ -372,9 +345,14 @@ ob_end_flush();
                                         <?php if ($_SESSION['role'] == 2 && $_SESSION['name'] == $row['doctor_incharge']) { ?>
                                             <button class="dropdown-item diagnosis-btn" data-toggle="modal" data-target="#diagnosisModal" data-id="<?php echo htmlspecialchars($row['inpatient_id']); ?>" <?php echo !empty($row['diagnosis']) ? 'disabled' : ''; ?>><i class="fa fa-stethoscope m-r-5"></i> Diagnosis</button>
                                         <?php } ?>
+                                        <?php if ($_SESSION['role'] == 3 && empty($row['doctor_incharge'])) { ?>
+                                            <button class="dropdown-item select-doctor-btn" data-toggle="modal" data-target="#doctorModal" data-id="<?php echo htmlspecialchars($row['inpatient_id']); ?>"><i class="fa fa-user-md m-r-5"></i> Select Doctor</button>
+                                        <?php } ?>
+                                        <?php if ($_SESSION['role'] == 9) { ?>
+                                            <button class="dropdown-item treatment-btn" data-toggle="modal" data-target="#treatmentModal" data-id="<?php echo htmlspecialchars($row['inpatient_id']); ?>"><i class="fa fa-medkit m-r-5"></i> Insert/Edit Treatments</button>
+                                        <?php } ?>
                                         <?php if ($_SESSION['role'] == 1) { ?>
-                                            <a class="dropdown-item" href="edit-inpatient-record.php?id=<?php echo htmlspecialchars($row['id']); ?>"><i class="fa fa-pencil m-r-5"></i> Edit</a>
-                                            <a class="dropdown-item" href="#" onclick="return confirmDelete('<?php echo $row['id']; ?>')"><i class="fa fa-trash-o m-r-5"></i> Delete</a>
+                                            <a class="dropdown-item" href="#" onclick="return confirmDelete('<?php echo $row['id']; ?>')"><i class="fa fa-trash m-r-5"></i> Delete</a>
                                         <?php } ?>
                                     </div>
                                 </div>
@@ -454,6 +432,7 @@ ob_end_flush();
         <div class="modal-content">
             <div class="modal-header">
                 <h4 class="modal-title">Diagnosis</h4>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
             </div>
             <div class="modal-body">
                 <!-- Form for diagnosis -->
@@ -478,6 +457,7 @@ ob_end_flush();
         <div class="modal-content">
             <div class="modal-header">
                 <h4 class="modal-title">Select Doctor</h4>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
             </div>
             <div class="modal-body">
                 <!-- List of doctors -->
@@ -499,65 +479,6 @@ ob_end_flush();
                     <button type="submit" class="btn btn-primary">Assign Doctor</button>
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
                 </form>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Radiology Images Grid Modal -->
-<div class="modal fade" id="radiologyModal" tabindex="-1" role="dialog" aria-labelledby="radiologyModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="radiologyModalLabel">Radiographic Images</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <div class="modal-body">
-                <div id="radiologyImagesContainer" class="row">
-                    <!-- Images will be loaded here -->
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Image Viewer Modal -->
-<div class="modal fade" id="imageViewerModal" tabindex="-1" role="dialog" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-xl">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="imageViewerTitle">Radiographic Image</h5>
-            </div>
-            <div class="modal-body p-0">
-                <div class="image-container" style="height: 80vh;">
-                    <img id="viewedImage" src="" class="img-fluid" style="max-width: 100%; max-height: 100%; transform-origin: center center;">
-                </div>
-            </div>
-            <div class="modal-footer d-flex justify-content-between align-items-center">
-                <div class="zoom-controls btn-group btn-group-sm">
-                    <button class="btn btn-outline-secondary zoom-out-btn" title="Zoom Out">
-                        <i class="fas fa-search-minus"></i>
-                    </button>
-                    <button class="btn btn-outline-secondary zoom-reset-btn" title="Reset Zoom">
-                        <i class="fas fa-expand"></i>
-                    </button>
-                    <button class="btn btn-outline-secondary zoom-in-btn" title="Zoom In">
-                        <i class="fas fa-search-plus"></i>
-                    </button>
-                </div>
-                <div class="rotation-controls btn-group btn-group-sm">
-                    <button class="btn btn-outline-secondary rotate-left-btn" title="Rotate Left">
-                        <i class="fas fa-undo"></i>
-                    </button>
-                    <button class="btn btn-outline-secondary rotate-right-btn" title="Rotate Right">
-                        <i class="fas fa-redo"></i>
-                    </button>
-                </div>
-                <div class="ml-auto">
-                    <button type="button" class="btn btn-primary" data-dismiss="modal">Close</button>
-                </div>
             </div>
         </div>
     </div>
@@ -610,9 +531,7 @@ document.querySelector('form').addEventListener('submit', function(event) {
 });
 </script>
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
 <script>
     $(document).on('click', '.diagnosis-btn', function(){
         var inpatientId = $(this).data('id');
@@ -752,54 +671,23 @@ $('.treatment-btn').on('click', function () {
         tbody.empty();
         
         data.forEach(function(row) {
-            // Doctor In-Charge button/display - show for role 3 (staff/nurse)
-            var doctorButton = row.doctor_incharge ? 
-                row.doctor_incharge : 
-                (role == 3 ? 
-                    `<button class="btn btn-primary btn-sm select-doctor-btn" 
-                        data-toggle="modal" 
-                        data-target="#doctorModal" 
-                        data-id="${row.inpatient_id}">
-                        Select Doctor
-                    </button>` : 
-                    row.doctor_incharge || 'Not assigned'
-                );
-
-            // View Result button - show for role 2 (doctor)
-            const viewResultButton = (role == 2 || role == 1) ? 
-                `<form action="generate-result.php" method="get">
-                    <input type="hidden" name="patient_id" value="${escapeHtml(row.patient_id)}">
-                    <button class="btn btn-primary btn-sm" type="submit">
-                        <i class="fa fa-file-pdf-o m-r-5"></i> View Result
-                    </button>
-                </form>` : 
-                '';
-
-                        // Radiology Images button - show for role 2 (doctor) and 1 (admin)
-                        var radiologyButton = '';
-                        if ((role == 2 || role == 1) && row.has_radiology_images) {
-                            radiologyButton = `
-                                <button class="btn btn-primary btn-sm" onclick="showRadiologyImages('${escapeHtml(row.patient_id)}')">
-                                    <i class="fa fa-image m-r-5"></i> View Images
-                                </button>`;
-                        }
-
-            // Treatment display - show for role 2 (doctor)
-            var treatmentContent = row.treatments && row.treatments !== 'No treatments added' ? 
-                `<div>${row.treatments}</div>` : 
-                (role == 10 ? 
-                    `<button class="btn btn-primary btn-sm treatment-btn mt-2" 
-                        data-toggle="modal" 
-                        data-target="#treatmentModal" 
-                        data-id="${row.inpatient_id}">
-                        <i class="fa fa-stethoscope m-r-5"></i> Add/Edit Treatments
-                    </button>` : 
-                    'No treatments'
-                );
-
-            // Action buttons based on role
+            // Lab Result button - only show for role 2 (doctor) and if they are the doctor in charge
+            var labResultButton = '';
+            if (row.user_role == 2 && doctor_name == row.doctor_incharge) {
+                labResultButton = `
+                    <form action="generate-result.php" method="get">
+                        <input type="hidden" name="patient_id" value="${row.patient_id}">
+                        <button class="btn btn-primary btn-sm custom-btn" type="submit">
+                            <i class="fa fa-file-pdf-o m-r-5"></i> View Result
+                        </button>
+                    </form>`;
+            }
+            
+            // Prepare action buttons based on user role
             var actionButtons = '';
-            if (role == 2 && doctor_name == row.doctor_incharge) {
+            
+            // Diagnosis button for doctors
+            if (row.user_role == 2 && doctor_name == row.doctor_incharge) {
                 actionButtons += `
                     <button class="dropdown-item diagnosis-btn" 
                         data-toggle="modal" 
@@ -809,16 +697,37 @@ $('.treatment-btn').on('click', function () {
                         <i class="fa fa-stethoscope m-r-5"></i> Diagnosis
                     </button>`;
             }
-            if (role == 1 || role == 3) {
+            
+            // Select Doctor button for role 3 (nurse/staff)
+            if (row.user_role == 3 && !row.doctor_incharge) {
+                actionButtons += `
+                    <button class="dropdown-item select-doctor-btn" 
+                        data-toggle="modal" 
+                        data-target="#doctorModal" 
+                        data-id="${row.inpatient_id}">
+                        <i class="fa fa-user-md m-r-5"></i> Select Doctor
+                    </button>`;
+            }
+            
+            // Add/Edit Treatments button for role 9 (pharmacist)
+            if (row.user_role == 9) {
+                actionButtons += `
+                    <button class="dropdown-item treatment-btn" 
+                        data-toggle="modal" 
+                        data-target="#treatmentModal" 
+                        data-id="${row.inpatient_id}">
+                        <i class="fa fa-medkit m-r-5"></i> Insert/Edit Treatments
+                    </button>`;
+            }
+            
+            // Edit and Delete buttons for admin
+            if (row.user_role == 1) {
                 actionButtons += `
                     <a class="dropdown-item" href="edit-inpatient-record.php?id=${row.id}">
                         <i class="fa fa-pencil m-r-5"></i> Edit
-                    </a>`;
-            }
-            if (role == 1) {
-                actionButtons += `
+                    </a>
                     <a class="dropdown-item" href="#" onclick="return confirmDelete('${row.id}')">
-                        <i class="fa fa-trash-o m-r-5"></i> Delete
+                        <i class="fa fa-trash m-r-5"></i> Delete
                     </a>`;
             }
 
@@ -829,16 +738,15 @@ $('.treatment-btn').on('click', function () {
                 <td>${row.patient_name}</td>
                 <td>${row.age}</td>
                 <td>${row.gender}</td>
-                <td>${doctorButton}</td>
-                <td>${viewResultButton}</td>
-                <td>${radiologyButton}</td>
-                <td>${row.diagnosis}</td>
-                <td>${treatmentContent}</td>
+                <td>${row.doctor_incharge || 'Not assigned'}</td>
+                <td>${labResultButton}</td>
+                <td>${row.diagnosis || ''}</td>
+                <td>${row.treatments || 'No treatments added'}</td>
                 <td>${row.room_type}</td>
                 <td>${row.room_number}</td>
                 <td>${row.bed_number}</td>
                 <td>${row.admission_date}</td>
-                <td>${row.discharge_date || 'N/A'}</td>
+                <td>${row.discharge_date}</td>
                 <td class="text-right">
                     <div class="dropdown dropdown-action">
                         <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
@@ -852,6 +760,7 @@ $('.treatment-btn').on('click', function () {
             </tr>`);
         });
     }
+
 
     // Add these variables at the top of your script
     var role = <?php echo json_encode($_SESSION['role']); ?>;
@@ -942,147 +851,6 @@ $('.dropdown-toggle').on('click', function (e) {
     });
 </script>
 
-<script>
-    // Viewer state variables
-    let currentZoom = 1;
-    let currentRotation = 0;
-    let isDragging = false;
-    let startX, startY, translateX = 0, translateY = 0;
-
-    function updateImageTransform() {
-        const transform = `translate(${translateX}px, ${translateY}px) rotate(${currentRotation}deg) scale(${currentZoom})`;
-        $('#viewedImage').css('transform', transform);
-    }
-
-    function openImageViewer(imageId, examType, imageSrc) {
-        $('#imageViewerTitle').text(examType);
-        $('#viewedImage').attr('src', imageSrc);
-        currentZoom = 1;
-        currentRotation = 0;
-        translateX = 0;
-        translateY = 0;
-        updateImageTransform();
-        $('#imageViewerModal').modal('show');
-    }
-
-    function showRadiologyImages(patientId) {
-        $('#radiologyImagesContainer').html(`
-            <div class="col-12 text-center py-5">
-                <div class="spinner-border text-primary" role="status">
-                    <span class="sr-only">Loading...</span>
-                </div>
-                <p class="mt-2">Loading images...</p>
-            </div>
-        `);
-        $('#radiologyModal').modal('show');
-
-        $.ajax({
-            url: 'fetch-radiology-images.php',
-            type: 'GET',
-            data: { patient_id: patientId },
-            dataType: 'json',
-            success: function(data) {
-                if (data.images && data.images.length > 0) {
-                    let content = '';
-                    data.images.forEach(image => {
-                        content += `
-                            <div class="col-md-4 mb-3">
-                                <div class="card h-100">
-                                    <img src="fetch-image.php?id=${image.id}" 
-                                         class="card-img-top" 
-                                         style="height: 200px; object-fit: cover; cursor: pointer"
-                                         onclick="openImageViewer('${image.id}', '${image.exam_type.replace(/'/g, "\\'")}', 'fetch-image.php?id=${image.id}')"
-                                         alt="Radiology Image">
-                                    <div class="card-body">
-                                        <h6 class="card-title mb-1">${image.exam_type}</h6>
-                                        <p class="card-text small text-muted">${image.test_type}</p>
-                                    </div>
-                                </div>
-                            </div>`;
-                    });
-                    $('#radiologyImagesContainer').html(content);
-                } else {
-                    $('#radiologyImagesContainer').html(`
-                        <div class="col-12 text-center py-5">
-                            <div class="text-muted">
-                                <i class="fas fa-image fa-3x mb-3"></i>
-                                <p>No radiographic images found for this patient.</p>
-                            </div>
-                        </div>
-                    `);
-                }
-            },
-            error: function(xhr, status, error) {
-                console.error('Error fetching images:', error);
-                $('#radiologyImagesContainer').html(`
-                    <div class="col-12 text-center py-5">
-                        <div class="text-danger">
-                            <i class="fas fa-exclamation-circle fa-3x mb-3"></i>
-                            <p>Failed to load radiographic images. Please try again.</p>
-                        </div>
-                    </div>
-                `);
-            }
-        });
-    }
-
-    $(document).ready(function() {
-        $('.zoom-in-btn').on('click', function() {
-            currentZoom *= 1.2;
-            updateImageTransform();
-        });
-
-        $('.zoom-out-btn').on('click', function() {
-            currentZoom /= 1.2;
-            if (currentZoom < 0.5) currentZoom = 0.5;
-            updateImageTransform();
-        });
-
-        $('.zoom-reset-btn').on('click', function() {
-            currentZoom = 1;
-            currentRotation = 0;
-            translateX = 0;
-            translateY = 0;
-            updateImageTransform();
-        });
-
-        $('.rotate-left-btn').on('click', function() {
-            currentRotation -= 90;
-            updateImageTransform();
-        });
-
-        $('.rotate-right-btn').on('click', function() {
-            currentRotation += 90;
-            updateImageTransform();
-        });
-
-        const imageContainer = $('.image-container');
-
-        imageContainer.on('mousedown touchstart', function(e) {
-            isDragging = true;
-            startX = (e.type === 'mousedown') ? e.pageX : e.originalEvent.touches[0].pageX;
-            startY = (e.type === 'mousedown') ? e.pageY : e.originalEvent.touches[0].pageY;
-            e.preventDefault();
-        });
-
-        $(document).on('mousemove touchmove', function(e) {
-            if (!isDragging) return;
-            const currentX = (e.type === 'mousemove') ? e.pageX : e.originalEvent.touches[0].pageX;
-            const currentY = (e.type === 'mousemove') ? e.pageY : e.originalEvent.touches[0].pageY;
-            translateX += (currentX - startX);
-            translateY += (currentY - startY);
-            startX = currentX;
-            startY = currentY;
-            updateImageTransform();
-            e.preventDefault();
-        });
-
-        $(document).on('mouseup touchend', function() {
-            isDragging = false;
-        });
-    });
-</script> 
-    
 <style>
 .dropdown-item {
     padding: 7px 15px;
@@ -1108,7 +876,12 @@ $('.dropdown-toggle').on('click', function (e) {
     z-index: 100;
     width: 100%;
 }
-
+.btn-sm {
+    min-width: 110px; /* Adjust as needed */
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
 .btn-outline-primary {
     background-color:rgb(252, 252, 252);
     color: gray;
@@ -1125,11 +898,6 @@ $('.dropdown-toggle').on('click', function (e) {
 .btn-outline-secondary:hover {
     background-color: #12369e;
     color: #fff;
-}
-.input-group-text {
-    background-color:rgb(255, 255, 255);
-    border: 1px solid rgb(228, 228, 228);
-    color: gray;
 }
 .btn-primary {
         background: #12369e;
@@ -1148,6 +916,36 @@ $('.dropdown-toggle').on('click', function (e) {
     position: absolute;
     z-index: 1000;
     width: 50%;
+}
+.input-group-text {
+    background-color:rgb(249, 249, 249);
+    border: 1px solid rgb(212, 212, 212);
+    color: gray;
+}
+.form-control {
+    border-radius: .375rem; /* Rounded corners */
+    border-color: #ced4da; /* Border color */
+    background-color: #f8f9fa; /* Background color */
+}
+select.form-control {
+    border-radius: .375rem; /* Rounded corners */
+    border: 1px solid; /* Border color */
+    border-color: #ced4da; /* Border color */
+    background-color: #f8f9fa; /* Background color */
+    padding: .375rem 2.5rem .375rem .75rem; /* Adjust padding to make space for the larger arrow */
+    font-size: 1rem; /* Font size */
+    line-height: 1.5; /* Line height */
+    height: calc(2.25rem + 2px); /* Adjust height */
+    -webkit-appearance: none; /* Remove default styling on WebKit browsers */
+    -moz-appearance: none; /* Remove default styling on Mozilla browsers */
+    appearance: none; /* Remove default styling on other browsers */
+    background: url('data:image/svg+xml;charset=UTF-8,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20"%3E%3Cpath d="M7 10l5 5 5-5z" fill="%23aaa"/%3E%3C/svg%3E') no-repeat right 0.75rem center;
+    background-size: 20px; /* Size of the custom arrow */
+}
+
+select.form-control:focus {
+    border-color: #12369e; /* Border color on focus */
+    box-shadow: 0 0 0 .2rem rgba(38, 143, 255, .25); /* Shadow on focus */
 }
 #searchResults li {
     padding: 8px 12px;
@@ -1233,77 +1031,4 @@ color: #6c757d;
     border: 1px solid #eee;
     border-radius: 6px;
 }
-.form-control {
-    border-radius: .375rem; /* Rounded corners */
-    border-color: #ced4da; /* Border color */
-    background-color: #f8f9fa; /* Background color */
-}
-select.form-control {
-    border-radius: .375rem; /* Rounded corners */
-    border: 1px solid; /* Border color */
-    border-color: #ced4da; /* Border color */
-    background-color: #f8f9fa; /* Background color */
-    padding: .375rem 2.5rem .375rem .75rem; /* Adjust padding to make space for the larger arrow */
-    font-size: 1rem; /* Font size */
-    line-height: 1.5; /* Line height */
-    height: calc(2.25rem + 2px); /* Adjust height */
-    -webkit-appearance: none; /* Remove default styling on WebKit browsers */
-    -moz-appearance: none; /* Remove default styling on Mozilla browsers */
-    appearance: none; /* Remove default styling on other browsers */
-    background: url('data:image/svg+xml;charset=UTF-8,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20"%3E%3Cpath d="M7 10l5 5 5-5z" fill="%23aaa"/%3E%3C/svg%3E') no-repeat right 0.75rem center;
-    background-size: 20px; /* Size of the custom arrow */
-}
-
-select.form-control:focus {
-    border-color: #12369e; /* Border color on focus */
-    box-shadow: 0 0 0 .2rem rgba(38, 143, 255, .25); /* Shadow on focus */
-}
-.image-container {
-    background: #000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-    position: relative;
-    height: 80vh;
-}
-
-#modalImage {
-    transform-origin: center center;
-    transition: transform 0.15s ease-out;
-    max-height: 100%;
-    max-width: 100%;
-    position: absolute;
-}
-
-.modal-content {
-    user-select: none;
-}
-
-.zoom-controls .btn, .btn-group-sm .btn {
-    width: 32px;
-    height: 32px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.radiology-images-modal .swal2-content {
-    padding: 20px;
-}
-
-.radiology-images-modal .card {
-    transition: transform 0.2s;
-}
-
-.radiology-images-modal .card:hover {
-    transform: scale(1.02);
-}
-.btn-sm {
-    min-width: 110px; /* Adjust as needed */
-    padding: 0.25rem 0.5rem;
-    font-size: 0.875rem;
-    line-height: 1.5;
-}
-
 </style>
