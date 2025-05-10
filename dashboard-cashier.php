@@ -35,7 +35,7 @@ $paid_total = mysqli_fetch_assoc(mysqli_query($connection, $paid_query))['total'
 
             <div class="col-md-6 col-sm-6 col-lg-6 col-xl-3">
                 <div class="dash-widget">
-                    <span class="dash-widget-bg2"><i class="fa fa-money-bill-wave"></i></span>
+                    <span class="dash-widget-bg2"><i class="fas fa-money-bill-alt"></i></span>
                     <?php
                     $query = "SELECT SUM(total_due) as total FROM tbl_payment";
                     $result = mysqli_query($connection, $query);
@@ -524,3 +524,5 @@ canvas {
     height: 300px !important;
 }
 </style>
+
+

@@ -12,7 +12,7 @@ include('includes/connection.php');
         <div class="row">
             <div class="col-md-6 col-sm-6 col-lg-6 col-xl-3">
                 <div class="dash-widget">
-                    <span class="dash-widget-bg1"><i class="fa fa-user-o"></i></span>
+                    <span class="dash-widget-bg1"><i class="fa fa-user"></i></span>
                     <?php
                     $fetch_query = mysqli_query($connection, "SELECT COUNT(*) AS total FROM tbl_patient WHERE status=1"); 
                     $patient = mysqli_fetch_row($fetch_query);
@@ -26,7 +26,7 @@ include('includes/connection.php');
 
             <div class="col-md-6 col-sm-6 col-lg-6 col-xl-3">
                 <div class="dash-widget">
-                    <span class="dash-widget-bg2"><i class="fa fa-user-o" aria-hidden="true"></i></span>
+                    <span class="dash-widget-bg2"><i class="fa fa-user" aria-hidden="true"></i></span>
                     <?php
                     $fetch_query = mysqli_query($connection, "SELECT COUNT(*) AS total FROM tbl_patient WHERE patient_type='OutPatient' AND status=1"); 
                     $outpatient = mysqli_fetch_row($fetch_query);
@@ -39,7 +39,7 @@ include('includes/connection.php');
             </div>
             <div class="col-md-6 col-sm-6 col-lg-6 col-xl-3">
                 <div class="dash-widget">
-                    <span class="dash-widget-bg3"><i class="fa fa-user-o" aria-hidden="true"></i></span>
+                    <span class="dash-widget-bg3"><i class="fa fa-user" aria-hidden="true"></i></span>
                     <?php
                     $fetch_query = mysqli_query($connection, "SELECT COUNT(*) AS total FROM tbl_patient WHERE patient_type='InPatient' AND status=1"); 
                     $inpatient = mysqli_fetch_row($fetch_query);
@@ -52,7 +52,7 @@ include('includes/connection.php');
             </div>
             <div class="col-md-6 col-sm-6 col-lg-6 col-xl-3">
                 <div class="dash-widget">
-                    <span class="dash-widget-bg4"><i class="fa fa-user-o" aria-hidden="true"></i></span>
+                    <span class="dash-widget-bg4"><i class="fa fa-user" aria-hidden="true"></i></span>
                     <?php
                     $fetch_query = mysqli_query($connection, "SELECT COUNT(*) AS total FROM tbl_hemodialysis"); 
                     $hemodialysis = mysqli_fetch_row($fetch_query);

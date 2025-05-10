@@ -79,7 +79,7 @@ while($row = mysqli_fetch_assoc($fetch_chart_data_query)) {
             <!-- Number of Transactions Widget -->
             <div class="col-md-3">
                 <div class="dash-widget">
-                    <span class="dash-widget-bg4"><i class="fa fa-money"></i></span>
+                                        <span class="dash-widget-bg4"><i class="fas fa-money-bill-alt"></i></span>
                     <?php
                     $fetch_transaction_count_query = mysqli_query($connection, "SELECT COUNT(id) AS total_transactions FROM tbl_pharmacy_invoice WHERE invoice_datetime");
                     $transaction_count = mysqli_fetch_assoc($fetch_transaction_count_query);
