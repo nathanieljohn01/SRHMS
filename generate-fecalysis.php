@@ -11,63 +11,64 @@ include('includes/connection.php');
 require_once('vendor/tecnickcom/tcpdf/tcpdf.php');
 require_once('vendor/autoload.php');
 
-// Fetch fecalysis details
-if (isset($_GET['id'])) {
-    $fecalysis_id = mysqli_real_escape_string($connection, $_GET['id']);
-    mysqli_query($connection, "SET NAMES 'utf8'");
-    $filename = isset($_GET['filename']) ? mysqli_real_escape_string($connection, $_GET['filename']) : 'fecalysis_' . $fecalysis_id;
+// Ensure that patient_id is set
+if (!isset($_GET['patient_id']) || empty($_GET['patient_id'])) {
+    die('Patient ID is required.');
 }
 
-// Extend TCPDF class to create custom Header
+// Sanitize patient_id
+$patient_id = mysqli_real_escape_string($connection, $_GET['patient_id']);
+
+// Extend TCPDF class with improved header and styling
 class MYPDF extends TCPDF {
     public function Header() {
+        // Logo
         $image_file = __DIR__ . '/assets/img/srchlogo.png';
-        $this->Image($image_file, 15, 8, 20, '', 'PNG', '', 'T', false, 300, '', false, false, 0, false, false, false);
+        $this->Image($image_file, 15, 10, 25, '', 'PNG', '', 'T', false, 300, '', false, false, 0, false, false, false);
         
-        $pageWidth = $this->getPageWidth();
-        $centerPosition = ($pageWidth - 30) / 2 + 15;
-        
-        // Hospital Name
+        // Hospital Name with larger, bold font
         $this->SetFont('helvetica', 'B', 14);
-        $this->SetXY($centerPosition - ($this->GetStringWidth('SANTA ROSA COMMUNITY HOSPITAL')/2), 15);
-        $this->Cell(0, 5, 'SANTA ROSA COMMUNITY HOSPITAL', 0, 1);
+        $this->SetY(12);
+        $this->Cell(0, 8, 'SANTA ROSA COMMUNITY HOSPITAL', 0, 1, 'C');
         
-        // Address
-        $this->SetFont('helvetica', '', 10);
-        $this->SetXY($centerPosition - ($this->GetStringWidth('LM Subdivision, Market Area, Santa Rosa City, Laguna')/2), 20);
-        $this->Cell(0, 5, 'LM Subdivision, Market Area, Santa Rosa City, Laguna', 0, 1);
+        // Address and Contact Details
+        $this->SetFont('helvetica', '', 9);
+        $this->Cell(0, 5, 'LM Subdivision, Market Area, Santa Rosa City, Laguna', 0, 1, 'C');
+        $this->Cell(0, 5, 'Email: srcityhospital1995@gmail.com', 0, 1, 'C');
         
-        // Contact Information
-        $this->SetXY($centerPosition - ($this->GetStringWidth('Email: srcityhospital1995@gmail.com')/2), 25);
-        $this->Cell(0, 5, 'Email: srcityhospital1995@gmail.com', 0, 1);
-        
-        // Horizontal line
-        $this->Line(15, 32, $pageWidth-15, 32);
-        $this->Ln(10);
+        // Decorative lines
+        $this->Line(15, 35, 195, 35, array('width' => 0.5, 'color' => array(0, 0, 0)));
+        $this->Line(15, 36, 195, 36, array('width' => 0.2, 'color' => array(100, 100, 100)));
+
+        $this->Ln(8);
+    }
+    
+    public function Footer() {
+        $this->SetY(-15);
+        $this->SetFont('helvetica', 'I', 8);
+        $this->Cell(0, 10, 'Page '.$this->getAliasNumPage().'/'.$this->getAliasNbPages(), 0, 0, 'C');
     }
 }
 
-// Create new PDF document
-$pdf = new MYPDF('L', 'mm', 'A4', true, 'UTF-8', false);
+// Initialize TCPDF
+$pdf = new MYPDF('P', 'mm', 'A4', true, 'UTF-8', false);
 
 // Set document information
-$pdf->SetCreator('Santa Rosa Hospital');
-$pdf->SetAuthor('Santa Rosa Community Hospital');
-$pdf->SetTitle('Fecalysis Report');
-$pdf->SetSubject('Fecalysis');
-$pdf->SetKeywords('Fecalysis, Report');
+$pdf->SetCreator('Santa Rosa Community Hospital');
+$pdf->SetAuthor('Laboratory Department');
+$pdf->SetTitle('Laboratory Results');
+$pdf->SetSubject('Patient Test Results');
 
-// Set header and footer fonts
-$pdf->setHeaderFont(['helvetica', '', 16]);
-$pdf->setFooterFont(['helvetica', '', 14]);
+// Set default monospaced font
+$pdf->SetDefaultMonospacedFont(PDF_FONT_MONOSPACED);
 
 // Set margins
-$pdf->SetMargins(15, 25, 15);
+$pdf->SetMargins(15, 40, 15);
 $pdf->SetHeaderMargin(10);
-$pdf->SetFooterMargin(10);
+$pdf->SetFooterMargin(15);
 
 // Set auto page breaks
-$pdf->SetAutoPageBreak(TRUE, 15);
+$pdf->SetAutoPageBreak(TRUE, 25);
 
 // Set image scale factor
 $pdf->setImageScale(PDF_IMAGE_SCALE_RATIO);
@@ -75,89 +76,283 @@ $pdf->setImageScale(PDF_IMAGE_SCALE_RATIO);
 // Add a page
 $pdf->AddPage();
 
-// Output fecalysis details
-$html = '';
+// Get patient information from database
+$patient_query = $connection->prepare("SELECT first_name, last_name, dob, gender FROM tbl_patient WHERE patient_id = ?");
+$patient_query->bind_param('s', $patient_id);
+$patient_query->execute();
+$patient_result = $patient_query->get_result();
+$patient_data = $patient_result->fetch_assoc();
 
-// Prepare the query using prepared statement
-$query = "SELECT * FROM tbl_fecalysis WHERE fecalysis_id = ?";
-$stmt = mysqli_prepare($connection, $query);
-mysqli_stmt_bind_param($stmt, 's', $fecalysis_id);
-mysqli_stmt_execute($stmt);
-$result = mysqli_stmt_get_result($stmt);
+$patient_name = htmlspecialchars($patient_data['first_name'] . ' ' . $patient_data['last_name']);
+$dob = !empty($patient_data['dob']) ? date('F d, Y', strtotime($patient_data['dob'])) : 'N/A';
+$raw_dob = str_replace('/', '-', $patient_data['dob']);
+$formatted_dob = date('Y-m-d', strtotime($raw_dob));
+$age = date_diff(date_create($formatted_dob), date_create('today'))->y;
+$gender = htmlspecialchars($patient_data['gender']);
+$current_date = date('F d, Y');
 
-while ($row = $result->fetch_assoc()) {
-    // Calculate age
-    $dob = date('Y-m-d', strtotime(str_replace('/', '-', $row['dob'])));
-    $year = (date('Y') - date('Y', strtotime($dob)));
+// Patient information section
+$pdf->SetFont('helvetica', 'B', 12);
+$pdf->Cell(0, 8, 'LABORATORY TEST RESULTS', 0, 1, 'C');
+$pdf->Ln(5);
 
-    // Patient Information
-    $html .= '<div style="text-align: center; margin-bottom: 20px;">
-                <h3>Fecalysis</h3>
-                <p><strong>Patient Name:</strong> ' . htmlspecialchars($row['patient_name'], ENT_QUOTES, 'UTF-8') . ' | 
-                <strong>Age:</strong> ' . $year . ' | 
-                <strong>Gender:</strong> ' . htmlspecialchars($row['gender'], ENT_QUOTES, 'UTF-8') . ' | 
-                <strong>Date and Time:</strong> ' . date('F d Y g:i A', strtotime($row['date_time'])) . '</p>
-            </div>';
+$pdf->SetFont('helvetica', '', 10);
+$pdf->Cell(40, 6, 'Patient Name:', 0, 0);
+$pdf->SetFont('helvetica', 'B', 10);
+$pdf->Cell(60, 6, $patient_name, 0, 0);
+$pdf->SetFont('helvetica', '', 10);
+$pdf->Cell(30, 6, 'Age:', 0, 0);
+$pdf->SetFont('helvetica', 'B', 10);
+$pdf->Cell(0, 6, $age , 0, 1);
+$pdf->SetFont('helvetica', '', 10);
+$pdf->Cell(40, 6, 'Gender:', 0, 0);
+$pdf->SetFont('helvetica', 'B', 10);
+$pdf->Cell(60, 6, $gender, 0, 0);
+$pdf->SetFont('helvetica', '', 10);
+$pdf->Cell(30, 6, 'Report Date:', 0, 0);
+$pdf->SetFont('helvetica', 'B', 10);
+$pdf->Cell(0, 6, $current_date, 0, 1);
 
-    // Macroscopic Table
-    $html .= '<h4 style="font-size: 16px; text-align: center;">Macroscopic</h4>';
-    $html .= '<table border="1" cellpadding="5" style="width: 100%;">
-                <thead style="background-color: #CCCCCC;">
-                    <tr>   
-                        <th>Color</th>
-                        <th>Consistency</th>
-                        <th>Occult Blood</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td><strong>' . htmlspecialchars($row['color']) . '</strong></td>
-                        <td><strong>' . htmlspecialchars($row['consistency']) . '</strong></td>
-                        <td><strong>' . htmlspecialchars($row['occult_blood']) . '</strong></td>
-                    </tr>
-                </tbody>
-            </table>';
+$pdf->Ln(8);
 
-    // Microscopic Table
-    $html .= '<h4 style="font-size: 16px; text-align: center;">Microscopic</h4>';
-    $html .= '<table border="1" cellpadding="5" style="width: 100%;">
-                <thead style="background-color: #CCCCCC;">
-                    <tr>
-                        <th>Pus Cells</th>
-                        <th>Ova or Parasite</th>
-                        <th>Yeast Cells</th>
-                        <th>Fat Globules</th>
-                        <th>RBC</th>
-                        <th>Bacteria</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td><strong>' . htmlspecialchars($row['pus_cells']) . '</strong></td>
-                        <td><strong>' . htmlspecialchars($row['ova_or_parasite']) . '</strong></td>
-                        <td><strong>' . htmlspecialchars($row['yeast_cells']) . '</strong></td>
-                        <td><strong>' . htmlspecialchars($row['fat_globules']) . '</strong></td>
-                        <td><strong>' . htmlspecialchars($row['rbc']) . '</strong></td>
-                        <td><strong>' . htmlspecialchars($row['bacteria']) . '</strong></td>
-                    </tr>
-                </tbody>
-            </table>';
-
-    // Medical Technologist Signature
-    $html .= '<div style="position: absolute; bottom: 20px; left: 30px; text-align: left; width: 150px; font-weight: bold;">';
-    $html .= '<br>';
-    $html .= '<br>';
-    $html .= '<strong>____________________</strong><br>';
-    $html .= '<strong>Medical Technologist</strong><br>';
-    $html .= '<br>';
-    $html .= '<strong>____________________</strong><br>';
-    $html .= '<strong>Pathologist</strong><br>';
-    $html .= '</div>';
+// Function to render lab results table with improved formatting
+function renderLabResultsTable($pdf, $testType, $data, $columns, $widths) {
+    $pdf->SetFont('helvetica', 'B', 11);
+    $pdf->SetFillColor(230, 230, 230);
+    
+    // Test Type Header
+    $pdf->Cell(0, 7, $testType, 0, 1, 'L', true);
+    $pdf->Ln(2);
+    
+    // Table header
+    foreach ($columns as $index => $header) {
+        $pdf->Cell($widths[$index], 7, htmlspecialchars($header), 1, 0, 'C', true);
+    }
+    $pdf->Ln();
+    
+    $pdf->SetFont('helvetica', '', 9);
+    $fill = false;
+    
+    // Table rows
+    foreach ($data as $row) {
+        $pdf->SetFillColor(245, 245, 245);
+        $pdf->Cell($widths[0], 6, htmlspecialchars(date('m/d/Y', strtotime($row['date_time']))), 1, 0, 'C', $fill);
+        $pdf->Cell($widths[1], 6, htmlspecialchars(date('h:i A', strtotime($row['date_time']))), 1, 0, 'C', $fill);
+        
+        // Results with proper formatting
+        $pdf->SetFont('helvetica', '', 9);
+        $results = explode('\n', $row['results']);
+        $first = true;
+        
+        foreach ($results as $result) {
+            if (!$first) {
+                $pdf->Cell($widths[0] + $widths[1], 6, '', 0, 1);
+                $pdf->Cell($widths[0] + $widths[1], 6, '', 0, 0);
+            }
+            $pdf->MultiCell($widths[2], 6, htmlspecialchars($result), 1, 'L', $fill);
+            $first = false;
+        }
+        
+        $fill = !$fill;
+    }
+    $pdf->Ln(8);
 }
 
-// Output the HTML content as a PDF
-$pdf->writeHTML($html, true, false, true, false, '');
+// Fetch CBC records
+$cbcResults = [];
+$cbcQuery = $connection->prepare("
+    SELECT date_time, 
+           CONCAT(
+               'Hemoglobin: ', hemoglobin, ' g/dL\n',
+               'Hematocrit: ', hematocrit, ' %\n',
+               'RBC: ', red_blood_cells, ' M/uL\n',
+               'WBC: ', white_blood_cells, ' K/uL\n',
+               'ESR: ', esr, ' mm/hr\n',
+               'Segmenters: ', segmenters, ' %\n',
+               'Lymphocytes: ', lymphocytes, ' %\n',
+               'Monocytes: ', monocytes, ' %\n',
+               'Bands: ', bands, ' %\n',
+               'Platelets: ', platelets, ' K/uL'
+           ) AS results
+    FROM tbl_cbc
+    WHERE patient_id = ?
+    ORDER BY date_time DESC
+");
+$cbcQuery->bind_param('s', $patient_id);
+$cbcQuery->execute();
+$cbcResult = $cbcQuery->get_result();
+while ($row = $cbcResult->fetch_assoc()) {
+    $cbcResults[] = $row;
+}
+if (!empty($cbcResults)) {
+    renderLabResultsTable($pdf, 'COMPLETE BLOOD COUNT (CBC)', $cbcResults, ['Date', 'Time', 'Results'], [25, 20, 135]);
+}
 
-// Close and output PDF document
-$pdf->Output($filename . '.pdf', 'D');
+// Fetch PBS records
+$pbsResults = [];
+$pbsQuery = $connection->prepare("
+    SELECT date_time, 
+           CONCAT(
+               'RBC Morphology: ', rbc_morphology, '\n',
+               'Platelet Count: ', platelet_count, ' K/uL\n',
+               'Toxic Granules: ', toxic_granules, '\n',
+               'Abnormal Cells: ', abnormal_cells, '\n',
+               'Segmenters: ', segmenters, ' %\n',
+               'Lymphocytes: ', lymphocytes, ' %\n',
+               'Monocytes: ', monocytes, ' %\n',
+               'Eosinophils: ', eosinophils, ' %\n',
+               'Bands: ', bands, ' %\n',
+               'Reticulocyte Count: ', reticulocyte_count, ' %\n',
+               'Remarks: ', IFNULL(remarks, 'None')
+           ) AS results
+    FROM tbl_pbs
+    WHERE patient_id = ? AND deleted = 0
+    ORDER BY date_time DESC
+");
+$pbsQuery->bind_param('s', $patient_id);
+$pbsQuery->execute();
+$pbsResult = $pbsQuery->get_result();
+while ($row = $pbsResult->fetch_assoc()) {
+    $pbsResults[] = $row;
+}
+if (!empty($pbsResults)) {
+    renderLabResultsTable($pdf, 'PERIPHERAL BLOOD SMEAR (PBS)', $pbsResults, ['Date', 'Time', 'Results'], [25, 20, 135]);
+}
+
+// Fetch PT/PTT records
+$ptpttResults = [];
+$ptpttQuery = $connection->prepare("
+    SELECT date_time, 
+           CONCAT(
+               'PT Control: ', pt_control, ' sec\n',
+               'PT Test: ', pt_test, ' sec\n',
+               'PT INR: ', pt_inr, '\n',
+               'PT Activity: ', pt_activity, ' %\n',
+               'PTT Control: ', ptt_control, ' sec\n',
+               'PTT Patient: ', ptt_patient_result, ' sec\n',
+               'Remarks: ', IFNULL(ptt_remarks, 'None')
+           ) AS results
+    FROM tbl_ptptt
+    WHERE patient_id = ? AND deleted = 0
+    ORDER BY date_time DESC
+");
+$ptpttQuery->bind_param('s', $patient_id);
+$ptpttQuery->execute();
+$ptpttResult = $ptpttQuery->get_result();
+while ($row = $ptpttResult->fetch_assoc()) {
+    $ptpttResults[] = $row;
+}
+if (!empty($ptpttResults)) {
+    renderLabResultsTable($pdf, 'PT/PTT COAGULATION TEST', $ptpttResults, ['Date', 'Time', 'Results'], [25, 20, 135]);
+}
+
+// Fetch Macroscopic Urinalysis records
+$macroResults = [];
+$macroQuery = $connection->prepare("
+    SELECT date_time, 
+           CONCAT(
+               'Color: ', IFNULL(color, 'N/A'), '\n',
+               'Transparency: ', IFNULL(transparency, 'N/A'), '\n',
+               'Reaction: ', IFNULL(reaction, 'N/A'), '\n',
+               'Protein: ', IFNULL(protein, 'N/A'), '\n',
+               'Glucose: ', IFNULL(glucose, 'N/A'), '\n',
+               'Specific Gravity: ', IFNULL(specific_gravity, 'N/A'), '\n',
+               'Ketone: ', IFNULL(ketone, 'N/A'), '\n',
+               'Urobilinogen: ', IFNULL(urobilinogen, 'N/A'), '\n',
+               'Pregnancy Test: ', IFNULL(pregnancy_test, 'N/A')
+           ) AS results
+    FROM tbl_urinalysis
+    WHERE patient_id = ?
+    ORDER BY date_time DESC
+");
+$macroQuery->bind_param('s', $patient_id);
+$macroQuery->execute();
+$macroResult = $macroQuery->get_result();
+while ($row = $macroResult->fetch_assoc()) {
+    $macroResults[] = $row;
+}
+if (!empty($macroResults)) {
+    renderLabResultsTable($pdf, 'MACROSCOPIC URINALYSIS', $macroResults, ['Date', 'Time', 'Results'], [25, 20, 135]);
+}
+
+// Fetch Microscopic Urinalysis records
+$microResults = [];
+$microQuery = $connection->prepare("
+    SELECT date_time, 
+           CONCAT(
+               'Pus Cells: ', IFNULL(pus_cells, 'N/A'), ' /hpf\n',
+               'RBC: ', IFNULL(red_blood_cells, 'N/A'), ' /hpf\n',
+               'Epithelial Cells: ', IFNULL(epithelial_cells, 'N/A'), ' /hpf\n',
+               'Urates/Phosphates: ', IFNULL(a_urates_a_phosphates, 'N/A'), '\n',
+               'Mucus Threads: ', IFNULL(mucus_threads, 'N/A'), '\n',
+               'Bacteria: ', IFNULL(bacteria, 'N/A'), '\n',
+               'Calcium Oxalates: ', IFNULL(calcium_oxalates, 'N/A'), '\n',
+               'Uric Acid Crystals: ', IFNULL(uric_acid_crystals, 'N/A'), '\n',
+               'Pus Cell Clumps: ', IFNULL(pus_cells_clumps, 'N/A'), '\n',
+               'Coarse Granular Cast: ', IFNULL(coarse_granular_cast, 'N/A'), '\n',
+               'Hyaline Cast: ', IFNULL(hyaline_cast, 'N/A')
+           ) AS results
+    FROM tbl_urinalysis
+    WHERE patient_id = ?
+    ORDER BY date_time DESC
+");
+$microQuery->bind_param('s', $patient_id);
+$microQuery->execute();
+$microResult = $microQuery->get_result();
+while ($row = $microResult->fetch_assoc()) {
+    $microResults[] = $row;
+}
+if (!empty($microResults)) {
+    renderLabResultsTable($pdf, 'MICROSCOPIC URINALYSIS', $microResults, ['Date', 'Time', 'Results'], [25, 20, 135]);
+}
+
+// Fetch Fecalysis records
+$fecalResults = [];
+$fecalQuery = $connection->prepare("
+    SELECT date_time, 
+           CONCAT(
+               'MACROSCOPIC:\n',
+               'Color: ', IFNULL(color, 'N/A'), '\n',
+               'Consistency: ', IFNULL(consistency, 'N/A'), '\n',
+               'Occult Blood: ', IFNULL(occult_blood, 'N/A'), '\n\n',
+               'MICROSCOPIC:\n',
+               'Pus Cells: ', IFNULL(pus_cells, 'N/A'), '\n',
+               'Ova or Parasite: ', IFNULL(ova_or_parasite, 'N/A'), '\n',
+               'Yeast Cells: ', IFNULL(yeast_cells, 'N/A'), '\n',
+               'Fat Globules: ', IFNULL(fat_globules, 'N/A'), '\n',
+               'RBC: ', IFNULL(rbc, 'N/A'), '\n',
+               'Bacteria: ', IFNULL(bacteria, 'N/A')
+           ) AS results
+    FROM tbl_fecalysis
+    WHERE patient_id = ?
+    ORDER BY date_time DESC
+");
+$fecalQuery->bind_param('s', $patient_id);
+$fecalQuery->execute();
+$fecalResult = $fecalQuery->get_result();
+while ($row = $fecalResult->fetch_assoc()) {
+    $fecalResults[] = $row;
+}
+if (!empty($fecalResults)) {
+    renderLabResultsTable($pdf, 'FECALYSIS', $fecalResults, ['Date', 'Time', 'Results'], [25, 20, 135]);
+}
+
+// Add signature section
+$pdf->Ln(10);
+$pdf->SetFont('helvetica', '', 10);
+$pdf->Cell(0, 5, 'Medical Technologist:', 0, 1);
+$pdf->Cell(50, 15, '', 0, 0);
+$pdf->Cell(50, 15, '_________________________', 0, 1);
+$pdf->Cell(50, 0, '', 0, 0);
+$pdf->Cell(50, 0, 'Signature over Printed Name', 0, 1);
+
+$pdf->Ln(5);
+$pdf->Cell(0, 5, 'Pathologist:', 0, 1);
+$pdf->Cell(50, 15, '', 0, 0);
+$pdf->Cell(50, 15, '_________________________', 0, 1);
+$pdf->Cell(50, 0, '', 0, 0);
+$pdf->Cell(50, 0, 'Signature over Printed Name', 0, 1);
+
+// Output the PDF
+$pdf->Output('Lab_Results_' . $patient_name . '_' . date('Ymd') . '.pdf', 'I');
 ?>

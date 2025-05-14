@@ -318,8 +318,8 @@ ob_end_flush();
                                 <?php if ($_SESSION['role'] == 2) { ?>
                                 <form action="generate-result.php" method="get">
                                     <input type="hidden" name="patient_id" value="<?php echo $row['patient_id']; ?>">
-                                    <button class="btn btn-primary btn-sm custom-btn" type="submit">
-                                        <i class="fa fa-file-pdf-o m-r-5"></i> View Result
+                                    <button class="btn btn-primary custom-btn" type="submit">
+                                        <i class="fa fa-file-pdf m-r-5"></i> View Result
                                     </button>
                                 </form>
                                 <?php } ?>
@@ -511,7 +511,7 @@ function confirmDelete(id) {
 </script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-document.querySelector('form').addEventListener('submit', function(event) {
+document.querySelector('#addPatientForm').addEventListener('submit', function(event) {
     event.preventDefault(); // Prevent form from submitting immediately
 
     Swal.fire({
@@ -677,8 +677,8 @@ $('.treatment-btn').on('click', function () {
                 labResultButton = `
                     <form action="generate-result.php" method="get">
                         <input type="hidden" name="patient_id" value="${row.patient_id}">
-                        <button class="btn btn-primary btn-sm custom-btn" type="submit">
-                            <i class="fa fa-file-pdf-o m-r-5"></i> View Result
+                        <button class="btn btn-primary custom-btn" type="submit">
+                            <i class="fa fa-file-pdf m-r-5"></i> View Result
                         </button>
                     </form>`;
             }

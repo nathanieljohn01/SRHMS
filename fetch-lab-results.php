@@ -68,6 +68,15 @@ if(isset($_POST['patientId'])) {
                     <td>'.$datetime->format('h:i A').'</td>
                     <td style="white-space: pre-wrap;">'.$row['results'].'</td>
                 </tr>';
+            
+            // Add remarks if they exist
+            if (!empty($row['remarks'])) {
+                $table .= '
+                <tr>
+                    <td colspan="2"><strong>Remarks:</strong></td>
+                    <td>'.htmlspecialchars($row['remarks']).'</td>
+                </tr>';
+            }
         }
         
         $table .= '
@@ -80,7 +89,204 @@ if(isset($_POST['patientId'])) {
         return $table;
     }
 
-    // Fetch CBC records
+    // Function to create crossmatching table
+    function createCrossmatchingTable($title, $results) {
+        if (empty($results)) return '';
+        
+        $table = '
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5 class="card-title mb-0">'.$title.'</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">';
+        
+        foreach ($results as $row) {
+            // Format dates
+            $date_time = date('F d, Y h:i A', strtotime($row['date_time']));
+            $extraction_date = !empty($row['extraction_date']) ? date('F d, Y', strtotime($row['extraction_date'])) : 'N/A';
+            $expiration_date = !empty($row['expiration_date']) ? date('F d, Y', strtotime($row['expiration_date'])) : 'N/A';
+            $dated = !empty($row['dated']) ? date('F d, Y', strtotime($row['dated'])) : 'N/A';
+            $time_packed = !empty($row['time_packed']) ? date('h:i A', strtotime($row['time_packed'])) : 'N/A';
+            $to_be_consumed_before = !empty($row['to_be_consumed_before']) ? date('h:i A', strtotime($row['to_be_consumed_before'])) : 'N/A';
+
+            $table .= '
+                    <h6 class="mb-3">Test Date: '.$date_time.'</h6>
+                    
+                    <h6 class="mb-2">Patient Blood Information</h6>
+                    <table class="table table-bordered mb-4">
+                        <tr>
+                            <th style="width: 30%">Patient Blood Type</th>
+                            <td>'.htmlspecialchars($row['patient_blood_type']).'</td>
+                        </tr>
+                        <tr>
+                            <th>Blood Component</th>
+                            <td>'.htmlspecialchars($row['blood_component']).'</td>
+                        </tr>
+                        <tr>
+                            <th>Serial Number</th>
+                            <td>'.htmlspecialchars($row['serial_number']).'</td>
+                        </tr>
+                        <tr>
+                            <th>Extraction Date</th>
+                            <td>'.$extraction_date.'</td>
+                        </tr>
+                        <tr>
+                            <th>Expiration Date</th>
+                            <td>'.$expiration_date.'</td>
+                        </tr>
+                    </table>
+                    
+                    <h6 class="mb-2">Crossmatching Results</h6>
+                    <table class="table table-bordered mb-4">
+                        <tr>
+                            <th style="width: 30%">Major Crossmatching</th>
+                            <td>'.htmlspecialchars($row['major_crossmatching']).'</td>
+                        </tr>
+                        <tr>
+                            <th>Donor\'s Blood Type</th>
+                            <td>'.htmlspecialchars($row['donors_blood_type']).'</td>
+                        </tr>
+                        <tr>
+                            <th>Packed Red Blood Cell</th>
+                            <td>'.htmlspecialchars($row['packed_red_blood_cell']).'</td>
+                        </tr>
+                        <tr>
+                            <th>Time Packed</th>
+                            <td>'.$time_packed.'</td>
+                        </tr>
+                        <tr>
+                            <th>Dated</th>
+                            <td>'.$dated.'</td>
+                        </tr>
+                    </table>
+                    
+                    <h6 class="mb-2">System Information</h6>
+                    <table class="table table-bordered">
+                        <tr>
+                            <th style="width: 30%">Open System</th>
+                            <td>'.htmlspecialchars($row['open_system']).'</td>
+                        </tr>
+                        <tr>
+                            <th>Closed System</th>
+                            <td>'.htmlspecialchars($row['closed_system']).'</td>
+                        </tr>
+                        <tr>
+                            <th>To Be Consumed Before</th>
+                            <td>'.$to_be_consumed_before.'</td>
+                        </tr>
+                        <tr>
+                            <th>Hours</th>
+                            <td>'.htmlspecialchars($row['hours']).'</td>
+                        </tr>
+                        <tr>
+                            <th>Minor Crossmatching</th>
+                            <td>'.htmlspecialchars($row['minor_crossmatching']).'</td>
+                        </tr>
+                    </table>';
+        }
+        
+        $table .= '
+                </div>
+            </div>
+        </div>';
+        
+        return $table;
+    }
+
+    // Function to create Dengue Duo table
+    function createDengueDuoTable($title, $results) {
+        if (empty($results)) return '';
+        
+        $table = '
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5 class="card-title mb-0">'.$title.'</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">';
+        
+        foreach ($results as $row) {
+            $date_time = date('F d, Y h:i A', strtotime($row['date_time']));
+            $dob = date('Y-m-d', strtotime(str_replace('/', '-', $row['dob'])));
+            $year = (date('Y') - date('Y', strtotime($dob)));
+            
+            $table .= '
+                    <h6 class="mb-3">Test Date: '.$date_time.'</h6>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <p><strong>Patient Name:</strong> '.htmlspecialchars($row['patient_name']).'</p>
+                        </div>
+                        <div class="col-md-3">
+                            <p><strong>Age:</strong> '.$year.'</p>
+                        </div>
+                        <div class="col-md-3">
+                            <p><strong>Gender:</strong> '.htmlspecialchars($row['gender']).'</p>
+                        </div>
+                    </div>
+                    
+                    <table class="table table-bordered mb-4">
+                        <thead>
+                            <tr>
+                                <th>Test</th>
+                                <th>Result</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>NS1 Antigen</td>
+                                <td>'.htmlspecialchars($row['ns1ag']).'</td>
+                            </tr>
+                            <tr>
+                                <td>IgG</td>
+                                <td>'.htmlspecialchars($row['igg']).'</td>
+                            </tr>
+                            <tr>
+                                <td>IgM</td>
+                                <td>'.htmlspecialchars($row['igm']).'</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    
+                    <h6 class="mb-2">Interpretation:</h6>';
+            
+            $ns1ag = strtoupper($row['ns1ag']);
+            $igg = strtoupper($row['igg']);
+            $igm = strtoupper($row['igm']);
+            
+            if ($ns1ag == 'POSITIVE' && $igm == 'POSITIVE') {
+                $table .= '<p>Results suggest an acute dengue infection.</p>';
+            } elseif ($ns1ag == 'POSITIVE' && $igm == 'NEGATIVE') {
+                $table .= '<p>Results suggest an early acute dengue infection.</p>';
+            } elseif ($ns1ag == 'NEGATIVE' && $igm == 'POSITIVE') {
+                $table .= '<p>Results suggest a recent dengue infection (within 2-4 weeks).</p>';
+            } elseif ($igg == 'POSITIVE' && $igm == 'NEGATIVE') {
+                $table .= '<p>Results suggest a past dengue infection.</p>';
+            } else {
+                $table .= '<p>No evidence of current or recent dengue infection.</p>';
+            }
+            
+            if (!empty($row['remarks'])) {
+                $table .= '
+                    <h6 class="mb-2 mt-3">Remarks:</h6>
+                    <p>'.htmlspecialchars($row['remarks']).'</p>';
+            }
+        }
+        
+        $table .= '
+                </div>
+            </div>
+        </div>';
+        
+        return $table;
+    }
+
+    // ====================== HEMATOLOGY DEPARTMENT ======================
+    $output .= '<div class="department-section mb-4">
+                    <h4 class="department-title">HEMATOLOGY</h4>
+                    <div class="department-content">';
+
+    // Fetch CBC records (Hematology)
     $cbcResults = [];
     $cbcQuery = $connection->prepare("
         SELECT date_time, 
@@ -109,7 +315,7 @@ if(isset($_POST['patientId'])) {
     }
     $output .= createResultTable('COMPLETE BLOOD COUNT (CBC)', $cbcResults);
 
-    // Fetch PBS records
+    // Fetch PBS records (Hematology)
     $pbsResults = [];
     $pbsQuery = $connection->prepare("
         SELECT date_time, 
@@ -138,7 +344,7 @@ if(isset($_POST['patientId'])) {
     }
     $output .= createResultTable('PERIPHERAL BLOOD SMEAR (PBS)', $pbsResults);
 
-    // Fetch PT/PTT records
+    // Fetch PT/PTT records (Hematology)
     $ptpttResults = [];
     $ptpttQuery = $connection->prepare("
         SELECT date_time, 
@@ -163,7 +369,36 @@ if(isset($_POST['patientId'])) {
     }
     $output .= createResultTable('PT/PTT COAGULATION TEST', $ptpttResults);
 
-    // Fetch Urinalysis records
+    $output .= '</div></div>'; // Close Hematology department section
+
+    // ====================== BLOOD BANK DEPARTMENT ======================
+    $output .= '<div class="department-section mb-4">
+                    <h4 class="department-title">BLOOD BANK</h4>
+                    <div class="department-content">';
+
+    // Fetch Crossmatching records (Blood Bank)
+    $crossmatchingResults = [];
+    $crossmatchingQuery = $connection->prepare("
+        SELECT * FROM tbl_crossmatching 
+        WHERE patient_id = ?
+        ORDER BY date_time DESC"
+    );
+    $crossmatchingQuery->bind_param('s', $patientId);
+    $crossmatchingQuery->execute();
+    $crossmatchingResult = $crossmatchingQuery->get_result();
+    while ($row = $crossmatchingResult->fetch_assoc()) {
+        $crossmatchingResults[] = $row;
+    }
+    $output .= createCrossmatchingTable('BLOOD CROSSMATCHING', $crossmatchingResults);
+
+    $output .= '</div></div>'; // Close Blood Bank department section
+
+    // ====================== CLINICAL MICROSCOPY DEPARTMENT ======================
+    $output .= '<div class="department-section mb-4">
+                    <h4 class="department-title">CLINICAL MICROSCOPY</h4>
+                    <div class="department-content">';
+
+    // Fetch Urinalysis records (Clinical Microscopy)
     $urinalysisResults = [];
     $urinalysisQuery = $connection->prepare("
         SELECT date_time, 
@@ -203,10 +438,138 @@ if(isset($_POST['patientId'])) {
     }
     $output .= createResultTable('URINALYSIS', $urinalysisResults);
 
-    if (empty($cbcResults) && empty($pbsResults) && empty($ptpttResults) && empty($urinalysisResults)) {
-        echo '<div class="alert alert-info">No laboratory results found for this patient.</div>';
+    // Fetch Fecalysis records (Clinical Microscopy)
+    $fecalysisResults = [];
+    $fecalysisQuery = $connection->prepare("
+        SELECT date_time, 
+               CONCAT(
+                   'MACROSCOPIC:\n',
+                   'Color: ', IFNULL(color, 'N/A'), '\n',
+                   'Consistency: ', IFNULL(consistency, 'N/A'), '\n',
+                   'Occult Blood: ', IFNULL(occult_blood, 'N/A'), '\n\n',
+                   'MICROSCOPIC:\n',
+                   'Pus Cells: ', IFNULL(pus_cells, 'N/A'), '\n',
+                   'Ova or Parasite: ', IFNULL(ova_or_parasite, 'N/A'), '\n',
+                   'Yeast Cells: ', IFNULL(yeast_cells, 'N/A'), '\n',
+                   'Fat Globules: ', IFNULL(fat_globules, 'N/A'), '\n',
+                   'RBC: ', IFNULL(rbc, 'N/A'), '\n',
+                   'Bacteria: ', IFNULL(bacteria, 'N/A')
+               ) AS results
+        FROM tbl_fecalysis
+        WHERE patient_id = ?
+        ORDER BY date_time DESC"
+    );
+    $fecalysisQuery->bind_param('s', $patientId);
+    $fecalysisQuery->execute();
+    $fecalysisResult = $fecalysisQuery->get_result();
+    while ($row = $fecalysisResult->fetch_assoc()) {
+        $fecalysisResults[] = $row;
+    }
+    $output .= createResultTable('FECALYSIS', $fecalysisResults);
+
+    $output .= '</div></div>'; // Close Clinical Microscopy department section
+
+    // ====================== CLINICAL CHEMISTRY DEPARTMENT ======================
+    $output .= '<div class="department-section mb-4">
+                    <h4 class="department-title">CLINICAL CHEMISTRY</h4>
+                    <div class="department-content">';
+
+    // Fetch Chemistry Panel records (Clinical Chemistry)
+    $chemistryResults = [];
+    $chemistryQuery = $connection->prepare("
+        SELECT date_time,
+            CONCAT(
+                'FBS: ', IFNULL(fbs, 'N/A'), ' mg/dL\n',
+                'PPBS: ', IFNULL(ppbs, 'N/A'), ' mg/dL\n',
+                'BUN: ', IFNULL(bun, 'N/A'), ' mg/dL\n',
+                'Creatinine: ', IFNULL(crea, 'N/A'), ' mg/dL\n',
+                'Uric Acid: ', IFNULL(bua, 'N/A'), ' mg/dL\n',
+                'Total Cholesterol: ', IFNULL(tc, 'N/A'), ' mg/dL\n',
+                'Triglycerides: ', IFNULL(tg, 'N/A'), ' mg/dL\n',
+                'HDL: ', IFNULL(hdl, 'N/A'), ' mg/dL\n',
+                'LDL: ', IFNULL(ldl, 'N/A'), ' mg/dL\n',
+                'VLDL: ', IFNULL(vldl, 'N/A'), ' mg/dL\n',
+                'AST: ', IFNULL(ast, 'N/A'), ' U/L\n',
+                'ALT: ', IFNULL(alt, 'N/A'), ' U/L\n',
+                'ALP: ', IFNULL(alp, 'N/A'), ' U/L'
+            ) AS results,
+            remarks
+        FROM tbl_chemistry
+        WHERE patient_id = ?
+        ORDER BY date_time DESC"
+    );
+    $chemistryQuery->bind_param('s', $patientId);
+    $chemistryQuery->execute();
+    $chemistryResult = $chemistryQuery->get_result();
+    while ($row = $chemistryResult->fetch_assoc()) {
+        $chemistryResults[] = $row;
+    }
+    $output .= createResultTable('CHEMISTRY PANEL', $chemistryResults);
+
+    // Fetch Electrolytes records (Clinical Chemistry)
+    $electrolytesResults = [];
+    $electrolytesQuery = $connection->prepare("
+        SELECT date_time,
+            CONCAT(
+                'Sodium (Na+): ', IFNULL(sodium, 'N/A'), ' mmol/L\n',
+                'Potassium (K+): ', IFNULL(potassium, 'N/A'), ' mmol/L\n',
+                'Chloride (Cl-): ', IFNULL(chloride, 'N/A'), ' mmol/L\n',
+                'Calcium (Ca++): ', IFNULL(calcium, 'N/A'), ' mmol/L'
+            ) AS results
+        FROM tbl_electrolytes
+        WHERE patient_id = ?
+        ORDER BY date_time DESC"
+    );
+    $electrolytesQuery->bind_param('s', $patientId);
+    $electrolytesQuery->execute();
+    $electrolytesResult = $electrolytesQuery->get_result();
+    while ($row = $electrolytesResult->fetch_assoc()) {
+        $electrolytesResults[] = $row;
+    }
+    $output .= createResultTable('ELECTROLYTES', $electrolytesResults);
+
+    $output .= '</div></div>'; // Close Clinical Chemistry department section
+
+    // ====================== SEROLOGY DEPARTMENT ======================
+    $output .= '<div class="department-section mb-4">
+                    <h4 class="department-title">SEROLOGY</h4>
+                    <div class="department-content">';
+
+    // Fetch Dengue Duo records (Serology)
+    $dengueResults = [];
+    $dengueQuery = $connection->prepare("
+        SELECT date_time, 
+            CONCAT(
+                'NS1 Antigen: ', IFNULL(ns1ag, 'N/A'), '\n',
+                'IgG: ', IFNULL(igg, 'N/A'), '\n',
+                'IgM: ', IFNULL(igm, 'N/A')
+            ) AS results,
+            remarks
+        FROM tbl_dengueduo
+        WHERE patient_id = ?
+        ORDER BY date_time DESC"
+    );
+    $dengueQuery->bind_param('s', $patientId);
+    $dengueQuery->execute();
+    $dengueResult = $dengueQuery->get_result();
+    while ($row = $dengueResult->fetch_assoc()) {
+        $dengueResults[] = $row;
+    }
+    $output .= createResultTable('DENGUE DUO TEST', $dengueResults);
+
+    $output .= '</div></div>'; // Close Serology department section
+
+    if (empty($cbcResults) && empty($pbsResults) && empty($ptpttResults) && 
+        empty($crossmatchingResults) && empty($urinalysisResults) && 
+        empty($fecalysisResults) && empty($chemistryResults) && empty($dengueResults)) {
+        echo '<div class="alert alert-info text-center p-4 my-3" style="border-left: 5px solid #12369e; background-color: #f8f9fa; box-shadow: 0 2px 10px rgba(0,0,0,0.1); border-radius: 8px;">
+                <i class="fa fa-info-circle mr-2" style="color: #12369e; font-size: 24px;"></i>
+                <div style="color: #12369e; font-weight: bold; font-size: 18px;">No Laboratory Results</div>
+                <div class="mt-2">No laboratory results found for this patient.</div>
+                </div>';
     } else {
         echo $output;
     }
+
 }
 ?>

@@ -230,8 +230,8 @@ ob_end_flush();
                                 <?php if ($_SESSION['role'] == 2) { ?>
                                 <form action="generate-result.php" method="get">
                                     <input type="hidden" name="patient_id" value="<?php echo $row['patient_id']; ?>">
-                                    <button class="btn btn-primary btn-sm custom-btn" type="submit">
-                                        <i class="fa fa-file-pdf-o m-r-5"></i> View Result
+                                    <button class="btn btn-primary custom-btn" type="submit">
+                                        <i class="fa fa-file-pdf m-r-5"></i> View Result
                                     </button>
                                 </form>
                                 <?php } ?>
@@ -440,8 +440,8 @@ function updateTable(data) {
             labResultButton = `
                 <form action="generate-result.php" method="get">
                     <input type="hidden" name="patient_id" value="${row.patient_id}">
-                    <button class="btn btn-primary btn-sm custom-btn" type="submit">
-                        <i class="fa fa-file-pdf-o m-r-5"></i> View Result
+                    <button class="btn btn-primary custom-btn" type="submit">
+                        <i class="fa fa-file-pdf m-r-5"></i> View Result
                     </button>
                 </form>`;
         }
