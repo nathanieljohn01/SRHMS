@@ -235,7 +235,7 @@ ob_end_flush(); // Flush output buffer
                                     <div class="dropdown-divider"></div>
                                     <?php endif; ?>
                                         <a class="dropdown-item" href="edit-dengue-duo.php?id=<?php echo $row['dd_id']; ?>">
-                                            <i class="fa fa-pencil m-r-5"></i> Edit
+                                            <i class="fa fa-pencil m-r-5"></i> Insert and Edit
                                         </a>
                                     <?php if ($editable): ?>
                                         <a class="dropdown-item" href="#" onclick="return confirmDelete('<?php echo $row['dd_id']; ?>')">
@@ -388,7 +388,7 @@ function getActionButtons(ddId) {
     } else {
         buttons += `
             <a class="dropdown-item disabled" href="#">
-                <i class="fa fa-pencil m-r-5"></i> Edit
+                <i class="fa fa-pencil m-r-5"></i> Insert and Edit
             </a>
             <a class="dropdown-item disabled" href="#">
                 <i class="fa fa-trash m-r-5"></i> Delete

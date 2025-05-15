@@ -111,8 +111,6 @@ if(isset($_POST['patientId'])) {
             $to_be_consumed_before = !empty($row['to_be_consumed_before']) ? date('h:i A', strtotime($row['to_be_consumed_before'])) : 'N/A';
 
             $table .= '
-                    <h6 class="mb-3">Test Date: '.$date_time.'</h6>
-                    
                     <h6 class="mb-2">Patient Blood Information</h6>
                     <table class="table table-bordered mb-4">
                         <tr>
@@ -528,12 +526,59 @@ if(isset($_POST['patientId'])) {
     }
     $output .= createResultTable('ELECTROLYTES', $electrolytesResults);
 
+    // Fetch OGTT records (Clinical Chemistry)
+$ogttResults = [];
+$ogttQuery = $connection->prepare("
+    SELECT date_time,
+        CONCAT(
+            'Fasting: ', IFNULL(fbs, 'N/A'), ' mg/dL\n',
+            '1 Hour: ', IFNULL(first_hour, 'N/A'), ' mg/dL\n',
+            '2 Hours: ', IFNULL(second_hour, 'N/A'), ' mg/dL\n',
+            '3 Hours: ', IFNULL(third_hour, 'N/A'), ' mg/dL'
+        ) AS results
+    FROM tbl_ogtt
+    WHERE patient_id = ?
+    ORDER BY date_time DESC"
+);
+
+// Add console log to track execution
+echo "<script>console.log('OGTT query prepared for patient ID: " . $patientId . "');</script>";
+
+$ogttQuery->bind_param('s', $patientId);
+
+if (!$ogttQuery->execute()) {
+    echo "<script>console.error('OGTT query execution failed: " . addslashes($connection->error) . "');</script>";
+} else {
+    $ogttResult = $ogttQuery->get_result();
+    $rowCount = $ogttResult->num_rows;
+    echo "<script>console.log('OGTT query returned " . $rowCount . " rows');</script>";
+    
+    if ($rowCount > 0) {
+        while ($row = $ogttResult->fetch_assoc()) {
+            $ogttResults[] = $row;
+            // Log each row for debugging
+            echo "<script>console.log('OGTT row found: " . addslashes(json_encode($row)) . "');</script>";
+        }
+    } else {
+        echo "<script>console.log('No OGTT records found for this patient');</script>";
+    }
+}
+
+// Check if we have results to display
+if (!empty($ogttResults)) {
+    echo "<script>console.log('Creating OGTT result table with " . count($ogttResults) . " rows');</script>";
+    $output .= createResultTable('ORAL GLUCOSE TOLERANCE TEST (OGTT)', $ogttResults);
+} else {
+    echo "<script>console.log('No OGTT results to display');</script>";
+}
+
+
     $output .= '</div></div>'; // Close Clinical Chemistry department section
 
     // ====================== SEROLOGY DEPARTMENT ======================
     $output .= '<div class="department-section mb-4">
-                    <h4 class="department-title">SEROLOGY</h4>
-                    <div class="department-content">';
+    <h4 class="department-title">SEROLOGY</h4>
+    <div class="department-content">';
 
     // Fetch Dengue Duo records (Serology)
     $dengueResults = [];
@@ -544,7 +589,7 @@ if(isset($_POST['patientId'])) {
                 'IgG: ', IFNULL(igg, 'N/A'), '\n',
                 'IgM: ', IFNULL(igm, 'N/A')
             ) AS results,
-            remarks
+        remarks
         FROM tbl_dengueduo
         WHERE patient_id = ?
         ORDER BY date_time DESC"
@@ -553,15 +598,36 @@ if(isset($_POST['patientId'])) {
     $dengueQuery->execute();
     $dengueResult = $dengueQuery->get_result();
     while ($row = $dengueResult->fetch_assoc()) {
-        $dengueResults[] = $row;
+    $dengueResults[] = $row;
     }
-    $output .= createResultTable('DENGUE DUO TEST', $dengueResults);
+    $output .= createResultTable('DENGUE DUO', $dengueResults);
+
+    // Fetch HBsAg/VDRL records (Serology)
+    $serologyResults = [];
+    $serologyQuery = $connection->prepare("
+        SELECT date_time, 
+            CONCAT(
+                'HBsAg: ', IFNULL(hbsag, 'N/A'), '\n',
+                'VDRL: ', IFNULL(vdrl, 'N/A')
+                ) AS results
+        FROM tbl_serology
+        WHERE patient_id = ?
+        ORDER BY date_time DESC"
+    );
+    $serologyQuery->bind_param('s', $patientId);
+    $serologyQuery->execute();
+    $serologyResult = $serologyQuery->get_result();
+    while ($row = $serologyResult->fetch_assoc()) {
+    $serologyResults[] = $row;
+    }
+    $output .= createResultTable('HBsAg/VDRL', $serologyResults);
 
     $output .= '</div></div>'; // Close Serology department section
 
     if (empty($cbcResults) && empty($pbsResults) && empty($ptpttResults) && 
         empty($crossmatchingResults) && empty($urinalysisResults) && 
-        empty($fecalysisResults) && empty($chemistryResults) && empty($dengueResults)) {
+        empty($fecalysisResults) && empty($chemistryResults) && empty($dengueResults) && 
+        empty($ogttResults)) {  // Added check for OGTT results
         echo '<div class="alert alert-info text-center p-4 my-3" style="border-left: 5px solid #12369e; background-color: #f8f9fa; box-shadow: 0 2px 10px rgba(0,0,0,0.1); border-radius: 8px;">
                 <i class="fa fa-info-circle mr-2" style="color: #12369e; font-size: 24px;"></i>
                 <div style="color: #12369e; font-weight: bold; font-size: 18px;">No Laboratory Results</div>
@@ -570,6 +636,7 @@ if(isset($_POST['patientId'])) {
     } else {
         echo $output;
     }
+
 
 }
 ?>

@@ -181,9 +181,9 @@ $dashboardLink = ($role == 1) ? 'dashboard.php' : (($role == 5) ? 'dashboard-lab
         function showTests(department) {
             var tests = {
                 "Hematology": ["Complete Blood Count", "Peripheral Blood Smear","PTPTT"],
-                "Clinical Microscopy": ["Urinalysis", "Fecalysis"],
-                "Clinical Chemistry": ["Electrolytes", "Chemistry Panel", "OGTT"],
-                "Serology": ["Dengue Duo", "Anti-HBs"],
+                "Clinical Microscopy": ["Fecalysis", "Urinalysis"],
+                "Clinical Chemistry": ["Chemistry Panel", "Electrolytes", "OGTT"],
+                "Serology": ["Dengue Duo", "HBsAg/VDRL"],
                 "Blood Bank": ["Crossmatching"],
             };
 
@@ -208,11 +208,12 @@ $dashboardLink = ($role == 1) ? 'dashboard.php' : (($role == 5) ? 'dashboard-lab
                 "Electrolytes": "electrolytes.php",
                 "Dengue Duo": "dengue-duo.php",
                 "Crossmatching": "crossmatching.php",
-                "Anti-HBs": "anti-hbs.php",
                 "Peripheral Blood Smear": "pbs.php",
                 "PTPTT": "ptptt.php",
                 "Chemistry Panel": "chemistry-panel.php",
-                "OGTT": "ogtt.php"
+                "OGTT": "ogtt.php",
+                "HBsAg/VDRL": "serology.php",
+
                 
                 
                 

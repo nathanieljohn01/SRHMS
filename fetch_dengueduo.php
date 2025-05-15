@@ -3,22 +3,30 @@ include('includes/connection.php');
 
 $query = isset($_GET['query']) ? mysqli_real_escape_string($connection, $_GET['query']) : '';
 
-$sql = "SELECT * FROM tbl_anti_hbsag WHERE deleted = 0";
+$sql = "SELECT * FROM tbl_dengueduo WHERE deleted = 0";
 
 if (!empty($query)) {
     $sql .= " AND (
-        anti_id LIKE '%$query%'
+        dd_id LIKE '%$query%'
         OR patient_id LIKE '%$query%'
         OR patient_name LIKE '%$query%'
         OR gender LIKE '%$query%'
-        OR result LIKE '%$query%'
-        OR method LIKE '%$query%'
-        OR cutoff_value LIKE '%$query%'
+        OR ns1ag LIKE '%$query%'
+        OR igg LIKE '%$query%'
+        OR igm LIKE '%$query%'
         OR DATE_FORMAT(date_time, '%M %d, %Y %l:%i %p') LIKE '%$query%'
     )";
 }
 
+$sql .= " ORDER BY date_time DESC";
+
 $result = mysqli_query($connection, $sql);
+
+if (!$result) {
+    echo json_encode(['error' => 'Database error: ' . mysqli_error($connection)]);
+    exit();
+}
+
 $data = array();
 
 while ($row = mysqli_fetch_assoc($result)) {
@@ -32,15 +40,15 @@ while ($row = mysqli_fetch_assoc($result)) {
     $date_time = date('F d, Y g:i A', strtotime($row['date_time']));
 
     $data[] = array(
-        'anti_id' => $row['anti_id'],
+        'dd_id' => $row['dd_id'],
         'patient_id' => $row['patient_id'],
         'patient_name' => $row['patient_name'],
         'gender' => $row['gender'],
         'age' => $year,
         'date_time' => $date_time,
-        'result' => $row['result'],
-        'method' => $row['method'],
-        'cutoff_value' => $row['cutoff_value']
+        'ns1ag' => $row['ns1ag'],
+        'igg' => $row['igg'],
+        'igm' => $row['igm']
     );
 }
 

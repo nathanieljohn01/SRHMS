@@ -43,39 +43,38 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['patientId'])) {
         $gender = $patient['gender'];
         $dob = $patient['dob'];
     
-        // Fetch the last Anti-HBsAg ID and generate a new one
-        $last_anti_query = $connection->prepare("SELECT anti_id FROM tbl_anti_hbsag ORDER BY id DESC LIMIT 1");
-        $last_anti_query->execute();
-        $last_anti_result = $last_anti_query->get_result();
-        $last_anti = $last_anti_result->fetch_array(MYSQLI_ASSOC);
+        // Fetch the last HBsAg/VDRL ID and generate a new one
+        $last_sero_query = $connection->prepare("SELECT sero_id FROM tbl_serology ORDER BY id DESC LIMIT 1");
+        $last_sero_query->execute();
+        $last_sero_result = $last_sero_query->get_result();
+        $last_sero = $last_sero_result->fetch_array(MYSQLI_ASSOC);
     
-        if ($last_anti) {
-            $last_id_number = (int) substr($last_anti['anti_id'], 3);
-            $new_anti_id = 'AHB-' . ($last_id_number + 1);
+        if ($last_sero) {
+            $last_id_number = (int) substr($last_sero['sero_id'], 5);
+            $new_sero_id = 'SERO-' . ($last_id_number + 1);
         } else {
-            $new_anti_id = 'AHB-1';
+            $new_sero_id = 'SERO-1';
         }
     
-        // Assign the generated ID to $anti_id
-        $anti_id = $new_anti_id;
+        // Assign the generated ID to $sero_id
+        $sero_id = $new_sero_id;
     
         // Sanitize user inputs and set NULL if empty
-        $result = sanitize($connection, $_POST['result'] ?? NULL);
-        $method = sanitize($connection, $_POST['method'] ?? NULL);
-        $cutoff_value = sanitize($connection, $_POST['cutoff_value'] ?? NULL);
+        $hbsag = sanitize($connection, $_POST['hbsag'] ?? NULL);
+        $vdrl = sanitize($connection, $_POST['vdrl'] ?? NULL);
     
         // Prepare the query to insert with NULL values for empty fields
-        $insert_query = $connection->prepare("INSERT INTO tbl_anti_hbsag (anti_id, patient_id, patient_name, gender, dob, result, method, cutoff_value, date_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+        $insert_query = $connection->prepare("INSERT INTO tbl_serology (sero_id, patient_id, patient_name, gender, dob, hbsag, vdrl, date_time) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())");
         
         // Bind parameters
-        $insert_query->bind_param("ssssssss", $anti_id, $patient_id, $name, $gender, $dob, $result, $method, $cutoff_value);
+        $insert_query->bind_param("sssssss", $sero_id, $patient_id, $name, $gender, $dob, $hbsag, $vdrl);
     
         // Execute the query
         if ($insert_query->execute()) {
             echo "<script>
                 Swal.fire({
                     title: 'Processing...',
-                    text: 'Saving Anti-HBsAg record...',
+                    text: 'Saving HBsAg/VDRL record...',
                     allowOutsideClick: false,
                     showConfirmButton: false,
                     willOpen: () => {
@@ -86,11 +85,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['patientId'])) {
                 setTimeout(() => {
                     Swal.fire({
                         title: 'Success!',
-                        text: 'Anti-HBsAg record added successfully.',
+                        text: 'HBsAg/VDRL record added successfully.',
                         icon: 'success',
                         confirmButtonColor: '#12369e'
                     }).then(() => {
-                        window.location.href = 'anti-hbsag.php';
+                        window.location.href = 'serology.php';
                     });
                 }, 1000);
             </script>";
@@ -98,7 +97,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['patientId'])) {
             echo "<script>
                 Swal.fire({
                     title: 'Error!',
-                    text: 'Failed to add Anti-HBsAg record. Please try again.',
+                    text: 'Failed to add HBsAg/VDRL record. Please try again.',
                     icon: 'error',
                     confirmButtonColor: '#d33'
                 });
@@ -124,11 +123,11 @@ ob_end_flush(); // Flush output buffer
     <div class="content">
         <div class="row">
             <div class="col-sm-4 col-3">
-                <h4 class="page-title">Anti-HBsAg</h4>
+                <h4 class="page-title">HBsAg & VDRL</h4>
             </div>
             <?php if ($role == 1 || $role == 5): ?>
                 <div class="col-sm-10 col-9 m-b-20">
-                    <form method="POST" action="anti-hbs.php" id="addPatientForm" class="form-inline">
+                    <form method="POST" action="serology.php" id="addPatientForm" class="form-inline">
                         <div class="input-group w-50">
                             <div class="input-group-prepend">
                                 <span class="input-group-text">
@@ -157,7 +156,7 @@ ob_end_flush(); // Flush output buffer
             <div class="input-group mb-3">
                 <div class="position-relative w-100">
                     <i class="fa fa-search position-absolute text-secondary" style="top: 50%; left: 12px; transform: translateY(-50%);"></i>
-                    <input class="form-control" type="text" id="antiHbsagSearchInput" onkeyup="filterAntiHbsag()" placeholder="Search" style="padding-left: 35px; padding-right: 35px;">
+                    <input class="form-control" type="text" id="serologySearchInput" onkeyup="filterSerology()" placeholder="Search" style="padding-left: 35px; padding-right: 35px;">
                     <button class="position-absolute border-0 bg-transparent text-secondary" type="button" onclick="clearSearch()" style="top: 50%; right: 10px; transform: translateY(-50%);">
                         <i class="fa fa-times"></i>
                     </button>
@@ -165,32 +164,31 @@ ob_end_flush(); // Flush output buffer
             </div>
         </div>
         <div class="table-responsive">
-            <table class="datatable table table-bordered table-hover" id="antiHbsagTable">
+            <table class="datatable table table-bordered table-hover" id="serologyTable">
                 <thead style="background-color: #CCCCCC;">
                     <tr>
-                        <th>Anti-HBsAg ID</th>
+                        <th>Serology ID</th>
                         <th>Patient ID</th>
                         <th>Patient Name</th>
                         <th>Gender</th>
                         <th>Age</th>
                         <th>Date and Time</th>
-                        <th>Result</th>
-                        <th>Method</th>
-                        <th>Cut-off Value</th>
+                        <th>HBsAg</th>
+                        <th>VDRL</th>
                         <th>Action</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php
-                    if (isset($_GET['anti_id'])) {
-                        $anti_id = sanitize($connection, $_GET['anti_id']);
-                        $update_query = $connection->prepare("UPDATE tbl_anti_hbsag SET deleted = 1 WHERE anti_id = ?");
-                        $update_query->bind_param("s", $anti_id);
+                    if (isset($_GET['sero_id'])) {
+                        $sero_id = sanitize($connection, $_GET['sero_id']);
+                        $update_query = $connection->prepare("UPDATE tbl_serology SET deleted = 1 WHERE sero_id = ?");
+                        $update_query->bind_param("s", $sero_id);
                         $update_query->execute();
                         echo "<script>showSuccess('Record deleted successfully', true);</script>";
                     }
 
-                    $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_anti_hbsag WHERE deleted = 0 ORDER BY date_time ASC");
+                    $fetch_query = mysqli_query($connection, "SELECT * FROM tbl_serology WHERE deleted = 0 ORDER BY date_time ASC");
                     while ($row = mysqli_fetch_array($fetch_query)) {
                         $dob = $row['dob'];
                         $date = str_replace('/', '-', $dob);
@@ -199,18 +197,19 @@ ob_end_flush(); // Flush output buffer
                         $date_time = date('F d, Y g:i A', strtotime($row['date_time']));
                     ?>
                     <tr>
-                        <td><?php echo $row['anti_id']; ?></td>
+                        <td><?php echo $row['sero_id']; ?></td>
                         <td><?php echo $row['patient_id']; ?></td>
                         <td><?php echo $row['patient_name']; ?></td>
                         <td><?php echo $row['gender']; ?></td>
                         <td><?php echo $year; ?></td>
                         <td><?php echo $date_time; ?></td>
-                        <td><?php echo $row['result']; ?></td>
-                        <td><?php echo $row['method']; ?></td>
-                        <td><?php echo $row['cutoff_value']; ?></td>
+                        <td><?php echo $row['hbsag']; ?></td>
+                        <td><?php echo $row['vdrl']; ?></td>
                         <td class="text-right">
                             <div class="dropdown dropdown-action">
-                                <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><i class="fa fa-ellipsis-v"></i></a>
+                                <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
+                                    <i class="fa fa-ellipsis-v"></i>
+                                </a>
                                 <div class="dropdown-menu dropdown-menu-right" style="                                
                                         min-width: 200px;
                                         position: absolute;
@@ -219,22 +218,26 @@ ob_end_flush(); // Flush output buffer
                                         right: 50%;
                                     ">
                                     <?php if ($can_print): ?>
-                                        <div class="dropdown-item">
-                                        <form action="generate-anti-hbs.php" method="get" class="p-2">
-                                            <input type="hidden" name="id" value="<?php echo $row['anti_id']; ?>">
+                                    <div class="dropdown-item">
+                                        <form action="generate-serology.php" method="get" class="p-2">
+                                            <input type="hidden" name="sero_id" value="<?php echo $row['sero_id']; ?>">
                                             <div class="form-group mb-2">
                                                 <input type="text" class="form-control" name="filename" placeholder="Filename (required)" required>
                                             </div>
                                             <button class="btn btn-primary btn-sm custom-btn" type="submit">
-                                                <i class="fa fa-file-pdf-o m-r-5"></i> Generate PDF
+                                                <i class="fa fa-file-pdf m-r-5"></i> Generate PDF
                                             </button>
                                         </form>
                                     </div>
                                     <div class="dropdown-divider"></div>
                                     <?php endif; ?>
-                                    <a class="dropdown-item" href="edit-anti-hbsag.php?id=<?php echo $row['anti_id']; ?>"><i class="fa fa-pencil m-r-5"></i> Insert and Edit</a>
+                                        <a class="dropdown-item" href="edit-serology.php?id=<?php echo $row['sero_id']; ?>">
+                                            <i class="fa fa-pencil m-r-5"></i> Insert and Edit
+                                        </a>
                                     <?php if ($editable): ?>
-                                        <a class="dropdown-item" href="#" onclick="return confirmDelete('<?php echo $row['anti_id']; ?>')"><i class="fa fa-trash m-r-5"></i> Delete</a>
+                                        <a class="dropdown-item" href="#" onclick="return confirmDelete('<?php echo $row['sero_id']; ?>')">
+                                            <i class="fa fa-trash m-r-5"></i> Delete
+                                        </a>
                                     <?php else: ?>
                                         <a class="dropdown-item disabled" href="#">
                                             <i class="fa fa-trash m-r-5"></i> Delete
@@ -277,10 +280,10 @@ document.querySelector('form').addEventListener('submit', function(event) {
 </script>
 
 <script language="JavaScript" type="text/javascript">
-function confirmDelete(anti_id) {
+function confirmDelete(sero_id) {
     return Swal.fire({
-        title: 'Delete Anti-HBsAg Record?',
-        text: 'Are you sure you want to delete this Anti-HBsAg record? This action cannot be undone!',
+        title: 'Delete HBsAg/VDRL Record?',
+        text: 'Are you sure you want to delete this HBsAg/VDRL record? This action cannot be undone!',
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#d33',
@@ -288,14 +291,14 @@ function confirmDelete(anti_id) {
         confirmButtonText: 'Yes, delete it!'
     }).then((result) => {
         if (result.isConfirmed) {
-            window.location.href = 'anti-hbs.php?anti_id=' + anti_id;
+            window.location.href = 'serology.php?sero_id=' + sero_id;
         }
     });
 }
 
 function clearSearch() {
-    document.getElementById("antiHbsagSearchInput").value = '';
-    filterAntiHbsag();
+    document.getElementById("serologySearchInput").value = '';
+    filterSerology();
 }
 
 let canPrint, userRole, editable;
@@ -306,16 +309,16 @@ let canPrint, userRole, editable;
         editable = <?php echo $editable ? 'true' : 'false' ?>;
     });
 
-function filterAntiHbsag() {
-    var input = document.getElementById("antiHbsagSearchInput").value;
+function filterSerology() {
+    var input = document.getElementById("serologySearchInput").value;
     
     $.ajax({
-        url: 'fetch_anti_hbs.php',
+        url: 'fetch_serology.php',
         type: 'GET',
         data: { query: input },
         success: function(response) {
             var data = JSON.parse(response);
-            updateAntiHbsagTable(data);
+            updateSerologyTable(data);
         },
         error: function(xhr, status, error) {
             alert('Error fetching data. Please try again.');
@@ -323,28 +326,27 @@ function filterAntiHbsag() {
     });
 }
 
-function updateAntiHbsagTable(data) {
-    var tbody = $('#antiHbsagTable tbody');
+function updateSerologyTable(data) {
+    var tbody = $('#serologyTable tbody');
     tbody.empty();
     data.forEach(function(record) {
         tbody.append(`
             <tr>
-                <td>${record.anti_id}</td>  
+                <td>${record.sero_id}</td>  
                 <td>${record.patient_id}</td>
                 <td>${record.patient_name}</td>
                 <td>${record.gender}</td>
                 <td>${record.age}</td>
                 <td>${record.date_time}</td>
-                <td>${record.result}</td>
-                <td>${record.method}</td>
-                <td>${record.cutoff_value}</td>
+                <td>${record.hbsag}</td>
+                <td>${record.vdrl}</td>
                 <td class="text-right">
                     <div class="dropdown dropdown-action">
                         <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
                             <i class="fa fa-ellipsis-v"></i>
                         </a>
                         <div class="dropdown-menu dropdown-menu-right">
-                            ${getActionButtons(record.anti_id)}
+                            ${getActionButtons(record.sero_id)}
                         </div>
                     </div>
                 </td>
@@ -353,18 +355,18 @@ function updateAntiHbsagTable(data) {
     });
 }
 
-function getActionButtons(antiId) {
+function getActionButtons(seroId) {
     let buttons = '';
     
     if (canPrint) {
         buttons += `
-            <form action="generate-anti-hbs.php" method="get">
-                <input type="hidden" name="id" value="${antiId}">
+            <form action="generate-serology.php" method="get">
+                <input type="hidden" name="id" value="${seroId}">
                 <div class="form-group">
                     <input type="text" class="form-control" id="filename" name="filename" placeholder="Enter File Name" aria-label="Enter File Name" aria-describedby="basic-addon2">
                 </div>
                 <button class="btn btn-primary btn-sm custom-btn" type="submit">
-                    <i class="fa fa-file-pdf-o m-r-5"></i> Generate Result
+                    <i class="fa fa-file-pdf m-r-5"></i> Generate Result
                 </button>
             </form>
         `;
@@ -372,17 +374,17 @@ function getActionButtons(antiId) {
     
     if (userRole === 1) {
         buttons += `
-            <a class="dropdown-item" href="edit-anti-hbs.php?id=${antiId}">
+            <a class="dropdown-item" href="edit-serology.php?id=${seroId}">
                 <i class="fa fa-pencil m-r-5"></i> Insert and Edit
             </a>
-            <a class="dropdown-item" href="anti-hbs.php?ids=${antiId}" onclick="return confirmDelete()">
+            <a class="dropdown-item" href="serology.php?ids=${seroId}" onclick="return confirmDelete()">
                 <i class="fa fa-trash m-r-5"></i> Delete
             </a>
         `;
     } else {
         buttons += `
             <a class="dropdown-item disabled" href="#">
-                <i class="fa fa-pencil m-r-5"></i> Edit
+                <i class="fa fa-pencil m-r-5"></i> Insert and Edit
             </a>
             <a class="dropdown-item disabled" href="#">
                 <i class="fa fa-trash m-r-5"></i> Delete
@@ -401,7 +403,7 @@ function searchPatients() {
         return;
     }
     $.ajax({
-        url: "search-anti-hbs.php",
+        url: "search-serology.php",
         method: "GET",
         data: { query: input },
         success: function (data) {
@@ -443,7 +445,7 @@ $('.dropdown-toggle').on('click', function (e) {
 });
 </script>
 
-<style>  
+<style> 
 .sticky-search {
     position: sticky;
     left: 0;
@@ -535,8 +537,8 @@ select.form-control:focus {
     padding: 0 10px;
 }
 .custom-btn {
-        padding: 5px 27px; /* Adjust padding as needed */
-        font-size: 12px; /* Adjust font size as needed */
+    padding: 5px 27px; /* Adjust padding as needed */
+    font-size: 12px; /* Adjust font size as needed */
 }
 .dropdown-menu {
     border: 1px solid rgba(0, 0, 0, 0.1);
@@ -562,5 +564,5 @@ select.form-control:focus {
 
 .dropdown-item:hover i {
     color: #12369e;
-}  
+}
 </style>

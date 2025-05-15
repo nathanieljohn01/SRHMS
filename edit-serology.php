@@ -12,33 +12,32 @@ function sanitize($connection, $input) {
     return mysqli_real_escape_string($connection, htmlspecialchars(trim($input), ENT_QUOTES, 'UTF-8'));
 }
 
-// Get Anti-HBsAg ID for fetching existing data
+// Get serology test ID for fetching existing data
 if (isset($_GET['id'])) {
-    $anti_id = sanitize($connection, $_GET['id']);
+    $sero_id = sanitize($connection, $_GET['id']);
 
-    // Fetch existing Anti-HBsAg data using prepared statement
-    $fetch_query = mysqli_prepare($connection, "SELECT * FROM tbl_anti_hbsag WHERE anti_id = ?");
-    mysqli_stmt_bind_param($fetch_query, "s", $anti_id);
+    // Fetch existing serology data using prepared statement
+    $fetch_query = mysqli_prepare($connection, "SELECT * FROM tbl_serology WHERE sero_id = ?");
+    mysqli_stmt_bind_param($fetch_query, "s", $sero_id);
     mysqli_stmt_execute($fetch_query);
     $result = mysqli_stmt_get_result($fetch_query);
-    $anti_data = mysqli_fetch_array($result);
+    $serology_data = mysqli_fetch_array($result);
     mysqli_stmt_close($fetch_query);
 
-    if (!$anti_data) {
-        echo "Anti-HBsAg data not found.";
+    if (!$serology_data) {
+        echo "Serology test data not found.";
         exit;
     }
 }
 
-// Handle form submission for editing Anti-HBsAg data
-if (isset($_POST['edit-anti-hbsag'])) {
+// Handle form submission for editing serology test data
+if (isset($_POST['edit-serology'])) {
     // Sanitize inputs
-    $anti_id = sanitize($connection, $_POST['anti_id']);
+    $sero_id = sanitize($connection, $_POST['sero_id']);
     $patient_name = sanitize($connection, $_POST['patient_name']);
     $date_time = sanitize($connection, $_POST['date_time']);
-    $result = sanitize($connection, $_POST['result'] ?? NULL);
-    $method = sanitize($connection, $_POST['method'] ?? NULL);
-    $cutoff_value = sanitize($connection, $_POST['cutoff_value'] ?? NULL);
+    $hbsag = sanitize($connection, $_POST['hbsag'] ?? NULL);
+    $vdrl = sanitize($connection, $_POST['vdrl'] ?? NULL);
 
     // Fetch patient information using prepared statement
     $patient_query = mysqli_prepare($connection, "SELECT patient_id, gender, dob FROM tbl_patient WHERE CONCAT(first_name, ' ', last_name) = ?");
@@ -52,30 +51,14 @@ if (isset($_POST['edit-anti-hbsag'])) {
     $gender = $row['gender'];
     $dob = $row['dob'];
 
-    // Update Anti-HBsAg data using prepared statement
-    $update_query = mysqli_prepare($connection, "UPDATE tbl_anti_hbsag SET 
-        patient_name = ?, 
-        dob = ?, 
-        gender = ?, 
-        date_time = ?,
-        result = ?,
-        method = ?,
-        cutoff_value = ?
-        WHERE anti_id = ?");
+    // Update serology data using prepared statement
+    $update_query = mysqli_prepare($connection, "UPDATE tbl_serology SET patient_name = ?, dob = ?, gender = ?, date_time = ?, hbsag = ?, vdrl = ? WHERE sero_id = ?");
 
-    mysqli_stmt_bind_param($update_query, "ssssssss", 
-        $patient_name, 
-        $dob, 
-        $gender, 
-        $date_time,
-        $result,
-        $method,
-        $cutoff_value,
-        $anti_id);
+    // Bind all parameters as strings
+    mysqli_stmt_bind_param($update_query, "sssssss", $patient_name, $dob, $gender, $date_time, $hbsag, $vdrl, $sero_id);
 
     // Execute the update query
     if (mysqli_stmt_execute($update_query)) {
-        // SweetAlert success message
         echo "
         <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
         <script>
@@ -83,15 +66,14 @@ if (isset($_POST['edit-anti-hbsag'])) {
                 Swal.fire({
                     icon: 'success',
                     title: 'Success',
-                    text: 'Anti-HBsAg result updated successfully!',
+                    text: 'Serology test updated successfully!',
                     confirmButtonColor: '#12369e'
                 }).then(() => {
-                    window.location.href = 'anti-hbsag.php';
+                    window.location.href = 'serology.php';
                 });
             });
         </script>";
     } else {
-        // SweetAlert error message
         echo "
         <script src='https://cdn.jsdelivr.net/npm/sweetalert2@10'></script>
         <script>
@@ -99,14 +81,12 @@ if (isset($_POST['edit-anti-hbsag'])) {
                 Swal.fire({
                     icon: 'error',
                     title: 'Error',
-                    text: 'Error updating the Anti-HBsAg result!',
+                    text: 'Error updating the serology test!',
                     confirmButtonColor: '#12369e'
                 });
             });
         </script>";
     }
-
-    // Close the prepared statement
     mysqli_stmt_close($update_query);
 }
 ?>
@@ -115,10 +95,10 @@ if (isset($_POST['edit-anti-hbsag'])) {
     <div class="content">
         <div class="row">
             <div class="col-sm-4">
-                <h4 class="page-title">Edit Anti-HBsAg Result</h4>
+                <h4 class="page-title">Edit HBsAg/VDRL Result</h4>
             </div>
             <div class="col-sm-8 text-right mb-3">
-                <a href="anti-hbs.php" class="btn btn-primary"><i class="fa fa-arrow-left"></i> Back</a>
+                <a href="serology.php" class="btn btn-primary"><i class="fa fa-arrow-left"></i> Back</a>
             </div>
         </div>
         <div class="row">
@@ -126,42 +106,36 @@ if (isset($_POST['edit-anti-hbsag'])) {
                 <form method="post">
                     <div class="form-group row">
                         <div class="col-sm-6">
-                            <label for="anti_id">Anti-HBsAg ID</label>
-                            <input class="form-control" type="text" name="anti_id" value="<?php echo htmlspecialchars($anti_data['anti_id']); ?>" readonly>
+                            <label for="sero_id">Serology ID</label>
+                            <input class="form-control" type="text" name="sero_id" id="sero_id" value="<?php echo htmlspecialchars($serology_data['sero_id']); ?>" readonly>
                         </div>
                         <div class="col-sm-6">
                             <label for="patient_name">Patient Name</label>
-                            <input class="form-control" type="text" name="patient_name" value="<?php echo htmlspecialchars($anti_data['patient_name']); ?>" readonly>
+                            <input class="form-control" type="text" name="patient_name" id="patient_name" value="<?php echo htmlspecialchars($serology_data['patient_name']); ?>" readonly>
                         </div>
                     </div>
                     <div class="form-group">
                         <label for="date_time">Date and Time</label>
-                        <input type="datetime-local" class="form-control" name="date_time" value="<?php echo date('Y-m-d\TH:i', strtotime($anti_data['date_time'])); ?>">
+                        <input type="datetime-local" class="form-control" name="date_time" id="date_time" value="<?php echo date('Y-m-d\TH:i', strtotime($serology_data['date_time'])); ?>">
                     </div>
-                    
                     <div class="form-group">
-                        <label for="result">Result</label>
-                        <select class="form-control" name="result">
-                            <option value="Select" <?php echo ($anti_data['result'] == 'Select') ? 'selected' : ''; ?>>Select</option>
-                            <option value="Negative" <?php echo ($anti_data['result'] == 'Negative') ? 'selected' : ''; ?>>Negative</option>
-                            <option value="Positive" <?php echo ($anti_data['result'] == 'Positive') ? 'selected' : ''; ?>>Positive</option>
-                            <option value="Reactive" <?php echo ($anti_data['result'] == 'Reactive') ? 'selected' : ''; ?>>Reactive</option>
-                            <option value="Non-Reactive" <?php echo ($anti_data['result'] == 'Non-Reactive') ? 'selected' : ''; ?>>Non-Reactive</option>
+                        <label for="hbsag">HBsAg</label>
+                        <select class="form-control" name="hbsag" id="hbsag" required>
+                            <option value="Select" <?php if ($serology_data['hbsag'] == 'Select') echo 'selected'; ?>readonly>Select</option>
+                            <option value="Positive" <?php if ($serology_data['hbsag'] == 'Positive') echo 'selected'; ?>>Positive</option>
+                            <option value="Negative" <?php if ($serology_data['hbsag'] == 'Negative') echo 'selected'; ?>>Negative</option>
                         </select>
                     </div>
-                    
                     <div class="form-group">
-                        <label for="method">Method</label>
-                        <input class="form-control" type="text" name="method" value="<?php echo htmlspecialchars($anti_data['method']); ?>">
+                        <label for="vdrl">VDRL</label>
+                        <select class="form-control" name="vdrl" id="vdrl" required>
+                            <option value="Select" <?php if ($serology_data['vdrl'] == 'Select') echo 'selected'; ?>readonly>Select</option>
+                            <option value="Reactive" <?php if ($serology_data['vdrl'] == 'Reactive') echo 'selected'; ?>>Reactive</option>
+                            <option value="Non-reactive" <?php if ($serology_data['vdrl'] == 'Non-reactive') echo 'selected'; ?>>Non-reactive</option>
+                        </select>
                     </div>
-                    
-                    <div class="form-group">
-                        <label for="cutoff_value">Cut-off Value</label>
-                        <input class="form-control" type="text" name="cutoff_value" value="<?php echo htmlspecialchars($anti_data['cutoff_value']); ?>">
-                    </div>
-                    
                     <div class="text-center mt-4">
-                        <button class="btn btn-primary submit-btn" name="edit-anti-hbsag"><i class="fas fa-save mr-2"></i>Update Result</button>
+                        <button class="btn btn-primary submit-btn" name="edit-serology"><i class="fas fa-save mr-2"></i>Update Result</button>
                     </div>
                 </form>
             </div>
@@ -198,9 +172,9 @@ include('footer.php');
     background: #05007E;
 }
 .form-control {
-    border-radius: .375rem;
-    border-color: #ced4da;
-    background-color: #f8f9fa;
+    border-radius: .375rem; /* Rounded corners */
+    border-color: #ced4da; /* Border color */
+    background-color: #f8f9fa; /* Background color */
 }
 select.form-control {
     border-radius: .375rem; /* Rounded corners */

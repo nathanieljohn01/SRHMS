@@ -418,7 +418,27 @@ if (!empty($electrolytesResults)) {
     ];
     renderTestResults($pdf, 'ELECTROLYTES', $electrolytesResults, $electrolytesFields);
 }
+    // Fetch OGTT records
+    $ogttQuery = $connection->prepare("
+        SELECT date_time, fbs, first_hour, second_hour, third_hour
+        FROM tbl_ogtt
+        WHERE patient_id = ?
+        ORDER BY date_time DESC"
+    );
+    $ogttQuery->bind_param('s', $patient_id);
+    $ogttQuery->execute();
+    $ogttResult = $ogttQuery->get_result();
+    $ogttResults = $ogttResult->fetch_all(MYSQLI_ASSOC);
 
+    if (!empty($ogttResults)) {
+        $ogttFields = [
+            'fbs' => 'Fasting Blood Sugar',
+            'first_hour' => '1 Hour',
+            'second_hour' => '2 Hours',
+            'third_hour' => '3 Hours'
+        ];
+        renderTestResults($pdf, 'ORAL GLUCOSE TOLERANCE TEST (OGTT)', $ogttResults, $ogttFields);
+}
 // ====================== SEROLOGY DEPARTMENT ======================
 renderDepartmentHeader($pdf, 'SEROLOGY DEPARTMENT');
 
@@ -441,7 +461,27 @@ if (!empty($dengueResults)) {
         'igm' => 'IgM',
         'remarks' => 'Remarks'
     ];
-    renderTestResults($pdf, 'DENGUE DUO TEST', $dengueResults, $dengueFields);
+    renderTestResults($pdf, 'DENGUE DUO', $dengueResults, $dengueFields);
+}
+
+// Fetch HBsAg/VDRL records
+$serologyQuery = $connection->prepare("
+    SELECT date_time, hbsag, vdrl
+    FROM tbl_serology
+    WHERE patient_id = ?
+    ORDER BY date_time DESC
+");
+$serologyQuery->bind_param('s', $patient_id);
+$serologyQuery->execute();
+$serologyResult = $serologyQuery->get_result();
+$serologyResults = $serologyResult->fetch_all(MYSQLI_ASSOC);
+
+if (!empty($serologyResults)) {
+    $serologyFields = [
+        'hbsag' => 'HBsAg',
+        'vdrl' => 'VDRL',
+    ];
+    renderTestResults($pdf, 'HBsAg/VDRL', $serologyResults, $serologyFields);
 }
 // Output the PDF
 $pdf->Output('Lab_Results_' . $patient_name . '_' . date('Ymd') . '.pdf', 'I');

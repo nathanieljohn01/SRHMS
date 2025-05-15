@@ -7,7 +7,7 @@ if (isset($_GET['query'])) {
     $query = sanitize($connection, $_GET['query']);
 
     // Prepare and bind the query to fetch patient data from tbl_laborder
-    $query_sql = "SELECT DISTINCT id, patient_name FROM tbl_laborder WHERE lab_test = 'Anti-HBs' AND status = 'Completed' AND patient_name LIKE ?";
+    $query_sql = "SELECT DISTINCT id, patient_name FROM tbl_laborder WHERE lab_test = 'HBsAg/VDRL' AND status = 'Completed' AND patient_name LIKE ?";
     $stmt = $connection->prepare($query_sql);
     $search_term = "%" . $query . "%";  // Adding wildcards to match any patient_name containing the query term
     $stmt->bind_param("s", $search_term);  // Binding the search term to the SQL statement

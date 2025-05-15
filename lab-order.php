@@ -263,7 +263,6 @@ if (isset($_POST['save-order'])) {
 include('footer.php');
 ?>
 
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script type="text/javascript">
     function validateForm() {
         var checkboxes = document.querySelectorAll('input[name="lab_test[]"]:checked');
