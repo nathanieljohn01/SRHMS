@@ -191,7 +191,7 @@ if (isset($_REQUEST['login'])) {
                         header('location: dashboard-doctor.php');
                         break;
                     case '3': // Nurse 1
-                    case '10': // Nurse 2
+                    case '9': // Nurse 2
                         header('location: dashboard-nurse.php');
                         break;
                     case '4':

@@ -339,11 +339,35 @@ function filterPtPtt() {
         type: 'GET',
         data: { query: input },
         success: function(response) {
-            var data = JSON.parse(response);
-            updatePtPttTable(data);
+            try {
+                if (typeof response === 'string') {
+                    response = JSON.parse(response);
+                }
+
+                if (response.error) {
+                    throw new Error(response.error);
+                }
+
+                Swal.close();
+                updatePtPttTable(response);
+            } catch (e) {
+                console.error('Error:', e);
+                Swal.fire({
+                    title: 'Error',
+                    text: 'Could not load records. Please try again.',
+                    icon: 'error',
+                    confirmButtonColor: '#12369e'
+                });
+            }
         },
         error: function(xhr, status, error) {
-            alert('Error fetching data. Please try again.');
+            console.error('AJAX Error:', status, error);
+            Swal.fire({
+                title: 'Error',
+                text: 'Could not connect to server. Please try again.',
+                icon: 'error',
+                confirmButtonColor: '#12369e'
+            });
         }
     });
 }
@@ -351,10 +375,20 @@ function filterPtPtt() {
 function updatePtPttTable(data) {
     var tbody = $('#ptpttTable tbody');
     tbody.empty();
+    
+    if (!Array.isArray(data) || data.length === 0) {
+        tbody.append(`
+            <tr>
+                <td colspan="14" class="text-center">No records found</td>
+            </tr>
+        `);
+        return;
+    }
+    
     data.forEach(function(record) {
         tbody.append(`
             <tr>
-                <td>${record.ptptt_id}</td>  
+                <td>${record.ptptt_id}</td>
                 <td>${record.patient_id}</td>
                 <td>${record.patient_name}</td>
                 <td>${record.gender}</td>
@@ -364,65 +398,47 @@ function updatePtPttTable(data) {
                 <td>${record.pt_test}</td>
                 <td>${record.pt_inr}</td>
                 <td>${record.pt_activity}</td>
-                <td>${record.pt_result}</td>
-                <td>${record.pt_normal_values}</td>
                 <td>${record.ptt_control}</td>
                 <td>${record.ptt_patient_result}</td>
-                <td>${record.ptt_normal_values}</td>
                 <td>${record.ptt_remarks}</td>
                 <td class="text-right">
                     <div class="dropdown dropdown-action">
                         <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
                             <i class="fa fa-ellipsis-v"></i>
                         </a>
-                        <div class="dropdown-menu dropdown-menu-right">
-                            ${getActionButtons(record.ptptt_id)}
+                        <div class="dropdown-menu dropdown-menu-right" style="min-width: 200px; position: absolute; top: 50%; transform: translateY(-50%); right: 50%;">
+                            ${canPrint ? `
+                                <div class="dropdown-item">
+                                    <form action="generate-ptptt.php" method="get" class="p-2">
+                                        <input type="hidden" name="id" value="${record.ptptt_id}">
+                                        <div class="form-group mb-2">
+                                            <input type="text" class="form-control" name="filename" placeholder="Filename (required)" required>
+                                        </div>
+                                        <button class="btn btn-primary btn-sm custom-btn" type="submit">
+                                            <i class="fa fa-file-pdf m-r-5"></i> Generate PDF
+                                        </button>
+                                    </form>
+                                </div>
+                                <div class="dropdown-divider"></div>
+                            ` : ''}
+                            <a class="dropdown-item" href="edit-ptptt.php?id=${record.ptptt_id}">
+                                <i class="fa fa-pencil m-r-5"></i> Insert and Edit
+                            </a>
+                            ${editable ? `
+                                <a class="dropdown-item" href="#" onclick="return confirmDelete('${record.ptptt_id}')">
+                                    <i class="fa fa-trash m-r-5"></i> Delete
+                                </a>
+                            ` : `
+                                <a class="dropdown-item disabled" href="#">
+                                    <i class="fa fa-trash m-r-5"></i> Delete
+                                </a>
+                            `}
                         </div>
                     </div>
                 </td>
             </tr>
         `);
     });
-}
-
-function getActionButtons(ptpttId) {
-    let buttons = '';
-    
-    if (canPrint) {
-        buttons += `
-            <form action="generate-ptptt.php" method="get">
-                <input type="hidden" name="id" value="${ptpttId}">
-                <div class="form-group">
-                    <input type="text" class="form-control" id="filename" name="filename" placeholder="Enter File Name" aria-label="Enter File Name" aria-describedby="basic-addon2">
-                </div>
-                <button class="btn btn-primary btn-sm custom-btn" type="submit">
-                    <i class="fa fa-file-pdf-o m-r-5"></i> Generate Result
-                </button>
-            </form>
-        `;
-    }
-    
-    if (userRole === 1) {
-        buttons += `
-            <a class="dropdown-item" href="edit-ptptt.php?id=${ptpttId}">
-                <i class="fa fa-pencil m-r-5"></i> Insert and Edit
-            </a>
-            <a class="dropdown-item" href="ptptt.php?ids=${ptpttId}" onclick="return confirmDelete()">
-                <i class="fa fa-trash-o m-r-5"></i> Delete
-            </a>
-        `;
-    } else {
-        buttons += `
-            <a class="dropdown-item disabled" href="#">
-                <i class="fa fa-pencil m-r-5"></i> Edit
-            </a>
-            <a class="dropdown-item disabled" href="#">
-                <i class="fa fa-trash-o m-r-5"></i> Delete
-            </a>
-        `;
-    }
-    
-    return buttons;
 }
 
 function searchPatients() {

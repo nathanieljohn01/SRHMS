@@ -386,6 +386,14 @@ function updatePatientTables(data) {
     tbody2.empty();
 
     data.forEach(function (record) {
+        // Format dates for display
+        const formattedExtractionDate = record.extraction_date ? new Date(record.extraction_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '';
+        const formattedExpirationDate = record.expiration_date ? new Date(record.expiration_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '';
+        const formattedTimePacked = record.time_packed ? new Date(`1970-01-01T${record.time_packed}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '';
+        const formattedToBeConsumed = record.to_be_consumed_before ? new Date(`1970-01-01T${record.to_be_consumed_before}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '';
+        const formattedDated = record.dated ? new Date(record.dated).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '';
+
+        // First table (Patient Information)
         tbody1.append(`
             <tr data-crossmatching-id="${record.crossmatching_id}">
                 <td>${record.crossmatching_id}</td>
@@ -397,38 +405,63 @@ function updatePatientTables(data) {
                 <td>${record.patient_blood_type}</td>
                 <td>${record.blood_component}</td>
                 <td>${record.serial_number}</td>
-                <td>${record.extraction_date}</td>
-                <td>${record.expiration_date}</td>
+                <td>${formattedExtractionDate}</td>
+                <td>${formattedExpirationDate}</td>
                 <td class="text-right">
                     <div class="dropdown dropdown-action">
                         <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown">
                             <i class="fa fa-ellipsis-v"></i>
                         </a>
-                        <div class="dropdown-menu dropdown-menu-right">
-                            ${getActionButtons(record.crossmatching_id)}
+                        <div class="dropdown-menu dropdown-menu-right" style="min-width: 200px; position: absolute; top: 50%; transform: translateY(-50%); right: 50%;">
+                            ${canPrint ? `
+                            <div class="dropdown-item">
+                                <form action="generate-crossmatching.php" method="get" class="p-2">
+                                    <input type="hidden" name="id" value="${record.crossmatching_id}">
+                                    <div class="form-group mb-2">
+                                        <input type="text" class="form-control" name="filename" placeholder="Filename (required)" required>
+                                    </div>
+                                    <button class="btn btn-primary btn-sm custom-btn" type="submit">
+                                        <i class="fa fa-file-pdf m-r-5"></i> Generate PDF
+                                    </button>
+                                </form>
+                            </div>
+                            <div class="dropdown-divider"></div>
+                            ` : ''}
+                            <a class="dropdown-item" href="edit-crossmatching.php?id=${record.crossmatching_id}">
+                                <i class="fa fa-pencil m-r-5"></i> Insert and Edit
+                            </a>
+                            ${editable ? `
+                            <a class="dropdown-item" href="#" onclick="return confirmDelete('${record.crossmatching_id}')">
+                                <i class="fa fa-trash m-r-5"></i> Delete
+                            </a>
+                            ` : `
+                            <a class="dropdown-item disabled" href="#">
+                                <i class="fa fa-trash m-r-5"></i> Delete
+                            </a>
+                            `}
                         </div>
                     </div>
                 </td>
             </tr>
         `);
 
+        // Second table (Crossmatching Results)
         tbody2.append(`
             <tr data-crossmatching-id="${record.crossmatching_id}">
                 <td>${record.major_crossmatching}</td>
                 <td>${record.donors_blood_type}</td>
                 <td>${record.packed_red_blood_cell}</td>
-                <td>${record.time_packed}</td>
-                <td>${record.dated}</td>
+                <td>${formattedTimePacked}</td>
+                <td>${formattedDated}</td>
                 <td>${record.open_system}</td>
                 <td>${record.closed_system}</td>
-                <td>${record.to_be_consumed_before}</td>
+                <td>${formattedToBeConsumed}</td>
                 <td>${record.hours}</td>
                 <td>${record.minor_crossmatching}</td>
             </tr>
         `);
     });
 }
-
 
 function getActionButtons(crossmatchingId) {
     let buttons = '';
@@ -444,10 +477,14 @@ function getActionButtons(crossmatchingId) {
                     <i class="fa fa-file-pdf m-r-5"></i> Generate Result
                 </button>
             </form>
+
+             <a class="dropdown-item" href="edit-crossmatching.php?id=${crossmatchingId}">
+                <i class="fa fa-pencil m-r-5"></i> Insert and Edit
+            </a>
         `;
     }
 
-    if (userRole === 1) {
+    if (editable) {
         buttons += `
             <a class="dropdown-item" href="edit-crossmatching.php?id=${crossmatchingId}">
                 <i class="fa fa-pencil m-r-5"></i> Insert and Edit
@@ -458,7 +495,6 @@ function getActionButtons(crossmatchingId) {
         `;
     } else {
         buttons += `
-            <a class="dropdown-item disabled" href="#"><i class="fa fa-pencil m-r-5"></i> Edit</a>
             <a class="dropdown-item disabled" href="#"><i class="fa fa-trash m-r-5"></i> Delete</a>
         `;
     }

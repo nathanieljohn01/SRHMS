@@ -227,12 +227,12 @@ ob_end_flush();
                                                 <i class="fa fa-stethoscope m-r-5"></i> Diagnosis
                                             </button>
                                         <?php } ?>
-                                        <?php if ($_SESSION['role'] == 10) { ?>
+                                        <?php if ($_SESSION['role'] == 9) { ?>
                                         <button class="dropdown-item treatment-btn" data-toggle="modal" data-target="#treatmentModal" data-id="<?php echo $row['newborn_id']; ?>">
                                                 <i class="fa fa-pills m-r-5"></i> Insert/Edit Treatments
                                             </button>
                                         <?php } ?>
-                                        <?php if ($_SESSION['role'] == 1 || $_SESSION['role'] == 10): ?>
+                                        <?php if ($_SESSION['role'] == 1 || $_SESSION['role'] == 9): ?>
                                             <a class="dropdown-item" href="edit-newborn.php?id=<?= htmlspecialchars($row['id']); ?>">
                                                 <i class="fa fa-pencil m-r-5"></i> Edit
                                             </a>
@@ -491,6 +491,31 @@ $('.dropdown-toggle').on('click', function (e) {
         }
     });
 });
+
+ $('#newbornTable').on('click', '.dropdown-toggle', function (e) {
+        e.preventDefault(); // Prevent default action if it's a link
+
+        var $el = $(this).next('.dropdown-menu');
+        var isVisible = $el.is(':visible');
+
+        // Hide all dropdowns
+        $('.dropdown-menu').slideUp(400);
+
+        // If this wasn't already visible, slide it down
+        if (!isVisible) {
+            $el.stop(true, true).slideDown(400);
+        }
+
+        // Prevent the event from bubbling to document
+        e.stopPropagation();
+    });
+
+    // Click outside to close all dropdowns
+    $(document).on('click', function (e) {
+        if (!$(e.target).closest('.dropdown').length) {
+            $('.dropdown-menu').slideUp(400);
+        }
+    });
 </script>
 
 <script>
@@ -530,57 +555,89 @@ $('.dropdown-toggle').on('click', function (e) {
 
     
     function updateNewbornsTable(data) {
-        var tbody = $('#newbornTable tbody');
-        tbody.empty();
+    var tbody = $('#newbornTable tbody');
+    tbody.empty();
 
-        data.forEach(function(row) {
-            let actionButtons = '';
-            if (role == 1 || role == 3) {
-                actionButtons = `
-                    <a class="dropdown-item" href="edit-newborn.php?id=${row.id}">
-                        <i class="fa fa-pencil m-r-5"></i> Edit
-                    </a>
-                    <a class="dropdown-item" href="#" onclick="return confirmDelete('${row.id}')">
-                        <i class="fa fa-trash m-r-5"></i> Delete
-                    </a>
-                `;
-            }
+    data.forEach(function(row) {
+        let treatmentContent = row.treatments
+            ? `<div>${row.treatments.replace(/\n/g, '<br>')}</div>`
+            : '';
 
-            tbody.append(`
-                <tr>
-                    <td>${row.newborn_id}</td>
-                    <td>${row.first_name}</td>
-                    <td>${row.last_name}</td>
-                    <td>${row.gender}</td>
-                    <td>${row.dob}</td>
-                    <td>${row.tob}</td>
-                    <td>${row.birth_weight}</td>
-                    <td>${row.birth_height}</td>
-                    <td>
-                        ${row.treatments ? `<div>${row.treatments.replace(/\n/g, '<br>')}</div>` : `
-                            <button class="btn btn-primary btn-sm treatment-btn mt-2" data-toggle="modal" data-target="#treatmentModal" data-id="${row.newborn_id}">
-                                <i class="fa fa-stethoscope m-r-5"></i> Add/Edit Treatments
-                            </button>
-                        `}
-                    </td>
-                    <td>${row.room_type}</td>
-                    <td>${row.admission_date}</td>
-                    <td>${row.discharge_date}</td>
-                    <td>${row.physician}</td>
-                    <td class="text-right">
-                        <div class="dropdown dropdown-action">
-                            <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
-                                <i class="fa fa-ellipsis-v"></i>
-                            </a>
-                            <div class="dropdown-menu dropdown-menu-right">
-                                ${actionButtons}
-                            </div>
+        let diagnosisBtn = '';
+        if (role == 2) {
+            const disabled = row.diagnosis ? 'disabled' : '';
+            diagnosisBtn = `
+                <button class="dropdown-item diagnosis-btn" data-toggle="modal" data-target="#diagnosisModal" data-id="${row.newborn_id}" ${disabled}>
+                    <i class="fa fa-stethoscope m-r-5"></i> Diagnosis
+                </button>
+            `;
+        }
+
+        let treatmentBtn = '';
+        if (role == 9) {
+            treatmentBtn = `
+                <button class="dropdown-item treatment-btn" data-toggle="modal" data-target="#treatmentModal" data-id="${row.newborn_id}">
+                    <i class="fa fa-pills m-r-5"></i> Insert/Edit Treatments
+                </button>
+            `;
+        }
+
+        let editDeleteBtns = '';
+        if (role == 1 || role == 9) {
+            editDeleteBtns += `
+                <a class="dropdown-item" href="edit-newborn.php?id=${row.id}">
+                    <i class="fa fa-pencil m-r-5"></i> Edit
+                </a>
+            `;
+        }
+        if (role == 1) {
+            editDeleteBtns += `
+                <a class="dropdown-item" href="#" onclick="return confirmDelete('${row.id}')">
+                    <i class="fa fa-trash m-r-5"></i> Delete
+                </a>
+            `;
+        }
+
+        tbody.append(`
+            <tr>
+                <td>${row.newborn_id}</td>
+                <td>${row.first_name}</td>
+                <td>${row.last_name}</td>
+                <td>${row.gender}</td>
+                <td>${row.address}</td>
+                <td>${row.dob}</td>
+                <td>${row.tob}</td>
+                <td>${row.birth_weight} kg</td>
+                <td>${row.birth_height} cm</td>
+                <td>${row.physician}</td>
+                <td>${row.diagnosis || ''}</td>
+                <td>
+                    ${treatmentContent || `
+                        <button class="btn btn-primary btn-sm treatment-btn mt-2" data-toggle="modal" data-target="#treatmentModal" data-id="${row.newborn_id}">
+                            <i class="fa fa-stethoscope m-r-5"></i> Add/Edit Treatments
+                        </button>
+                    `}
+                </td>
+                <td>${row.room_type}</td>
+                <td>${row.admission_date}</td>
+                <td>${row.discharge_date}</td>
+                <td class="text-right">
+                    <div class="dropdown dropdown-action">
+                        <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
+                            <i class="fa fa-ellipsis-v"></i>
+                        </a>
+                        <div class="dropdown-menu dropdown-menu-right">
+                            ${diagnosisBtn}
+                            ${treatmentBtn}
+                            ${editDeleteBtns}
                         </div>
-                    </td>
-                </tr>
-            `);
-        });
-    }
+                    </div>
+                </td>
+            </tr>
+        `);
+    });
+}
+
 </script>
 
 <style>

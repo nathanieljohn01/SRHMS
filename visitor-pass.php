@@ -72,7 +72,7 @@ include('includes/connection.php');
                                     <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><i class="fa fa-ellipsis-v"></i></a>
                                     <div class="dropdown-menu dropdown-menu-right">
                                         <?php if (empty($row['check_out_time'])) { ?>
-                                            <?php if ($_SESSION['role'] == 10): ?>
+                                            <?php if ($_SESSION['role'] == 9): ?>
                                             <a class="dropdown-item" href="#" onclick="return confirmCheckout(<?php echo $row['id']; ?>)">
                                                 <i class="fa fa-sign-out-alt m-r-5"></i> Check Out
                                             </a>

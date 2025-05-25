@@ -59,6 +59,7 @@ if (isset($_REQUEST['update-newborn'])) {
     // Convert time of birth
     $tob = date("g:i A", strtotime(sanitize($connection, $_REQUEST['tob'])));
     $gender = sanitize($connection, $_REQUEST['gender']);
+    $address = sanitize($connection, $_REQUEST['address']);
 
     // Convert birth weight and height to integers
     $birth_weight = sanitize($connection, $_POST['weight']);
@@ -66,8 +67,8 @@ if (isset($_REQUEST['update-newborn'])) {
     $physician = sanitize($connection, $_REQUEST['physician']);
 
     // Prepare the update statement
-    $update_query = mysqli_prepare($connection, "UPDATE tbl_newborn SET first_name = ?, last_name = ?, dob = ?, tob = ?, gender = ?, birth_weight = ?, birth_height = ?, physician = ? WHERE id = ?");
-    mysqli_stmt_bind_param($update_query, "ssssssssi", $first_name, $last_name, $dob, $tob, $gender, $birth_weight, $birth_height, $physician, $id);
+    $update_query = mysqli_prepare($connection, "UPDATE tbl_newborn SET first_name = ?, last_name = ?, dob = ?, tob = ?, gender = ?, address = ?, birth_weight = ?, birth_height = ?, physician = ? WHERE id = ?");
+    mysqli_stmt_bind_param($update_query, "sssssssssi", $first_name, $last_name, $dob, $tob, $gender, $address, $birth_weight, $birth_height, $physician, $id);
 
     // Execute the update query and check if it was successful
     if (mysqli_stmt_execute($update_query)) {
@@ -171,6 +172,12 @@ mysqli_stmt_close($fetch_query);
                                     <input type="radio" name="gender" class="form-check-input" value="Female" <?php echo ($row['gender'] == 'Female') ? 'checked' : ''; ?>>
                                     <label class="form-check-label">Female</label>
                                 </div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="form-group">
+                                <label>Address</label>
+                                <input class="form-control" type="text" name="address" value="<?php echo $row['address']; ?>">
                             </div>
                         </div>
                         <div class="col-sm-6">

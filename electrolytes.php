@@ -348,43 +348,75 @@ function filterElectrolytes() {
         type: 'GET',
         data: { query: input },
         success: function(response) {
-            var data = JSON.parse(response);
-            updateElectrolytesTable(data);
+            try {
+                var data = JSON.parse(response);
+                updateElectrolytesTable(data);
+            } catch (e) {
+                console.error("Error parsing JSON:", e);
+                alert('Error processing data. Please try again.');
+            }
         },
-        error: function() {
+        error: function(xhr, status, error) {
+            console.error("AJAX Error:", status, error);
             alert('Error fetching data. Please try again.');
         }
     });
 }
 
 function updateElectrolytesTable(data) {
-    var tbody = $('#electrolytesTable tbody');
-    tbody.empty();
+    var tableBody = document.querySelector("#electrolytesTable tbody");
+    tableBody.innerHTML = ""; // Clear existing rows
+    
     data.forEach(function(record) {
-        tbody.append(`
-            <tr>
-                <td>${record.electrolytes_id}</td>
-                <td>${record.patient_id}</td>
-                <td>${record.patient_name}</td>
-                <td>${record.gender}</td>
-                <td>${record.age}</td>
-                <td>${record.date_time}</td>
-                <td>${record.sodium}</td>
-                <td>${record.potassium}</td>
-                <td>${record.chloride}</td>
-                <td>${record.calcium}</td>
-                <td class="text-right">
-                    <div class="dropdown dropdown-action">
-                        <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
-                            <i class="fa fa-ellipsis-v"></i>
-                        </a>
-                        <div class="dropdown-menu dropdown-menu-right">
-                            ${getActionButtons(record.electrolytes_id)}
+        var row = document.createElement("tr");
+        row.innerHTML = `
+            <td>${record.electrolytes_id}</td>
+            <td>${record.patient_id}</td>
+            <td>${record.patient_name}</td>
+            <td>${record.gender}</td>
+            <td>${record.age}</td>
+            <td>${record.date_time}</td>
+            <td>${record.sodium}</td>
+            <td>${record.potassium}</td>
+            <td>${record.chloride}</td>
+            <td>${record.calcium}</td>
+            <td class="text-right">
+                <div class="dropdown dropdown-action">
+                    <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
+                        <i class="fa fa-ellipsis-v"></i>
+                    </a>
+                    <div class="dropdown-menu dropdown-menu-right" style="min-width: 200px; position: absolute; top: 50%; transform: translateY(-50%); right: 50%;">
+                        ${canPrint ? `
+                        <div class="dropdown-item">
+                            <form action="generate-electrolytes.php" method="get" class="p-2">
+                                <input type="hidden" name="id" value="${record.electrolytes_id}">
+                                <div class="form-group mb-2">
+                                    <input type="text" class="form-control" name="filename" placeholder="Filename (required)" required>
+                                </div>
+                                <button class="btn btn-primary btn-sm custom-btn" type="submit">
+                                    <i class="fa fa-file-pdf m-r-5"></i> Generate PDF
+                                </button>
+                            </form>
                         </div>
+                        <div class="dropdown-divider"></div>
+                        ` : ''}
+                        <a class="dropdown-item" href="edit-electrolytes.php?id=${record.electrolytes_id}">
+                            <i class="fa fa-pencil m-r-5"></i> Insert and Edit
+                        </a>
+                        ${editable ? `
+                        <a class="dropdown-item" href="#" onclick="return confirmDelete('${record.electrolytes_id}')">
+                            <i class="fa fa-trash m-r-5"></i> Delete
+                        </a>
+                        ` : `
+                        <a class="dropdown-item disabled" href="#">
+                            <i class="fa fa-trash m-r-5"></i> Delete
+                        </a>
+                        `}
                     </div>
-                </td>
-            </tr>
-        `);
+                </div>
+            </td>
+        `;
+        tableBody.appendChild(row);
     });
 }
 
@@ -403,8 +435,17 @@ function getActionButtons(electrolytesId) {
                 </button>
             </form>
         `;
-    }
+  
     
+        buttons += `
+            <a class="dropdown-item" href="edit-electrolytes.php?id=${electrolytesId}">
+                <i class="fa fa-pencil m-r-5"></i> Insert and Edit
+            </a>
+            
+        `;
+
+    }
+
     if (userRole === 1) {
         buttons += `
             <a class="dropdown-item" href="edit-electrolytes.php?id=${electrolytesId}">
@@ -416,9 +457,6 @@ function getActionButtons(electrolytesId) {
         `;
     } else {
         buttons += `
-            <a class="dropdown-item disabled" href="#">
-                <i class="fa fa-pencil m-r-5"></i> Edit
-            </a>
             <a class="dropdown-item disabled" href="#">
                 <i class="fa fa-trash m-r-5"></i> Delete
             </a>

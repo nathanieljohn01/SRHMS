@@ -346,13 +346,31 @@ function filterOGTT() {
     $.ajax({
         url: 'fetch_ogtt.php',
         type: 'GET',
+        dataType: 'json', // Explicitly expect JSON
         data: { query: input },
         success: function(response) {
-            var data = JSON.parse(response);
-            updateOGTTTable(data);
+            if (response.error) {
+                console.error(response.error);
+                alert('Error: ' + response.error);
+                return;
+            }
+            updateOGTTTable(response);
         },
-        error: function() {
-            alert('Error fetching data. Please try again.');
+        error: function(xhr, status, error) {
+            console.error("AJAX Error:", status, error);
+            try {
+                // Try to parse the response if it's JSON
+                var response = JSON.parse(xhr.responseText);
+                if (response.error) {
+                    alert('Error: ' + response.error);
+                } else {
+                    alert('An error occurred. Please try again.');
+                }
+            } catch (e) {
+                // If not JSON, show raw response for debugging
+                console.log("Raw response:", xhr.responseText);
+                alert('Invalid server response. Please check console for details.');
+            }
         }
     });
 }
@@ -360,6 +378,7 @@ function filterOGTT() {
 function updateOGTTTable(data) {
     var tbody = $('#ogttTable tbody');
     tbody.empty();
+    
     data.forEach(function(record) {
         tbody.append(`
             <tr>
@@ -378,8 +397,27 @@ function updateOGTTTable(data) {
                         <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
                             <i class="fa fa-ellipsis-v"></i>
                         </a>
-                        <div class="dropdown-menu dropdown-menu-right">
-                            ${getActionButtons(record.ogtt_id)}
+                        <div class="dropdown-menu dropdown-menu-right" style="min-width: 200px; position: absolute; top: 50%; transform: translateY(-50%); right: 50%;">
+                            ${canPrint ? `
+                                <div class="dropdown-item">
+                                    <form action="generate-ogtt.php" method="get" class="p-2">
+                                        <input type="hidden" name="id" value="${record.ogtt_id}">
+                                        <div class="form-group mb-2">
+                                            <input type="text" class="form-control" name="filename" placeholder="Filename (required)" required>
+                                        </div>
+                                        <button class="btn btn-primary btn-sm custom-btn" type="submit">
+                                            <i class="fa fa-file-pdf m-r-5"></i> Generate PDF
+                                        </button>
+                                    </form>
+                                </div>
+                                <div class="dropdown-divider"></div>
+                            ` : ''}
+                            <a class="dropdown-item" href="edit-ogtt.php?id=${record.ogtt_id}"><i class="fa fa-pencil m-r-5"></i> Insert and Edit</a>
+                            ${editable ? `
+                                <a class="dropdown-item" href="#" onclick="return confirmDelete('${record.ogtt_id}')"><i class="fa fa-trash m-r-5"></i> Delete</a>
+                            ` : `
+                                <a class="dropdown-item disabled" href="#"><i class="fa fa-trash m-r-5"></i> Delete</a>
+                            `}
                         </div>
                     </div>
                 </td>
@@ -402,10 +440,14 @@ function getActionButtons(ogttId) {
                     <i class="fa fa-file-pdf m-r-5"></i> Generate Result
                 </button>
             </form>
+
+             <a class="dropdown-item" href="edit-ogtt.php?id=${ogttId}">
+                <i class="fa fa-pencil m-r-5"></i> Insert and Edit
+            </a>
         `;
     }
     
-    if (userRole === 1) {
+    if (editable) {
         buttons += `
             <a class="dropdown-item" href="edit-ogtt.php?id=${ogttId}">
                 <i class="fa fa-pencil m-r-5"></i> Insert and Edit
@@ -416,9 +458,6 @@ function getActionButtons(ogttId) {
         `;
     } else {
         buttons += `
-            <a class="dropdown-item disabled" href="#">
-                <i class="fa fa-pencil m-r-5"></i> Edit
-            </a>
             <a class="dropdown-item disabled" href="#">
                 <i class="fa fa-trash m-r-5"></i> Delete
             </a>

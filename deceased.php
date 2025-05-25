@@ -84,8 +84,10 @@ include('includes/connection.php');
                                     <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><i class="fa fa-ellipsis-v"></i></a>
                                     <div class="dropdown-menu dropdown-menu-right">
                                     <?php 
-                                    if ($_SESSION['role'] == 1 || $_SESSION['role'] == 3) {
+                                    if ($_SESSION['role'] == 1 || $_SESSION['role'] == 9) {
                                         echo '<a class="dropdown-item" href="edit-deceased.php?id='. htmlspecialchars($row['deceased_id']) .'"><i class="fa fa-pencil m-r-5"></i> Edit</a>';
+                                    }
+                                    if ($_SESSION['role'] == 1) {
                                         echo '<a class="dropdown-item" href="#" onclick="return confirmDelete(\''.$row['deceased_id'].'\')"><i class="fa fa-trash m-r-5"></i> Delete</a>';
                                     }
                                     ?>
@@ -181,18 +183,23 @@ function confirmDelete(deceased_id) {
 
     function getActionButtons(deceasedId) {
         let buttons = '';
-        
-        if (role == 1 || role == 3) {
+
+        if (role == 1 || role == 9) {
             buttons += `
                 <a class="dropdown-item" href="edit-deceased.php?id=${deceasedId}">
                     <i class="fa fa-pencil m-r-5"></i> Edit
                 </a>
+            `;
+        }
+
+        if (role == 1) {
+            buttons += `
                 <a class="dropdown-item delete-btn" data-id="${deceasedId}" href="#">
                     <i class="fa fa-trash m-r-5"></i> Delete
                 </a>
             `;
         }
-        
+
         return buttons;
     }
     

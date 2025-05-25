@@ -372,6 +372,31 @@ function confirmDischarge(id) {
             }
         });
     });
+
+    $('#inpatientTable').on('click', '.dropdown-toggle', function (e) {
+        e.preventDefault(); // Prevent default action if it's a link
+
+        var $el = $(this).next('.dropdown-menu');
+        var isVisible = $el.is(':visible');
+
+        // Hide all dropdowns
+        $('.dropdown-menu').slideUp(400);
+
+        // If this wasn't already visible, slide it down
+        if (!isVisible) {
+            $el.stop(true, true).slideDown(400);
+        }
+
+        // Prevent the event from bubbling to document
+        e.stopPropagation();
+    });
+
+    // Click outside to close all dropdowns
+    $(document).on('click', function (e) {
+        if (!$(e.target).closest('.dropdown').length) {
+            $('.dropdown-menu').slideUp(400);
+        }
+    });
 </script>
 
 

@@ -354,7 +354,7 @@ ob_end_flush(); // Flush output buffer
                                         ?>
                                         <?php if ($_SESSION['role'] == 3): ?>
                                             <button class="dropdown-item treatment-btn" data-toggle="modal" data-target="#treatmentModal" data-id="<?php echo htmlspecialchars($row['hemopatient_id']); ?>">
-                                                <i class="fa fa-stethoscope m-r-5"></i> Add/Edit Treatments
+                                                <i class="fa fa-stethoscope m-r-5"></i> Insert/Edit Treatments
                                             </button>
                                         <?php endif; ?>
                                         <?php if ($_SESSION['role'] == 1): ?>
@@ -412,7 +412,7 @@ ob_end_flush(); // Flush output buffer
     <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="treatmentModalLabel">Select Medicines</h5>
+                <h5 class="modal-title" id="treatmentModalLabel">Manage Treatments</h5>
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
                 </button>
@@ -421,19 +421,13 @@ ob_end_flush(); // Flush output buffer
                 <form id="medicineSelectionForm" method="POST" action="hemodialysis.php">
                     <input type="hidden" name="hemopatientIdTreatment" id="hemopatientIdTreatment">
                     
-                    <!-- Medicine Search Section -->
                     <div class="form-group">
                         <label for="medicineSearchInput">Search Medicines</label>
-                        <input
-                            type="text"
-                            class="form-control"
-                            id="medicineSearchInput"
-                            placeholder="Enter medicine name or brand"
-                            onkeyup="searchMedicines()"
-                        >
+                        <input type="text" class="form-control" id="medicineSearchInput" placeholder="Enter medicine name or brand" onkeyup="searchMedicines()">
                     </div>
+                    
                     <div class="table-responsive mb-4">
-                        <table class="table table-hover">
+                        <table class="table table-hover table-striped">
                             <thead style="background-color: #CCCCCC;">
                                 <tr>
                                     <th>Medicine Name</th>
@@ -451,8 +445,7 @@ ob_end_flush(); // Flush output buffer
                         </table>
                     </div>
 
-                    <!-- Selected Medicines Section -->
-                    <h5>Selected Medicines</h5>
+                    <h5>Current Treatments</h5>
                     <ul id="selectedMedicinesList" class="list-group">
                         <!-- Selected medicines will populate here -->
                     </ul>
@@ -461,7 +454,7 @@ ob_end_flush(); // Flush output buffer
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                <button type="submit" class="btn btn-primary" form="medicineSelectionForm">Save Treatment</button>
+                <button type="submit" class="btn btn-primary" form="medicineSelectionForm">Save Treatments</button>
             </div>
         </div>
     </div>
@@ -492,28 +485,61 @@ include('footer.php');
 <script>
 let selectedMedicines = [];
 
-// Function to search medicines
+// Function to load existing treatments when modal opens
+function loadExistingTreatments(hemopatientId) {
+    $.ajax({
+        url: 'fetch-existing-hemo-treatments.php',
+        type: 'GET',
+        data: { hemopatient_id: hemopatientId },
+        dataType: 'json',
+        success: function(data) {
+            selectedMedicines = data;
+            updateSelectedMedicinesUI();
+        },
+        error: function() {
+            alert('Error loading existing treatments');
+        }
+    });
+}
+
+// Update the treatment button click handler
+$(document).on('click', '.treatment-btn', function() {
+    var hemopatientId = $(this).data('id');
+    $('#hemopatientIdTreatment').val(hemopatientId);
+    selectedMedicines = []; // Clear the array
+    $('#selectedMedicinesList').html(''); // Clear the UI
+    $('#selectedMedicines').val(''); // Clear the hidden input
+    
+    // Load existing treatments
+    loadExistingTreatments(hemopatientId);
+});
+
+// Function to search medicines (updated to exclude already selected medicines)
 function searchMedicines() {
     const query = document.getElementById('medicineSearchInput').value.trim();
+    const hemopatientId = $('#hemopatientIdTreatment').val();
 
     if (query.length > 2) {
         $.ajax({
             url: 'search-medicines.php',
             type: 'GET',
-            data: { query },
-            success: function (data) {
-                $('#medicineSearchResults').html(data); // Populate search results
+            data: { 
+                query: query,
+                exclude: selectedMedicines.map(m => m.id) // Exclude already selected medicines
             },
-            error: function () {
+            success: function(data) {
+                $('#medicineSearchResults').html(data);
+            },
+            error: function() {
                 alert('Error fetching medicines. Please try again later.');
             }
         });
     } else {
-        $('#medicineSearchResults').html('<tr><td colspan="7">Please enter at least 3 characters to search.</td></tr>');
+        $('#medicineSearchResults').html('<tr><td colspan="8">Please enter at least 3 characters to search.</td></tr>');
     }
 }
 
-// Function to add medicine to the selected list
+// Function to add medicine to the selected list (updated to handle updates)
 function addMedicineToList(id, name, brand, category, availableQuantity, price, expiration_date, event) {
     if (event) {
         event.preventDefault();
@@ -523,7 +549,7 @@ function addMedicineToList(id, name, brand, category, availableQuantity, price, 
     const quantityInput = parseInt(document.getElementById(`quantityInput-${id}`).value, 10);
 
     if (quantityInput <= 0 || quantityInput > availableQuantity) {
-        alert('Invalid quantity. Please try again.');
+        alert('Invalid quantity. Please enter a value between 1 and ' + availableQuantity);
         return;
     }
 
@@ -543,15 +569,15 @@ function addMedicineToList(id, name, brand, category, availableQuantity, price, 
             quantity: quantityInput,
             price: parseFloat(price),
             expiration_date,
+            available_quantity: availableQuantity
         };
         selectedMedicines.push(medicine);
     }
 
-    // Update the UI
     updateSelectedMedicinesUI();
 }
 
-// Function to update the selected medicines UI
+// Function to update the selected medicines UI (updated to show available quantity)
 function updateSelectedMedicinesUI() {
     $('#selectedMedicinesList').html('');
 
@@ -559,16 +585,27 @@ function updateSelectedMedicinesUI() {
         const listItem = `
             <li class="list-group-item d-flex justify-content-between align-items-center">
                 <div>
-                    <strong>${medicine.name} (${medicine.brand}) (${medicine.category})</strong> - 
-                    ${medicine.quantity} pcs @ ${medicine.price} PHP each 
-                    <small>(Exp: ${medicine.expiration_date})</small>
+                    <strong>${medicine.name} (${medicine.brand})</strong><br>
+                    <small>Category: ${medicine.category}</small><br>
+                    <small>Exp: ${medicine.expiration_date}</small><br>
+                    <small>Price: ${medicine.price} PHP each</small>
                 </div>
-                <button 
-                    type="button" 
-                    class="btn btn-danger btn-sm" 
-                    onclick="removeMedicineFromList(${index})">
-                    Remove
-                </button>
+                <div class="d-flex align-items-center">
+                    <div class="mr-3">
+                        <label>Quantity:</label>
+                        <input type="number" 
+                               class="form-control form-control-sm" 
+                               value="${medicine.quantity}" 
+                               min="1" 
+                               max="${medicine.available_quantity}"
+                               onchange="updateMedicineQuantity(${index}, this.value)">
+                    </div>
+                    <button type="button" 
+                            class="btn btn-danger btn-sm" 
+                            onclick="removeMedicineFromList(${index})">
+                        Remove
+                    </button>
+                </div>
             </li>`;
         $('#selectedMedicinesList').append(listItem);
     });
@@ -576,20 +613,27 @@ function updateSelectedMedicinesUI() {
     $('#selectedMedicines').val(JSON.stringify(selectedMedicines));
 }
 
-// Function to remove a medicine from the selected list
-function removeMedicineFromList(index) {
-    selectedMedicines.splice(index, 1); // Remove the medicine by index
+// New function to update quantity of existing medicine
+function updateMedicineQuantity(index, newQuantity) {
+    const medicine = selectedMedicines[index];
+    const availableQty = medicine.available_quantity;
+    newQuantity = parseInt(newQuantity);
+    
+    if (newQuantity <= 0 || newQuantity > availableQty) {
+        alert('Invalid quantity. Please enter a value between 1 and ' + availableQty);
+        return false;
+    }
+    
+    selectedMedicines[index].quantity = newQuantity;
     updateSelectedMedicinesUI();
+    return true;
 }
 
-// Reset selected medicines when opening the modal
-$('.treatment-btn').on('click', function () {
-    const hemopatientId = $(this).data('id');
-    $('#hemopatientIdTreatment').val(hemopatientId); // Fixed variable name
-    selectedMedicines = []; 
-    $('#selectedMedicinesList').html(''); 
-    $('#selectedMedicines').val(''); 
-});
+// Function to remove a medicine from the selected list
+function removeMedicineFromList(index) {
+    selectedMedicines.splice(index, 1);
+    updateSelectedMedicinesUI();
+}
 
 // Doctor assignment functionality
 $(document).on('click', '.select-doctor-btn', function() {
@@ -598,6 +642,28 @@ $(document).on('click', '.select-doctor-btn', function() {
     $('#doctorModal').modal('show');
 });
 
+$('#doctorForm').submit(function(e) {
+    e.preventDefault();
+    var hemopatientId = $('#hemopatientIdDoctor').val();
+    var doctorId = $('#doctor').val();
+
+    $.ajax({
+        url: 'hemodialysis.php',
+        type: 'POST',
+        data: {
+            hemopatientIdDoctor: hemopatientId,
+            doctorId: doctorId
+        },
+        success: function(response) {
+            location.reload();
+        },
+        error: function(xhr, status, error) {
+            alert('Error assigning doctor');
+        }
+    });
+});
+
+// Doctor assignment functionality
 $('#doctorForm').submit(function(e) {
     e.preventDefault();
     var hemopatientId = $('#hemopatientIdDoctor').val();
@@ -842,6 +908,31 @@ $('#doctorForm').submit(function(e) {
                 $('.dropdown-menu').slideUp('400');
             }
         });
+    });
+
+    $('#hemopatientTable').on('click', '.dropdown-toggle', function (e) {
+        e.preventDefault(); // Prevent default action if it's a link
+
+        var $el = $(this).next('.dropdown-menu');
+        var isVisible = $el.is(':visible');
+
+        // Hide all dropdowns
+        $('.dropdown-menu').slideUp(400);
+
+        // If this wasn't already visible, slide it down
+        if (!isVisible) {
+            $el.stop(true, true).slideDown(400);
+        }
+
+        // Prevent the event from bubbling to document
+        e.stopPropagation();
+    });
+
+    // Click outside to close all dropdowns
+    $(document).on('click', function (e) {
+        if (!$(e.target).closest('.dropdown').length) {
+            $('.dropdown-menu').slideUp(400);
+        }
     });
 </script>
 

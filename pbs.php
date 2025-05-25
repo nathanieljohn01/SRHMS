@@ -34,7 +34,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['patientId'])) {
         $platelet_count = sanitize($connection, $_POST['platelet_count'] ?? NULL);
         $toxic_granules = sanitize($connection, $_POST['toxic_granules'] ?? NULL);
         $abnormal_cells = sanitize($connection, $_POST['abnormal_cells'] ?? NULL);
-        $segments = sanitize($connection, $_POST['segments'] ?? NULL);  // Note: Check spelling (segments vs segements)
+        $segmenters = sanitize($connection, $_POST['segmenters'] ?? NULL);  // Note: Check spelling (segments vs segements)
         $lymphocytes = sanitize($connection, $_POST['lymphocytes'] ?? NULL);
         $monocytes = sanitize($connection, $_POST['monocytes'] ?? NULL);
         $eosinophils = sanitize($connection, $_POST['eosinophils'] ?? NULL);
@@ -45,7 +45,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['patientId'])) {
         $insert_query = $connection->prepare("INSERT INTO tbl_pbs (
             pbs_id, patient_id, patient_name, gender, dob, 
             rbc_morphology, platelet_count, toxic_granules, abnormal_cells,
-            segments, lymphocytes, monocytes, eosinophils, bands, 
+            segmenters, lymphocytes, monocytes, eosinophils, bands, 
             reticulocyte_count, remarks, date_time
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
 
@@ -59,7 +59,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['patientId'])) {
             $platelet_count,
             $toxic_granules,
             $abnormal_cells,
-            $segments,
+            $segmenters,
             $lymphocytes,
             $monocytes,
             $eosinophils,
@@ -220,7 +220,7 @@ if (isset($_GET['delete_id'])) {
                         <td><?php echo $row['platelet_count'] ?: 'N/A'; ?></td>
                         <td><?php echo $row['toxic_granules'] ?: 'N/A'; ?></td>
                         <td><?php echo $row['abnormal_cells'] ?: 'N/A'; ?></td>
-                        <td><?php echo $row['segments'] ?: 'N/A'; ?></td>
+                        <td><?php echo $row['segmenters'] ?: 'N/A'; ?></td>
                         <td><?php echo $row['lymphocytes'] ?: 'N/A'; ?></td>
                         <td><?php echo $row['monocytes'] ?: 'N/A'; ?></td>
                         <td><?php echo $row['eosinophils'] ?: 'N/A'; ?></td>
@@ -312,16 +312,44 @@ let editable = <?php echo $editable ? 'true' : 'false'; ?>;
 
 function filterPbs() {
     var input = document.getElementById("pbsSearchInput").value;
+    console.log('Searching for:', input); // Debug log
+
     $.ajax({
         url: 'fetch_pbs.php',
         type: 'GET',
         data: { query: input },
         success: function(response) {
-            var data = JSON.parse(response);
-            updatePbsTable(data);
+            console.log('Response received:', response); // Debug log
+            Swal.close();
+            
+            try {
+                if (typeof response === 'string') {
+                    response = JSON.parse(response);
+                }
+
+                if (response.error) {
+                    throw new Error(response.error);
+                }
+
+                updatePbsTable(response);
+            } catch (e) {
+                console.error('Error:', e);
+                Swal.fire({
+                    title: 'Error',
+                    text: 'Failed to process search results: ' + e.message,
+                    icon: 'error',
+                    confirmButtonColor: '#12369e'
+                });
+            }
         },
         error: function(xhr, status, error) {
-            alert('Error fetching data. Please try again.');
+            console.error('AJAX Error:', status, error);
+            Swal.fire({
+                title: 'Error',
+                text: 'Failed to fetch data from server',
+                icon: 'error',
+                confirmButtonColor: '#12369e'
+            });
         }
     });
 }
@@ -329,20 +357,30 @@ function filterPbs() {
 function updatePbsTable(data) {
     var tbody = $('#pbsTable tbody');
     tbody.empty();
+
+    if (!Array.isArray(data) || data.length === 0) {
+        tbody.append(`
+            <tr>
+                <td colspan="18" class="text-center">No records found</td>
+            </tr>
+        `);
+        return;
+    }
+
     data.forEach(function(record) {
         tbody.append(`
             <tr>
-                <td>${record.pbs_id}</td>
-                <td>${record.patient_id}</td>
-                <td>${record.patient_name}</td>
-                <td>${record.gender}</td>
-                <td>${record.age}</td>
-                <td>${record.date_time}</td>
+                <td>${record.pbs_id || 'N/A'}</td>
+                <td>${record.patient_id || 'N/A'}</td>
+                <td>${record.patient_name || 'N/A'}</td>
+                <td>${record.gender || 'N/A'}</td>
+                <td>${record.age || 'N/A'}</td>
+                <td>${record.date_time || 'N/A'}</td>
                 <td>${record.rbc_morphology || 'N/A'}</td>
                 <td>${record.platelet_count || 'N/A'}</td>
                 <td>${record.toxic_granules || 'N/A'}</td>
                 <td>${record.abnormal_cells || 'N/A'}</td>
-                <td>${record.segments || 'N/A'}</td>
+                <td>${record.segmenters || 'N/A'}</td>
                 <td>${record.lymphocytes || 'N/A'}</td>
                 <td>${record.monocytes || 'N/A'}</td>
                 <td>${record.eosinophils || 'N/A'}</td>
@@ -351,54 +389,42 @@ function updatePbsTable(data) {
                 <td>${record.remarks || 'N/A'}</td>
                 <td class="text-right">
                     <div class="dropdown dropdown-action">
-                        <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown">
+                        <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
                             <i class="fa fa-ellipsis-v"></i>
                         </a>
-                        <div class="dropdown-menu dropdown-menu-right">
-                            ${getActionButtons(record.pbs_id)}
+                        <div class="dropdown-menu dropdown-menu-right" style="min-width: 200px; position: absolute; top: 50%; transform: translateY(-50%); right: 50%;">
+                            ${canPrint ? `
+                                <div class="dropdown-item">
+                                    <form action="generate-pbs.php" method="get" class="p-2">
+                                        <input type="hidden" name="id" value="${record.pbs_id}">
+                                        <div class="form-group mb-2">
+                                            <input type="text" class="form-control" name="filename" placeholder="Filename (required)" required>
+                                        </div>
+                                        <button class="btn btn-primary btn-sm custom-btn" type="submit">
+                                            <i class="fa fa-file-pdf m-r-5"></i> Generate PDF
+                                        </button>
+                                    </form>
+                                </div>
+                                <div class="dropdown-divider"></div>
+                            ` : ''}
+                            <a class="dropdown-item" href="edit-pbs.php?id=${record.pbs_id}">
+                                <i class="fa fa-pencil m-r-5"></i> Insert and Edit
+                            </a>
+                            ${editable ? `
+                                <a class="dropdown-item" href="#" onclick="return confirmDelete('${record.pbs_id}')">
+                                    <i class="fa fa-trash m-r-5"></i> Delete
+                                </a>
+                            ` : `
+                                <a class="dropdown-item disabled" href="#">
+                                    <i class="fa fa-trash m-r-5"></i> Delete
+                                </a>
+                            `}
                         </div>
                     </div>
                 </td>
             </tr>
         `);
     });
-}
-
-function getActionButtons(pbsId) {
-    let buttons = '';
-    if (canPrint) {
-        buttons += `
-            <form action="generate-pbs.php" method="get">
-                <input type="hidden" name="id" value="${pbsId}">
-                <div class="form-group">
-                    <input type="text" class="form-control" name="filename" placeholder="Enter File Name">
-                </div>
-                <button class="btn btn-primary btn-sm custom-btn" type="submit">
-                    <i class="fa fa-file-pdf m-r-5"></i> Generate Result
-                </button>
-            </form>
-        `;
-    }
-    if (editable) {
-        buttons += `
-            <a class="dropdown-item" href="edit-pbs.php?id=${pbsId}">
-                <i class="fa fa-pencil m-r-5"></i> Edit
-            </a>
-            <a class="dropdown-item" href="#" onclick="return confirmDelete('${pbsId}')">
-                <i class="fa fa-trash m-r-5"></i> Delete
-            </a>
-        `;
-    } else {
-        buttons += `
-            <a class="dropdown-item disabled" href="#">
-                <i class="fa fa-pencil m-r-5"></i> Edit
-            </a>
-            <a class="dropdown-item disabled" href="#">
-                <i class="fa fa-trash m-r-5"></i> Delete
-            </a>
-        `;
-    }
-    return buttons;
 }
 
 function searchPatients() {

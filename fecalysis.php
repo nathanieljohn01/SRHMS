@@ -458,20 +458,28 @@ document.querySelector('form').addEventListener('submit', function(event) {
             `;
         }
         
-        if (editable) {
+        if (editable || canPrint) {  
             buttons += `
                 <a class="dropdown-item" href="edit-fecalysis.php?id=${fecalysisId}">
                     <i class="fa fa-pencil m-r-5"></i> Insert and Edit
                 </a>
+            `;
+        } else {
+            buttons += `
+                <a class="dropdown-item disabled" href="#">
+                    <i class="fa fa-pencil m-r-5"></i> Insert and Edit
+                </a>
+            `;
+        }
+
+        if (editable) {  
+            buttons += `
                 <a class="dropdown-item" href="fecalysis.php?ids=${fecalysisId}" onclick="return confirmDelete()">
                     <i class="fa fa-trash m-r-5"></i> Delete
                 </a>
             `;
         } else {
             buttons += `
-                <a class="dropdown-item disabled" href="#">
-                    <i class="fa fa-pencil m-r-5"></i> Edit
-                </a>
                 <a class="dropdown-item disabled" href="#">
                     <i class="fa fa-trash m-r-5"></i> Delete
                 </a>
@@ -662,4 +670,3 @@ select.form-control:focus {
     color: #12369e;
 }
 </style>
-

@@ -8,6 +8,8 @@ if (empty($_SESSION['name'])) {
 include('header.php');
 include('includes/connection.php');
 
+$role = isset($_SESSION['role']) ? $_SESSION['role'] : null;
+
 // Sanitize the GET parameter for deleting an invoice
 if (isset($_GET['ids'])) {
     $id = filter_var($_GET['ids'], FILTER_SANITIZE_NUMBER_INT);
@@ -91,21 +93,28 @@ $fetch_query = mysqli_query($connection, "
                             <td><?php echo date('F d, Y g:i A', strtotime($row['invoice_datetime'])); ?></td>
                             <td>
                                 <div class="dropdown dropdown-action">
-                                    <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><i class="fa fa-file-pdf-o"></i></a>
+                                    <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
+                                        <i class="fa <?php echo ($_SESSION['role'] == 4) ? 'fa-file-pdf' : 'fa-ellipsis-v'; ?>"></i>
+                                    </a>
                                     <div class="dropdown-menu dropdown-menu-right">
-                                        <div class="dropdown-item">
-                                        <form action="generate-pharmacy-pdf.php" method="get">
-                                            <input type="hidden" name="id" value="<?php echo htmlspecialchars($row['invoice_id'], ENT_QUOTES, 'UTF-8'); ?>">
+                                        <?php if ($_SESSION['role'] == 4): ?>
+                                            <form action="generate-pharmacy-pdf.php" method="get">
+                                                <input type="hidden" name="id" value="<?php echo htmlspecialchars($row['invoice_id'], ENT_QUOTES, 'UTF-8'); ?>">
                                                 <div class="form-group mb-2">
                                                     <input type="text" class="form-control" name="filename" placeholder="Filename (required)" required>
                                                 </div>
-                                            <button class="btn btn-primary btn-sm custom-btn" type="submit"><i class="fa fa-file-pdf-o m-r-5"></i> Generate Invoice</button>
-                                        </form>
+                                                <button class="btn btn-primary btn-sm custom-btn" type="submit"><i class="fa fa-file-pdf m-r-5"></i> Generate Invoice</button>
+                                            </form>
+                                        <?php endif; ?>
+                                        <?php if ($_SESSION['role'] == 1): ?>
+                                            <a class="dropdown-item" href="#" onclick="return confirmDelete('<?php echo $row['invoice_id']; ?>')">
+                                                <i class="fa fa-trash m-r-5"></i> Delete 
+                                            </a>
+                                        <?php endif; ?>
                                     </div>
                                 </div>
-                            </div>
-                        </td>
-                    </tr>
+                            </td>
+                        </tr>
                     <?php } ?>
                 </tbody>
             </table>
@@ -117,8 +126,21 @@ $fetch_query = mysqli_query($connection, "
 include('footer.php');
 ?>
 <script language="JavaScript" type="text/javascript">
-    function confirmDelete() {
-        return confirm('Are you sure you want to delete this item?');
+    function confirmDelete(id) {
+        return Swal.fire({
+            title: 'Delete Invoice?',
+            text: 'Are you sure you want to delete this invoice? This action cannot be undone!',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#12369e',
+            confirmButtonText: 'Yes, delete it!',
+            cancelButtonText: 'Cancel'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                window.location.href = 'pharmacy-invoice.php?ids=' + id;
+            }
+        });
     }
 
     function clearSearch() {
@@ -139,11 +161,42 @@ include('footer.php');
         });
     }
 
+    var role = <?php echo json_encode($_SESSION['role']); ?>;
+
     function updatePharmacyTable(data) {
         var tbody = $('#medicineTable tbody');
         tbody.empty();
         
         data.forEach(function(row) {
+            var actionContent = '';
+            
+            if (role == 4) {
+                actionContent = `
+                    <form class="generate-invoice-form" action="generate-pharmacy-pdf.php" method="get">
+                        <input type="hidden" name="id" value="${row.invoice_id}">
+                        <div class="form-group">
+                            <input type="text" class="form-control" name="filename" placeholder="Enter File Name" required>
+                        </div>
+                        <button class="btn btn-primary btn-block mt-1" type="submit">
+                            <i class="fa fa-file-pdf m-r-5"></i> Generate Invoice
+                        </button>
+                    </form>
+                `;
+            } else if (role == 1) {
+                actionContent = `
+                    <div class="dropdown dropdown-action">
+                        <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
+                            <i class="fa fa-ellipsis-v"></i>
+                        </a>
+                        <div class="dropdown-menu dropdown-menu-right">
+                            <a class="dropdown-item delete-invoice" href="#" data-id="${row.invoice_id}">
+                                <i class="fa fa-trash m-r-5"></i> Delete
+                            </a>
+                        </div>
+                    </div>
+                `;
+            }
+            
             tbody.append(`
                 <tr>
                     <td>${row.patient_id}</td>
@@ -152,47 +205,77 @@ include('footer.php');
                     <td>${row.medicine_details}</td>
                     <td>${row.total_price}</td>
                     <td>${row.invoice_datetime}</td>
-                    <td>
-                        <div class="dropdown dropdown-action">
-                            <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
-                                <i class="fa fa-file-pdf-o"></i>
-                            </a>
-                            <div class="dropdown-menu dropdown-menu-right">
-                                <form action="generate-pharmacy-pdf.php" method="get">
-                                    <input type="hidden" name="id" value="${row.invoice_id}">
-                                    <div class="form-group">
-                                        <input type="text" class="form-control" id="filename" name="filename" placeholder="Enter File Name">
-                                    </div>
-                                    <button class="btn btn-primary btn-block mt-1" type="submit">
-                                        <i class="fa fa-file-pdf-o m-r-5"></i> Generate Invoice
-                                    </button>
-                                </form>
-                            </div>
-                        </div>
-                    </td>
+                    <td>${actionContent}</td>
                 </tr>
             `);
         });
     }
 
-    $('.dropdown-toggle').on('click', function (e) {
-    var $el = $(this).next('.dropdown-menu');
-    var isVisible = $el.is(':visible');
-    
-    // Hide all dropdowns
-    $('.dropdown-menu').slideUp('400');
-    
-    // If this wasn't already visible, slide it down
-    if (!isVisible) {
-        $el.stop(true, true).slideDown('400');
+    function initDropdownHandlers() {
+        // Handle delete button clicks
+        $(document).off('click', '.delete-invoice').on('click', '.delete-invoice', function(e) {
+            e.preventDefault();
+            var id = $(this).data('id');
+            confirmDelete(id);
+        });
+
+        // Handle form submissions to prevent default behavior
+        $(document).off('submit', '.generate-invoice-form').on('submit', '.generate-invoice-form', function(e) {
+            // Let the form submit normally
+            return true;
+        });
     }
-    
-    // Close the dropdown if clicked outside of it
-    $(document).on('click', function (e) {
-        if (!$(e.target).closest('.dropdown').length) {
+
+    // Initialize handlers when page loads
+    $(document).ready(function() {
+        initDropdownHandlers();
+        
+        // Existing dropdown toggle code
+        $('.dropdown-toggle').on('click', function (e) {
+            var $el = $(this).next('.dropdown-menu');
+            var isVisible = $el.is(':visible');
+            
+            // Hide all dropdowns
             $('.dropdown-menu').slideUp('400');
-        }
+            
+            // If this wasn't already visible, slide it down
+            if (!isVisible) {
+                $el.stop(true, true).slideDown('400');
+            }
+            
+            e.stopPropagation();
+        });
+
+        // Click outside to close all dropdowns
+        $(document).on('click', function (e) {
+            if (!$(e.target).closest('.dropdown').length) {
+                $('.dropdown-menu').slideUp('400');
+            }
+        });
     });
+    $('#medicineTable').on('click', '.dropdown-toggle', function (e) {
+        e.preventDefault(); // Prevent default action if it's a link
+
+        var $el = $(this).next('.dropdown-menu');
+        var isVisible = $el.is(':visible');
+
+        // Hide all dropdowns
+        $('.dropdown-menu').slideUp(400);
+
+        // If this wasn't already visible, slide it down
+        if (!isVisible) {
+            $el.stop(true, true).slideDown(400);
+        }
+
+        // Prevent the event from bubbling to document
+        e.stopPropagation();
+    });
+
+// Click outside to close all dropdowns
+$(document).on('click', function (e) {
+    if (!$(e.target).closest('.dropdown').length) {
+        $('.dropdown-menu').slideUp(400);
+    }
 });
 </script>
 

@@ -40,7 +40,7 @@ if (isset($_POST['edit-pbs'])) {
     $platelet_count = sanitize($connection, $_POST['platelet_count'] ?? NULL);
     $toxic_granules = sanitize($connection, $_POST['toxic_granules'] ?? NULL);
     $abnormal_cells = sanitize($connection, $_POST['abnormal_cells'] ?? NULL);
-    $segments = sanitize($connection, $_POST['segments'] ?? NULL);
+    $segmenters = sanitize($connection, $_POST['segmenters'] ?? NULL);
     $lymphocytes = sanitize($connection, $_POST['lymphocytes'] ?? NULL);
     $monocytes = sanitize($connection, $_POST['monocytes'] ?? NULL);
     $eosinophils = sanitize($connection, $_POST['eosinophils'] ?? NULL);
@@ -70,7 +70,7 @@ if (isset($_POST['edit-pbs'])) {
         platelet_count = ?, 
         toxic_granules = ?, 
         abnormal_cells = ?,
-        segments = ?, 
+        segmenters = ?, 
         lymphocytes = ?, 
         monocytes = ?, 
         eosinophils = ?, 
@@ -88,7 +88,7 @@ if (isset($_POST['edit-pbs'])) {
         $platelet_count,
         $toxic_granules,
         $abnormal_cells,
-        $segments,
+        $segmenters,
         $lymphocytes,
         $monocytes,
         $eosinophils,
@@ -203,29 +203,30 @@ if (isset($_POST['edit-pbs'])) {
                         </select>
                     </div>
                     <div class="form-group">
-                        <label for="segments">Segments (%)</label>
-                        <input class="form-control" type="number" name="segments" min="0" max="100" value="<?php echo htmlspecialchars($pbs_data['segments']); ?>">
+                        <label for="segmenters">Segmenters (%)</label>
+                        <input class="form-control" type="number" name="segmenters" min="0" max="100" step="0.01" value="<?php echo htmlspecialchars($pbs_data['segmenters']); ?>">
                     </div>
                     <div class="form-group">
                         <label for="lymphocytes">Lymphocytes (%)</label>
-                        <input class="form-control" type="number" name="lymphocytes" min="0" max="100" value="<?php echo htmlspecialchars($pbs_data['lymphocytes']); ?>">
+                        <input class="form-control" type="number" name="lymphocytes" min="0" max="100" step="0.01" value="<?php echo htmlspecialchars($pbs_data['lymphocytes']); ?>">
                     </div>
                     <div class="form-group">
                         <label for="monocytes">Monocytes (%)</label>
-                        <input class="form-control" type="number" name="monocytes" min="0" max="100" value="<?php echo htmlspecialchars($pbs_data['monocytes']); ?>">
+                        <input class="form-control" type="number" name="monocytes" min="0" max="100" step="0.01" value="<?php echo htmlspecialchars($pbs_data['monocytes']); ?>">
                     </div>
                     <div class="form-group">
                         <label for="eosinophils">Eosinophils (%)</label>
-                        <input class="form-control" type="number" name="eosinophils" min="0" max="100" value="<?php echo htmlspecialchars($pbs_data['eosinophils']); ?>">
+                        <input class="form-control" type="number" name="eosinophils" min="0" max="100" step="0.01" value="<?php echo htmlspecialchars($pbs_data['eosinophils']); ?>">
                     </div>
                     <div class="form-group">
                         <label for="bands">Bands (%)</label>
-                        <input class="form-control" type="number" name="bands" min="0" max="100" value="<?php echo htmlspecialchars($pbs_data['bands']); ?>">
+                        <input class="form-control" type="number" name="bands" min="0" max="100" step="0.01" value="<?php echo htmlspecialchars($pbs_data['bands']); ?>">
                     </div>
                     <div class="form-group">
                         <label for="reticulocyte_count">Reticulocyte Count (%)</label>
-                        <input class="form-control" type="number" name="reticulocyte_count" min="0" max="100" step="0.1" value="<?php echo htmlspecialchars($pbs_data['reticulocyte_count']); ?>">
+                        <input class="form-control" type="number" name="reticulocyte_count" min="0" max="100" step="0.01" value="<?php echo htmlspecialchars($pbs_data['reticulocyte_count']); ?>">
                     </div>
+
                     <div class="form-group">
                         <label for="remarks">Remarks</label>
                         <textarea class="form-control" name="remarks"><?php echo htmlspecialchars($pbs_data['remarks']); ?></textarea>

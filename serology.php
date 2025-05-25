@@ -235,6 +235,9 @@ ob_end_flush(); // Flush output buffer
                                             <i class="fa fa-pencil m-r-5"></i> Insert and Edit
                                         </a>
                                     <?php if ($editable): ?>
+                                         <a class="dropdown-item" href="edit-serology.php?id=<?php echo $row['sero_id']; ?>">
+                                            <i class="fa fa-pencil m-r-5"></i> Insert and Edit
+                                        </a>
                                         <a class="dropdown-item" href="#" onclick="return confirmDelete('<?php echo $row['sero_id']; ?>')">
                                             <i class="fa fa-trash m-r-5"></i> Delete
                                         </a>
@@ -329,6 +332,7 @@ function filterSerology() {
 function updateSerologyTable(data) {
     var tbody = $('#serologyTable tbody');
     tbody.empty();
+    
     data.forEach(function(record) {
         tbody.append(`
             <tr>
@@ -345,8 +349,33 @@ function updateSerologyTable(data) {
                         <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
                             <i class="fa fa-ellipsis-v"></i>
                         </a>
-                        <div class="dropdown-menu dropdown-menu-right">
-                            ${getActionButtons(record.sero_id)}
+                        <div class="dropdown-menu dropdown-menu-right" style="min-width: 200px; position: absolute; top: 50%; transform: translateY(-50%); right: 50%;">
+                            ${canPrint ? `
+                            <div class="dropdown-item">
+                                <form action="generate-serology.php" method="get" class="p-2">
+                                    <input type="hidden" name="sero_id" value="${record.sero_id}">
+                                    <div class="form-group mb-2">
+                                        <input type="text" class="form-control" name="filename" placeholder="Filename (required)" required>
+                                    </div>
+                                    <button class="btn btn-primary btn-sm custom-btn" type="submit">
+                                        <i class="fa fa-file-pdf m-r-5"></i> Generate PDF
+                                    </button>
+                                </form>
+                            </div>
+                            <div class="dropdown-divider"></div>
+                            ` : ''}
+                            <a class="dropdown-item" href="edit-serology.php?id=${record.sero_id}">
+                                <i class="fa fa-pencil m-r-5"></i> Insert and Edit
+                            </a>
+                            ${editable ? `
+                            <a class="dropdown-item" href="#" onclick="return confirmDelete('${record.sero_id}')">
+                                <i class="fa fa-trash m-r-5"></i> Delete
+                            </a>
+                            ` : `
+                            <a class="dropdown-item disabled" href="#">
+                                <i class="fa fa-trash m-r-5"></i> Delete
+                            </a>
+                            `}
                         </div>
                     </div>
                 </td>
@@ -369,10 +398,14 @@ function getActionButtons(seroId) {
                     <i class="fa fa-file-pdf m-r-5"></i> Generate Result
                 </button>
             </form>
+
+            <a class="dropdown-item" href="edit-serology.php?id=${seroId}">
+                <i class="fa fa-pencil m-r-5"></i> Insert and Edit
+            </a>
         `;
     }
     
-    if (userRole === 1) {
+    if (editable) {
         buttons += `
             <a class="dropdown-item" href="edit-serology.php?id=${seroId}">
                 <i class="fa fa-pencil m-r-5"></i> Insert and Edit
@@ -383,9 +416,6 @@ function getActionButtons(seroId) {
         `;
     } else {
         buttons += `
-            <a class="dropdown-item disabled" href="#">
-                <i class="fa fa-pencil m-r-5"></i> Insert and Edit
-            </a>
             <a class="dropdown-item disabled" href="#">
                 <i class="fa fa-trash m-r-5"></i> Delete
             </a>

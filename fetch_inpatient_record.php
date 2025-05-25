@@ -2,7 +2,7 @@
 session_start();
 include('includes/connection.php');
 
-$query = isset($_GET['query']) ? mysqli_real_escape_string($connection, $_GET['query']) : '';
+$query = isset($_GET['query']) ? trim(mysqli_real_escape_string($connection, $_GET['query'])) : '';
 $currentUser = isset($_SESSION['name']) ? mysqli_real_escape_string($connection, $_SESSION['name']) : '';
 $role = isset($_SESSION['role']) ? (int)$_SESSION['role'] : 0;
 

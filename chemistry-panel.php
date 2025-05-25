@@ -339,17 +339,29 @@ $(document).ready(function() {
 
 function filterChemistry() {
     var input = document.getElementById("chemSearchInput").value;
-    
+
     $.ajax({
         url: 'fetch_chemistry-panel.php',
         type: 'GET',
         data: { query: input },
-        success: function(response) {
-            var data = JSON.parse(response);
+        dataType: 'json', // Explicitly expect JSON response
+        success: function(data) {
+            Swal.close();
             updateChemistryTable(data);
+            
+            if (data.length === 0) {
+                $('#chemTable tbody').html('<tr><td colspan="21" class="text-center">No records found</td></tr>');
+            }
         },
         error: function(xhr, status, error) {
-            alert('Error fetching data. Please try again.');
+            console.error("AJAX Error:", status, error);
+            console.log("Response:", xhr.responseText);
+            Swal.fire({
+                title: 'Error!',
+                text: 'Failed to load records. Please try again.',
+                icon: 'error',
+                confirmButtonColor: '#d33'
+            });
         }
     });
 }
@@ -357,75 +369,110 @@ function filterChemistry() {
 function updateChemistryTable(data) {
     var tbody = $('#chemTable tbody');
     tbody.empty();
+    
+    if (!Array.isArray(data) || data.length === 0) {
+        tbody.html('<tr><td colspan="21" class="text-center">No records found</td></tr>');
+        return;
+    }
+    
     data.forEach(function(record) {
-        tbody.append(`
-            <tr>
-                <td>${record.chem_id}</td>  
-                <td>${record.patient_id}</td>
-                <td>${record.patient_name}</td>
-                <td>${record.gender}</td>
-                <td>${record.age}</td>
-                <td>${record.date_time}</td>
-                <td>${record.fbs}</td>
-                <td>${record.ppbs}</td>
-                <td>${record.bun}</td>
-                <td>${record.crea}</td>
-                <td>${record.bua}</td>
-                <td>${record.tc}</td>
-                <td>${record.tg}</td>
-                <td>${record.hdl}</td>
-                <td>${record.ldl}</td>
-                <td>${record.vldl}</td>
-                <td>${record.ast}</td>
-                <td>${record.alt}</td>
-                <td>${record.alp}</td>
-                <td>${record.remarks}</td>
-                <td class="text-right">
-                    <div class="dropdown dropdown-action">
-                        <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
-                            <i class="fa fa-ellipsis-v"></i>
+        var row = $('<tr>');
+        row.append(`
+            <td>${record.chem_id || 'N/A'}</td>  
+            <td>${record.patient_id || 'N/A'}</td>
+            <td>${record.patient_name || 'N/A'}</td>
+            <td>${record.gender || 'N/A'}</td>
+            <td>${record.age || 'N/A'}</td>
+            <td>${record.date_time || 'N/A'}</td>
+            <td>${record.fbs || 'N/A'}</td>
+            <td>${record.ppbs || 'N/A'}</td>
+            <td>${record.bun || 'N/A'}</td>
+            <td>${record.crea || 'N/A'}</td>
+            <td>${record.bua || 'N/A'}</td>
+            <td>${record.tc || 'N/A'}</td>
+            <td>${record.tg || 'N/A'}</td>
+            <td>${record.hdl || 'N/A'}</td>
+            <td>${record.ldl || 'N/A'}</td>
+            <td>${record.vldl || 'N/A'}</td>
+            <td>${record.ast || 'N/A'}</td>
+            <td>${record.alt || 'N/A'}</td>
+            <td>${record.alp || 'N/A'}</td>
+            <td>${record.remarks || 'N/A'}</td>
+            <td class="text-right">
+                <div class="dropdown dropdown-action">
+                    <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
+                        <i class="fa fa-ellipsis-v"></i>
+                    </a>
+                    <div class="dropdown-menu dropdown-menu-right" style="min-width: 200px; position: absolute; top: 50%; transform: translateY(-50%); right: 50%;">
+                        ${canPrint ? `
+                            <div class="dropdown-item">
+                                <form action="generate-chemistry.php" method="get" class="p-2">
+                                    <input type="hidden" name="id" value="${record.chem_id}">
+                                    <div class="form-group mb-2">
+                                        <input type="text" class="form-control" name="filename" placeholder="Filename (required)" required>
+                                    </div>
+                                    <button class="btn btn-primary btn-sm custom-btn" type="submit">
+                                        <i class="fa fa-file-pdf m-r-5"></i> Generate PDF
+                                    </button>
+                                </form>
+                            </div>
+                            <div class="dropdown-divider"></div>
+                        ` : ''}
+                        <a class="dropdown-item" href="edit-chemistry-panel.php?id=${record.chem_id}">
+                            <i class="fa fa-pencil m-r-5"></i> Insert and Edit
                         </a>
-                        <div class="dropdown-menu dropdown-menu-right">
-                            ${getActionButtons(record.chem_id)}
-                        </div>
+                        ${editable ? `
+                            <a class="dropdown-item" href="#" onclick="return confirmDelete('${record.chem_id}')">
+                                <i class="fa fa-trash m-r-5"></i> Delete
+                            </a>
+                        ` : `
+                            <a class="dropdown-item disabled" href="#">
+                                <i class="fa fa-trash m-r-5"></i> Delete
+                            </a>
+                        `}
                     </div>
-                </td>
-            </tr>
+                </div>
+            </td>
         `);
+        tbody.append(row);
     });
 }
-
+  
 function getActionButtons(chemId) {
     let buttons = '';
     
+    // Generate PDF button - only for users with canPrint permission
     if (canPrint) {
         buttons += `
-            <form action="generate-chemistry.php" method="get">
+            <form action="generate-chemistry.php" method="get" class="p-2">
                 <input type="hidden" name="id" value="${chemId}">
-                <div class="form-group">
-                    <input type="text" class="form-control" id="filename" name="filename" placeholder="Enter File Name">
+                <div class="form-group mb-2">
+                    <input type="text" class="form-control" name="filename" placeholder="Filename (required)" required>
                 </div>
                 <button class="btn btn-primary btn-sm custom-btn" type="submit">
-                    <i class="fa fa-file-pdf m-r-5"></i> Generate Result
+                    <i class="fa fa-file-pdf m-r-5"></i> Generate PDF
                 </button>
             </form>
+            <div class="dropdown-divider"></div>
         `;
     }
     
+    // Insert and Edit button - available to all users
+    buttons += `
+        <a class="dropdown-item" href="edit-chemistry-panel.php?id=${chemId}">
+            <i class="fa fa-pencil m-r-5"></i> Insert and Edit
+        </a>
+    `;
+
+    // Delete button - only for users with editable permission
     if (editable) {
         buttons += `
-            <a class="dropdown-item" href="edit-chemistry.php?id=${chemId}">
-                <i class="fa fa-pencil m-r-5"></i> Insert and Edit
-            </a>
             <a class="dropdown-item" href="#" onclick="return confirmDelete('${chemId}')">
                 <i class="fa fa-trash m-r-5"></i> Delete
             </a>
         `;
     } else {
         buttons += `
-            <a class="dropdown-item disabled" href="#">
-                <i class="fa fa-pencil m-r-5"></i> Edit
-            </a>
             <a class="dropdown-item disabled" href="#">
                 <i class="fa fa-trash m-r-5"></i> Delete
             </a>

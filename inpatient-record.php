@@ -36,50 +36,136 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['selectedMedicines']) &
     $selectedMedicines = json_decode($_POST['selectedMedicines'], true);
 
     if ($selectedMedicines) {
-        foreach ($selectedMedicines as $medicine) {
-            $medicineId = sanitize($connection, $medicine['id']);
-            $medicineName = sanitize($connection, $medicine['name']);
-            $medicineBrand = sanitize($connection, $medicine['brand']);
-            $quantity = intval($medicine['quantity']);
-            $price = floatval($medicine['price']);
-            $totalPrice = $quantity * $price;
+        // Start transaction
+        $connection->begin_transaction();
+        
+        try {
+            // 1. First get all current treatments for this inpatient
+            $current_treatments = [];
+            $current_query = $connection->prepare("SELECT medicine_name, medicine_brand, total_quantity FROM tbl_treatment WHERE inpatient_id = ?");
+            $current_query->bind_param("s", $inpatientId);
+            $current_query->execute();
+            $current_result = $current_query->get_result();
+            
+            while ($row = $current_result->fetch_assoc()) {
+                $key = $row['medicine_name'] . '|' . $row['medicine_brand'];
+                $current_treatments[$key] = $row['total_quantity'];
+            }
+            
+            // 2. Delete all existing treatments for this inpatient
+            $delete_query = $connection->prepare("DELETE FROM tbl_treatment WHERE inpatient_id = ?");
+            $delete_query->bind_param("s", $inpatientId);
+            $delete_query->execute();
 
-            $insertQuery = $connection->prepare("
-                INSERT INTO tbl_treatment (inpatient_id, patient_id, patient_name, medicine_name, medicine_brand, total_quantity, price, total_price, treatment_date)
-                SELECT inpatient_id, patient_id, patient_name, ?, ?, ?, ?, ?, NOW()
-                FROM tbl_inpatient_record
-                WHERE inpatient_id = ?
-            ");
-            $insertQuery->bind_param("ssssss", $medicineName, $medicineBrand, $quantity, $price, $totalPrice, $inpatientId);
-            if (!$insertQuery->execute()) {
-                $msg = "Error inserting treatment: " . $connection->error;
-                break;
+            // 3. Reset medicine quantities in inpatient record
+            $reset_query = $connection->prepare("UPDATE tbl_inpatient_record SET medicine_name = '', medicine_brand = '', total_quantity = 0 WHERE inpatient_id = ?");
+            $reset_query->bind_param("s", $inpatientId);
+            $reset_query->execute();
+
+            // 4. Process each selected medicine
+            $new_medicines = [];
+            $new_quantities = [];
+            
+            foreach ($selectedMedicines as $medicine) {
+                $medicineId = sanitize($connection, $medicine['id']);
+                $medicineName = sanitize($connection, $medicine['name']);
+                $medicineBrand = sanitize($connection, $medicine['brand']);
+                $quantity = intval($medicine['quantity']);
+                $price = floatval($medicine['price']);
+                $totalPrice = $quantity * $price;
+
+                // Get patient details from inpatient record
+                $patient_query = $connection->prepare("SELECT patient_id, patient_name FROM tbl_inpatient_record WHERE inpatient_id = ?");
+                $patient_query->bind_param("s", $inpatientId);
+                $patient_query->execute();
+                $patient_result = $patient_query->get_result();
+                $patient = $patient_result->fetch_assoc();
+
+                // Insert new treatment record
+                $insertQuery = $connection->prepare("
+                    INSERT INTO tbl_treatment (inpatient_id, patient_id, patient_name, medicine_name, medicine_brand, total_quantity, price, total_price, treatment_date)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                ");
+                $insertQuery->bind_param("ssssssss", $inpatientId, $patient['patient_id'], $patient['patient_name'], $medicineName, $medicineBrand, $quantity, $price, $totalPrice);
+                
+                if (!$insertQuery->execute()) {
+                    throw new Exception("Error inserting treatment: " . $connection->error);
+                }
+
+                // Track new medicines for inventory update
+                $key = $medicineName . '|' . $medicineBrand;
+                $new_medicines[$key] = $medicineId;
+                $new_quantities[$key] = $quantity;
+                
+                // Update inpatient record with concatenated medicine info
+                $updateInpatientQuery = $connection->prepare("
+                    UPDATE tbl_inpatient_record
+                    SET 
+                        medicine_name = IF(medicine_name IS NULL OR medicine_name = '', ?, CONCAT(medicine_name, ', ', ?)),
+                        medicine_brand = IF(medicine_brand IS NULL OR medicine_brand = '', ?, CONCAT(medicine_brand, ', ', ?)),
+                        total_quantity = IF(total_quantity IS NULL, ?, total_quantity + ?)
+                    WHERE inpatient_id = ?
+                ");
+                $updateInpatientQuery->bind_param("sssssis", $medicineName, $medicineName, $medicineBrand, $medicineBrand, $quantity, $quantity, $inpatientId);
+                
+                if (!$updateInpatientQuery->execute()) {
+                    throw new Exception("Error updating inpatient record: " . $connection->error);
+                }
             }
 
-            $updateMedicineQuery = $connection->prepare("UPDATE tbl_medicines SET quantity = quantity - ? WHERE id = ?");
-            $updateMedicineQuery->bind_param("is", $quantity, $medicineId);
-            if (!$updateMedicineQuery->execute()) {
-                $msg = "Error updating medicine quantity: " . $connection->error;
-                break;
+            // 5. Update medicine inventory - first add back quantities from removed treatments
+            foreach ($current_treatments as $key => $old_quantity) {
+                // If this medicine was in old treatments but not in new ones, add back its quantity
+                if (!isset($new_quantities[$key])) {
+                    list($name, $brand) = explode('|', $key);
+                    
+                    $update_query = $connection->prepare("
+                        UPDATE tbl_medicines 
+                        SET quantity = quantity + ? 
+                        WHERE medicine_name = ? AND medicine_brand = ?
+                    ");
+                    $update_query->bind_param("iss", $old_quantity, $name, $brand);
+                    
+                    if (!$update_query->execute()) {
+                        throw new Exception("Error returning medicine to inventory: " . $connection->error);
+                    }
+                }
+            }
+            
+            // 6. Update medicine inventory - subtract quantities for new/updated treatments
+            foreach ($new_quantities as $key => $new_quantity) {
+                list($name, $brand) = explode('|', $key);
+                $medicineId = $new_medicines[$key];
+                
+                // Calculate net change (new quantity minus old quantity if it existed)
+                $net_change = $new_quantity;
+                if (isset($current_treatments[$key])) {
+                    $net_change = $new_quantity - $current_treatments[$key];
+                }
+                
+                // Only update if there's a net change
+                if ($net_change != 0) {
+                    $update_query = $connection->prepare("
+                        UPDATE tbl_medicines 
+                        SET quantity = quantity - ? 
+                        WHERE id = ?
+                    ");
+                    $update_query->bind_param("is", $net_change, $medicineId);
+                    
+                    if (!$update_query->execute()) {
+                        throw new Exception("Error updating medicine inventory: " . $connection->error);
+                    }
+                }
             }
 
-            $updateInpatientQuery = $connection->prepare("
-                UPDATE tbl_inpatient_record
-                SET 
-                    medicine_name = IF(medicine_name IS NULL OR medicine_name = '', ?, CONCAT(medicine_name, ', ', ?)),
-                    medicine_brand = IF(medicine_brand IS NULL OR medicine_brand = '', ?, CONCAT(medicine_brand, ', ', ?)),
-                    total_quantity = IF(total_quantity IS NULL, ?, total_quantity + ?)
-                WHERE inpatient_id = ?
-            ");
-            $updateInpatientQuery->bind_param("sssssis", $medicineName, $medicineName, $medicineBrand, $medicineBrand, $quantity, $quantity, $inpatientId);
-            if (!$updateInpatientQuery->execute()) {
-                $msg = "Error updating inpatient record: " . $connection->error;
-                break;
-            }
-        }
-
-        if (!isset($msg)) {
-            $msg = "Treatment added successfully.";
+            // Commit transaction
+            $connection->commit();
+            $msg = "Treatment updated successfully.";
+            
+        } catch (Exception $e) {
+            // Rollback transaction on error
+            $connection->rollback();
+            $msg = $e->getMessage();
         }
     } else {
         $msg = "Error: Invalid medicines data.";
@@ -247,6 +333,7 @@ ob_end_flush();
                         <th>Gender</th>
                         <th>Doctor Incharge</th>
                         <th>Lab Result</th>
+                        <th>Radiographic Images</th>
                         <th>Diagnosis</th>
                         <th>Medications</th>
                         <th>Room Type</th>
@@ -324,6 +411,23 @@ ob_end_flush();
                                 </form>
                                 <?php } ?>
                             </td>
+                            <td>
+                                <?php if ($_SESSION['role'] == 2) { 
+                                    $rad_query = $connection->prepare("SELECT COUNT(*) as count FROM tbl_radiology WHERE patient_id = ? AND radiographic_image IS NOT NULL AND radiographic_image != '' AND deleted = 0");
+                                    $rad_query->bind_param("s", $row['patient_id']);
+                                    $rad_query->execute();
+                                    $rad_result = $rad_query->get_result();
+                                    $rad_count = $rad_result->fetch_assoc()['count'];
+                                    if ($rad_count > 0) {
+                                ?>
+                                    <button class="btn btn-primary custom-btn" onclick="showRadiologyImages('<?php echo $row['patient_id']; ?>')">
+                                        <i class="fa fa-image m-r-5"></i> View Images
+                                    </button>
+                                <?php 
+                                    }
+                                } 
+                                ?>
+                            </td>
                             <td><?php echo htmlspecialchars($row['diagnosis']); ?></td>
                             <td>
                                 <?php if (!empty($row['treatments'])): ?>
@@ -345,7 +449,7 @@ ob_end_flush();
                                         <?php if ($_SESSION['role'] == 2 && $_SESSION['name'] == $row['doctor_incharge']) { ?>
                                             <button class="dropdown-item diagnosis-btn" data-toggle="modal" data-target="#diagnosisModal" data-id="<?php echo htmlspecialchars($row['inpatient_id']); ?>" <?php echo !empty($row['diagnosis']) ? 'disabled' : ''; ?>><i class="fa fa-stethoscope m-r-5"></i> Diagnosis</button>
                                         <?php } ?>
-                                        <?php if ($_SESSION['role'] == 3 && empty($row['doctor_incharge'])) { ?>
+                                        <?php if ($_SESSION['role'] == 9 && empty($row['doctor_incharge'])) { ?>
                                             <button class="dropdown-item select-doctor-btn" data-toggle="modal" data-target="#doctorModal" data-id="<?php echo htmlspecialchars($row['inpatient_id']); ?>"><i class="fa fa-user-md m-r-5"></i> Select Doctor</button>
                                         <?php } ?>
                                         <?php if ($_SESSION['role'] == 9) { ?>
@@ -365,31 +469,25 @@ ob_end_flush();
     </div>
 </div>
 
+<!-- Update the treatment modal section to preload existing treatments -->
 <div id="treatmentModal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="treatmentModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="treatmentModalLabel">Select Medicines</h5>
+                <h5 class="modal-title" id="treatmentModalLabel">Manage Treatments</h5>
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
             <div class="modal-body">
                 <form id="medicineSelectionForm" method="POST" action="inpatient-record.php">
-                    <!-- Hidden input to pass inpatient ID -->
                     <input type="hidden" name="inpatientIdTreatment" id="inpatientIdTreatment">
                     
-                    <!-- Medicine Search Section -->
                     <div class="form-group">
                         <label for="medicineSearchInput">Search Medicines</label>
-                        <input
-                            type="text"
-                            class="form-control"
-                            id="medicineSearchInput"
-                            placeholder="Enter medicine name or brand"
-                            onkeyup="searchMedicines()"
-                        >
+                        <input type="text" class="form-control" id="medicineSearchInput" placeholder="Enter medicine name or brand" onkeyup="searchMedicines()">
                     </div>
+                    
                     <div class="table-responsive mb-4">
                         <table class="table table-hover table-striped">
                             <thead style="background-color: #CCCCCC;">
@@ -409,8 +507,7 @@ ob_end_flush();
                         </table>
                     </div>
 
-                    <!-- Selected Medicines Section -->
-                    <h5>Selected Medicines</h5>
+                    <h5>Current Treatments</h5>
                     <ul id="selectedMedicinesList" class="list-group">
                         <!-- Selected medicines will populate here -->
                     </ul>
@@ -419,7 +516,7 @@ ob_end_flush();
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                <button type="submit" class="btn btn-primary" form="medicineSelectionForm">Save Treatment</button>
+                <button type="submit" class="btn btn-primary" form="medicineSelectionForm">Save Treatments</button>
             </div>
         </div>
     </div>
@@ -484,9 +581,77 @@ ob_end_flush();
     </div>
 </div>
 
+<!-- Radiology Images Grid Modal -->
+<div class="modal fade" id="radiologyModal" tabindex="-1" role="dialog" aria-labelledby="radiologyModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="radiologyModalLabel">Radiographic Images</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="radiologyImagesContainer" class="row">
+                    <!-- Images will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Image Viewer Modal -->
+<div class="modal fade" id="imageViewerModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="imageViewerTitle">Radiographic Image</h5>
+            </div>
+            <div class="modal-body p-0">
+                <div class="image-container" style="height: 80vh;">
+                    <img id="viewedImage" src="" class="img-fluid" style="max-width: 100%; max-height: 100%; transform-origin: center center;">
+                </div>
+            </div>
+            <div class="modal-footer d-flex justify-content-between align-items-center">
+                <div class="zoom-controls btn-group btn-group-sm">
+                    <button class="btn btn-outline-secondary zoom-out-btn" title="Zoom Out">
+                        <i class="fas fa-search-minus"></i>
+                    </button>
+                    <button class="btn btn-outline-secondary zoom-reset-btn" title="Reset Zoom">
+                        <i class="fas fa-expand"></i>
+                    </button>
+                    <button class="btn btn-outline-secondary zoom-in-btn" title="Zoom In">
+                        <i class="fas fa-search-plus"></i>
+                    </button>
+                </div>
+                <div class="rotation-controls btn-group btn-group-sm">
+                    <button class="btn btn-outline-secondary rotate-left-btn" title="Rotate Left">
+                        <i class="fas fa-undo"></i>
+                    </button>
+                    <button class="btn btn-outline-secondary rotate-right-btn" title="Rotate Right">
+                        <i class="fas fa-redo"></i>
+                    </button>
+                </div>
+                <div class="ml-auto">
+                    <button type="button" class="btn btn-primary" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Success and Error Alerts -->
 <div id="successAlert"></div>
 <div id="errorAlert"></div>
+
+<!-- jQuery first -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<!-- Then Popper.js -->
+<script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+<!-- Then Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.min.js"></script>
+<!-- Then other libraries -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <?php
 include('footer.php');
@@ -530,44 +695,84 @@ document.querySelector('#addPatientForm').addEventListener('submit', function(ev
     }, 1000); // Adjust the timeout as needed
 });
 </script>
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
 <script>
-    $(document).on('click', '.diagnosis-btn', function(){
-        var inpatientId = $(this).data('id');
-        $('#inpatientIdDiagnosis').val(inpatientId); // Update the ID of the hidden input field
+   $(document).on('click', '.diagnosis-btn', function () {
+    const inpatientId = $(this).data('id');
+    $('#diagnosisModal').modal('show');
+    // Populate modal or handle accordingly
     });
-    $(document).on('click', '.treatment-btn', function(){
-        var inpatientId = $(this).data('id');
-        $('#inpatientIdTreatment').val(inpatientId); // Update the ID of the hidden input field
+
+    $(document).on('click', '.select-doctor-btn', function () {
+        const inpatientId = $(this).data('id');
+        $('#doctorModal').modal('show');
+        // Populate modal or handle accordingly
+    });
+
+    $(document).on('click', '.treatment-btn', function () {
+        const inpatientId = $(this).data('id');
+        $('#treatmentModal').modal('show');
+        // Populate modal or handle accordingly
     });
 </script>
 
 <script>
 let selectedMedicines = [];
 
-// Function to search medicines
+// Function to load existing treatments when modal opens
+function loadExistingTreatments(inpatientId) {
+    $.ajax({
+        url: 'fetch-existing-treatments.php',
+        type: 'GET',
+        data: { inpatient_id: inpatientId },
+        dataType: 'json',
+        success: function(data) {
+            selectedMedicines = data;
+            updateSelectedMedicinesUI();
+        },
+        error: function() {
+            alert('Error loading existing treatments');
+        }
+    });
+}
+
+// Update the treatment button click handler
+$(document).on('click', '.treatment-btn', function() {
+    var inpatientId = $(this).data('id');
+    $('#inpatientIdTreatment').val(inpatientId);
+    selectedMedicines = []; // Clear the array
+    $('#selectedMedicinesList').html(''); // Clear the UI
+    $('#selectedMedicines').val(''); // Clear the hidden input
+    
+    // Load existing treatments
+    loadExistingTreatments(inpatientId);
+});
+
+// Function to search medicines (updated to exclude already selected medicines)
 function searchMedicines() {
     const query = document.getElementById('medicineSearchInput').value.trim();
+    const inpatientId = $('#inpatientIdTreatment').val();
 
     if (query.length > 2) {
         $.ajax({
             url: 'search-medicines.php',
             type: 'GET',
-            data: { query },
-            success: function (data) {
-                $('#medicineSearchResults').html(data); // Populate search results
+            data: { 
+                query: query,
+                exclude: selectedMedicines.map(m => m.id) // Exclude already selected medicines
             },
-            error: function () {
+            success: function(data) {
+                $('#medicineSearchResults').html(data);
+            },
+            error: function() {
                 alert('Error fetching medicines. Please try again later.');
             }
         });
     } else {
-        $('#medicineSearchResults').html('<tr><td colspan="7">Please enter at least 3 characters to search.</td></tr>');
+        $('#medicineSearchResults').html('<tr><td colspan="8">Please enter at least 3 characters to search.</td></tr>');
     }
 }
 
-// Function to add medicine to the selected list
+// Function to add medicine to the selected list (updated to handle updates)
 function addMedicineToList(id, name, brand, category, availableQuantity, price, expiration_date, event) {
     if (event) {
         event.preventDefault();
@@ -577,7 +782,7 @@ function addMedicineToList(id, name, brand, category, availableQuantity, price, 
     const quantityInput = parseInt(document.getElementById(`quantityInput-${id}`).value, 10);
 
     if (quantityInput <= 0 || quantityInput > availableQuantity) {
-        alert('Invalid quantity. Please try again.');
+        alert('Invalid quantity. Please enter a value between 1 and ' + availableQuantity);
         return;
     }
 
@@ -597,15 +802,15 @@ function addMedicineToList(id, name, brand, category, availableQuantity, price, 
             quantity: quantityInput,
             price: parseFloat(price),
             expiration_date,
+            available_quantity: availableQuantity
         };
         selectedMedicines.push(medicine);
     }
 
-    // Update the UI
     updateSelectedMedicinesUI();
 }
 
-// Function to update the selected medicines UI
+// Function to update the selected medicines UI (updated to show available quantity)
 function updateSelectedMedicinesUI() {
     $('#selectedMedicinesList').html('');
 
@@ -613,16 +818,27 @@ function updateSelectedMedicinesUI() {
         const listItem = `
             <li class="list-group-item d-flex justify-content-between align-items-center">
                 <div>
-                    <strong>${medicine.name} (${medicine.brand}) (${medicine.category})</strong> - 
-                    ${medicine.quantity} pcs @ ${medicine.price} PHP each 
-                    <small>(Exp: ${medicine.expiration_date})</small>
+                    <strong>${medicine.name} (${medicine.brand})</strong><br>
+                    <small>Category: ${medicine.category}</small><br>
+                    <small>Exp: ${medicine.expiration_date}</small><br>
+                    <small>Price: ${medicine.price} PHP each</small>
                 </div>
-                <button 
-                    type="button" 
-                    class="btn btn-danger btn-sm" 
-                    onclick="removeMedicineFromList(${index})">
-                    Remove
-                </button>
+                <div class="d-flex align-items-center">
+                    <div class="mr-3">
+                        <label>Quantity:</label>
+                        <input type="number" 
+                               class="form-control form-control-sm" 
+                               value="${medicine.quantity}" 
+                               min="1" 
+                               max="${medicine.available_quantity}"
+                               onchange="updateMedicineQuantity(${index}, this.value)">
+                    </div>
+                    <button type="button" 
+                            class="btn btn-danger btn-sm" 
+                            onclick="removeMedicineFromList(${index})">
+                        Remove
+                    </button>
+                </div>
             </li>`;
         $('#selectedMedicinesList').append(listItem);
     });
@@ -630,21 +846,27 @@ function updateSelectedMedicinesUI() {
     $('#selectedMedicines').val(JSON.stringify(selectedMedicines));
 }
 
-// Function to remove a medicine from the selected list
-function removeMedicineFromList(index) {
-    selectedMedicines.splice(index, 1); // Remove the medicine by index
+// New function to update quantity of existing medicine
+function updateMedicineQuantity(index, newQuantity) {
+    const medicine = selectedMedicines[index];
+    const availableQty = medicine.available_quantity;
+    newQuantity = parseInt(newQuantity);
+    
+    if (newQuantity <= 0 || newQuantity > availableQty) {
+        alert('Invalid quantity. Please enter a value between 1 and ' + availableQty);
+        return false;
+    }
+    
+    selectedMedicines[index].quantity = newQuantity;
     updateSelectedMedicinesUI();
+    return true;
 }
 
-// Reset selected medicines when opening the modal
-$('.treatment-btn').on('click', function () {
-    const inpatientId = $(this).data('id');
-    $('#inpatientIdTreatment').val(inpatientId);
-    selectedMedicines = []; // Clear the array
-    $('#selectedMedicinesList').html(''); // Clear the UI
-    $('#selectedMedicines').val(''); // Clear the hidden input
-});
-
+// Function to remove a medicine from the selected list
+function removeMedicineFromList(index) {
+    selectedMedicines.splice(index, 1);
+    updateSelectedMedicinesUI();
+}
 </script>
 
 <script>
@@ -681,6 +903,15 @@ $('.treatment-btn').on('click', function () {
                             <i class="fa fa-file-pdf m-r-5"></i> View Result
                         </button>
                     </form>`;
+            }
+
+            // Radiology button - only show for role 2 (doctor) and if has_radiology is true
+            var radiologyButton = '';
+            if (row.user_role == 2 && doctor_name == row.doctor_incharge) {
+                radiologyButton = `
+                    <button class="btn btn-primary custom-btn" onclick="showRadiologyImages('${row.patient_id}')">
+                        <i class="fa fa-image m-r-5"></i> View Images
+                    </button>`;
             }
             
             // Prepare action buttons based on user role
@@ -740,6 +971,7 @@ $('.treatment-btn').on('click', function () {
                 <td>${row.gender}</td>
                 <td>${row.doctor_incharge || 'Not assigned'}</td>
                 <td>${labResultButton}</td>
+                <td>${radiologyButton}</td>
                 <td>${row.diagnosis || ''}</td>
                 <td>${row.treatments || 'No treatments added'}</td>
                 <td>${row.room_type}</td>
@@ -795,6 +1027,53 @@ $('.treatment-btn').on('click', function () {
         $("#addPatientBtn").prop("disabled", false); // Enable the Add button
         $("#searchResults").html("").hide(); // Clear and hide the dropdown
     });
+
+ $('.dropdown-toggle').on('click', function (e) {
+        var $el = $(this).next('.dropdown-menu');
+        var isVisible = $el.is(':visible');
+        
+        // Hide all dropdowns
+        $('.dropdown-menu').slideUp('400');
+        
+        // If this wasn't already visible, slide it down
+        if (!isVisible) {
+            $el.stop(true, true).slideDown('400');
+        }
+        
+        // Close the dropdown if clicked outside of it
+        $(document).on('click', function (e) {
+            if (!$(e.target).closest('.dropdown').length) {
+                $('.dropdown-menu').slideUp('400');
+            }
+        });
+    });
+    
+    // Delegate the click event to a parent that stays in the DOM (e.g. #inpatientTable)
+    $('#inpatientTable').on('click', '.dropdown-toggle', function (e) {
+        e.preventDefault(); // Prevent default action if it's a link
+
+        var $el = $(this).next('.dropdown-menu');
+        var isVisible = $el.is(':visible');
+
+        // Hide all dropdowns
+        $('.dropdown-menu').slideUp(400);
+
+        // If this wasn't already visible, slide it down
+        if (!isVisible) {
+            $el.stop(true, true).slideDown(400);
+        }
+
+        // Prevent the event from bubbling to document
+        e.stopPropagation();
+    });
+
+    // Click outside to close all dropdowns
+    $(document).on('click', function (e) {
+        if (!$(e.target).closest('.dropdown').length) {
+            $('.dropdown-menu').slideUp(400);
+        }
+    });
+
 </script>
 
 <script>
@@ -829,26 +1108,161 @@ $('#doctorForm').submit(function(e) {
         }
     });
 });
+</script>
 
-$('.dropdown-toggle').on('click', function (e) {
-        var $el = $(this).next('.dropdown-menu');
-        var isVisible = $el.is(':visible');
-        
-        // Hide all dropdowns
-        $('.dropdown-menu').slideUp('400');
-        
-        // If this wasn't already visible, slide it down
-        if (!isVisible) {
-            $el.stop(true, true).slideDown('400');
-        }
-        
-        // Close the dropdown if clicked outside of it
-        $(document).on('click', function (e) {
-            if (!$(e.target).closest('.dropdown').length) {
-                $('.dropdown-menu').slideUp('400');
+<script>
+// Image viewer variables
+var currentZoom = 1;
+var currentRotation = 0;
+var isDragging = false;
+var startX, startY, translateX = 0, translateY = 0;
+
+function updateImageTransform() {
+    const transform = `translate(${translateX}px, ${translateY}px) rotate(${currentRotation}deg) scale(${currentZoom})`;
+    $('#viewedImage').css('transform', transform);
+}
+
+function openImageViewer(imageId, examType, imageSrc) {
+    $('#imageViewerTitle').text(examType);
+    $('#viewedImage').attr('src', imageSrc);
+    
+    // Reset viewer state
+    currentZoom = 1;
+    currentRotation = 0;
+    translateX = 0;
+    translateY = 0;
+    updateImageTransform();
+    
+    $('#imageViewerModal').modal('show');
+}
+
+function showRadiologyImages(patientId) {
+    // Show loading state
+    $('#radiologyImagesContainer').html(`
+        <div class="col-12 text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="sr-only">Loading...</span>
+            </div>
+            <p class="mt-2">Loading images...</p>
+        </div>
+    `);
+    
+    // Show the modal
+    $('#radiologyModal').modal('show');
+    
+    // Fetch radiology images
+    $.ajax({
+        url: 'fetch-radiology-images.php',
+        type: 'GET',
+        data: { patient_id: patientId },
+        dataType: 'json',
+        success: function(data) {
+            if (data.images && data.images.length > 0) {
+                let content = '';
+                data.images.forEach(image => {
+                    content += `
+                        <div class="col-md-4 mb-3">
+                            <div class="card h-100">
+                                <img src="fetch-image.php?id=${image.id}" 
+                                     class="card-img-top" 
+                                     style="height: 200px; object-fit: cover; cursor: pointer"
+                                     onclick="openImageViewer('${image.id}', '${image.exam_type.replace(/'/g, "\\'")}', 'fetch-image.php?id=${image.id}')"
+                                     alt="Radiology Image">
+                                <div class="card-body">
+                                    <h6 class="card-title mb-1">${image.exam_type}</h6>
+                                    <p class="card-text small text-muted">${image.test_type}</p>
+                                </div>
+                            </div>
+                        </div>`;
+                });
+                $('#radiologyImagesContainer').html(content);
+            } else {
+                $('#radiologyImagesContainer').html(`
+                    <div class="col-12 text-center py-5">
+                        <div class="text-muted">
+                            <i class="fas fa-image fa-3x mb-3"></i>
+                            <p>No radiographic images found for this patient.</p>
+                        </div>
+                    </div>
+                `);
             }
-        });
+        },
+        error: function(xhr, status, error) {
+            console.error('Error fetching images:', error);
+            $('#radiologyImagesContainer').html(`
+                <div class="col-12 text-center py-5">
+                    <div class="text-danger">
+                        <i class="fas fa-exclamation-circle fa-3x mb-3"></i>
+                        <p>Failed to load radiographic images. Please try again.</p>
+                    </div>
+                </div>
+            `);
+        }
     });
+}
+
+$(document).ready(function() {
+    // Initialize zoom controls
+    $('.zoom-in-btn').on('click', function() {
+        currentZoom *= 1.2;
+        updateImageTransform();
+    });
+    
+    $('.zoom-out-btn').on('click', function() {
+        currentZoom /= 1.2;
+        if (currentZoom < 0.5) currentZoom = 0.5;
+        updateImageTransform();
+    });
+    
+    $('.zoom-reset-btn').on('click', function() {
+        currentZoom = 1;
+        currentRotation = 0;
+        translateX = 0;
+        translateY = 0;
+        updateImageTransform();
+    });
+    
+    // Rotation controls
+    $('.rotate-left-btn').on('click', function() {
+        currentRotation -= 90;
+        updateImageTransform();
+    });
+    
+    $('.rotate-right-btn').on('click', function() {
+        currentRotation += 90;
+        updateImageTransform();
+    });
+    
+    // Drag functionality
+    const imageContainer = $('.image-container');
+    
+    imageContainer.on('mousedown touchstart', function(e) {
+        isDragging = true;
+        startX = (e.type === 'mousedown') ? e.pageX : e.originalEvent.touches[0].pageX;
+        startY = (e.type === 'mousedown') ? e.pageY : e.originalEvent.touches[0].pageY;
+        e.preventDefault();
+    });
+    
+    $(document).on('mousemove touchmove', function(e) {
+        if (!isDragging) return;
+        
+        const currentX = (e.type === 'mousemove') ? e.pageX : e.originalEvent.touches[0].pageX;
+        const currentY = (e.type === 'mousemove') ? e.pageY : e.originalEvent.touches[0].pageY;
+        
+        translateX += (currentX - startX);
+        translateY += (currentY - startY);
+        
+        startX = currentX;
+        startY = currentY;
+        
+        updateImageTransform();
+        e.preventDefault();
+    });
+    
+    $(document).on('mouseup touchend', function() {
+        isDragging = false;
+    });
+});
 </script>
 
 <style>
@@ -882,6 +1296,13 @@ $('.dropdown-toggle').on('click', function (e) {
     font-size: 0.875rem;
     line-height: 1.5;
 }
+
+.custom-btn {
+    min-width: 120px; /* Adjust as needed */
+    padding: 0.95rem 0.30rem;
+    font-size: 0.900rem;
+    line-height: 1.5;
+}  
 .btn-outline-primary {
     background-color:rgb(252, 252, 252);
     color: gray;
@@ -1030,5 +1451,71 @@ color: #6c757d;
     margin-top: 1rem;
     border: 1px solid #eee;
     border-radius: 6px;
+}
+.image-container {
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+    height: 80vh;
+}
+
+#modalImage {
+    transform-origin: center center;
+    transition: transform 0.15s ease-out;
+    max-height: 100%;
+    max-width: 100%;
+    position: absolute;
+}
+
+.modal-content {
+    user-select: none;
+}
+
+.zoom-controls .btn, .btn-group-sm .btn {
+    width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.radiology-images-modal .swal2-content {
+    padding: 20px;
+}
+
+.radiology-images-modal .card {
+    transition: transform 0.2s;
+}
+
+.radiology-images-modal .card:hover {
+    transform: scale(1.02);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .modal-footer {
+        flex-wrap: wrap;
+    }
+    
+    .zoom-controls, .btn-group {
+        margin-bottom: 8px;
+    }
+}
+#radiologyImagesContainer .card {
+    transition: transform 0.2s;
+    cursor: pointer;
+}
+
+#radiologyImagesContainer .card:hover {
+    transform: scale(1.02);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+#radiologyImagesContainer .card-img-top {
+    object-fit: cover;
+    height: 200px;
 }
 </style>

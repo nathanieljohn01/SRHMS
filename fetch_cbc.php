@@ -18,6 +18,7 @@ if(!empty($query)) {
         OR esr LIKE '%$query%'
         OR segmenters LIKE '%$query%'
         OR lymphocytes LIKE '%$query%'
+        OR eosinophils LIKE '%$query%'
         OR monocytes LIKE '%$query%'
         OR bands LIKE '%$query%'
         OR platelets LIKE '%$query%'
@@ -53,6 +54,7 @@ while($row = mysqli_fetch_assoc($result)) {
         'esr' => $row['esr'],
         'segmenters' => $row['segmenters'],
         'lymphocytes' => $row['lymphocytes'],
+        'eosinophils' => $row['eosinophils'],
         'monocytes' => $row['monocytes'],
         'bands' => $row['bands'],
         'platelets' => $row['platelets']

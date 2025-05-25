@@ -283,11 +283,10 @@ function clearSearch() {
     filterCBC();
 }
 
-let canPrint, userRole, editable;
+let canPrint, editable;
 
 $(document).ready(function() {
     canPrint = <?php echo $can_print ? 'true' : 'false' ?>;
-    userRole = <?php echo $_SESSION['role']; ?>;
     editable = <?php echo $editable ? 'true' : 'false' ?>;
 });
 
@@ -328,6 +327,7 @@ function updateCBCTable(data) {
                 <td>${record.esr}</td>
                 <td>${record.segmenters}</td>
                 <td>${record.lymphocytes}</td>
+                <td>${record.eosinophils}</td>
                 <td>${record.monocytes}</td>
                 <td>${record.bands}</td>
                 <td>${record.platelets}</td>
@@ -336,8 +336,27 @@ function updateCBCTable(data) {
                         <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
                             <i class="fa fa-ellipsis-v"></i>
                         </a>
-                        <div class="dropdown-menu dropdown-menu-right">
-                            ${getActionButtons(record.cbc_id)}
+                        <div class="dropdown-menu dropdown-menu-right" style="min-width: 200px; position: absolute; top: 50%; transform: translateY(-50%); right: 50%;">
+                            ${canPrint ? `
+                                <div class="dropdown-item">
+                                    <form action="generate-cbc.php" method="get" class="p-2">
+                                        <input type="hidden" name="id" value="${record.cbc_id}">
+                                        <div class="form-group mb-2">
+                                            <input type="text" class="form-control" name="filename" placeholder="Filename (required)" required>
+                                        </div>
+                                        <button class="btn btn-primary btn-sm custom-btn" type="submit">
+                                            <i class="fa fa-file-pdf m-r-5"></i> Generate PDF
+                                        </button>
+                                    </form>
+                                </div>
+                                <div class="dropdown-divider"></div>
+                            ` : ''}
+                            <a class="dropdown-item" href="edit-cbc.php?id=${record.cbc_id}"><i class="fa fa-pencil m-r-5"></i> Insert and Edit</a>
+                            ${editable ? `
+                                <a class="dropdown-item" href="#" onclick="return confirmDelete('${record.cbc_id}')"><i class="fa fa-trash m-r-5"></i> Delete</a>
+                            ` : `
+                                <a class="dropdown-item disabled" href="#"><i class="fa fa-trash m-r-5"></i> Delete</a>
+                            `}
                         </div>
                     </div>
                 </td>
@@ -363,7 +382,7 @@ function getActionButtons(cbcId) {
         `;
     }
     
-    if (userRole === 1) {
+    if (editable) {
         buttons += `
             <a class="dropdown-item" href="edit-cbc.php?id=${cbcId}">
                 <i class="fa fa-pencil m-r-5"></i> Insert and Edit

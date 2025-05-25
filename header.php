@@ -155,7 +155,7 @@
                             </li>
                             <li class="sidenav">
                                 <a href="#laboratorySubmenu" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle" aria-haspopup="true"> 
-                                    <i class="fa-solid fa-syringe"></i><span>Laboratory Information</span>
+                                    <i class="fa-solid fa-syringe"></i><span>Laboratory<br>Information</span>
                                 </a>
                                 <ul class="collapse list-unstyled" id="laboratorySubmenu">
                                     <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'lab-tests.php') ? 'active' : ''; ?>">
@@ -192,7 +192,10 @@
                                 </ul>
                             </li>
                             <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'ehr.php') ? 'active' : ''; ?>">
-                                <a href="ehr.php"><i class="fas fa-notes-medical"></i> <span>EHR</span></a>
+                                <a href="ehr.php">
+                                    <i class="fas fa-notes-medical"></i>
+                                    <span>Electronic<br>Health Records</span>
+                                </a>
                             </li>
                         </ul>
                     <?php } else if ($_SESSION['role'] == 2) { ?>
@@ -279,6 +282,19 @@
                                 <a href="dashboard-nurse.php"><i class="fa fa-dashboard"></i> <span>Dashboard</span></a>
                             </li>
                             <li class="sidenav">
+                                <a href="#bedmanagementSubmenu" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle" aria-haspopup="true">
+                                    <i class="fa-solid fa-bed"></i> <span>Bed Management</span>
+                                </a>
+                                <ul class="collapse list-unstyled" id="bedmanagementSubmenu">
+                                    <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'bedallotment.php') ? 'active' : ''; ?>">
+                                        <a href="bedallotment.php"><i class="fa-solid fa-bed"></i> <span>Bed Allotment</span></a>
+                                    </li>
+                                    <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'housekeeping-schedule.php') ? 'active' : ''; ?>">
+                                        <a href="housekeeping-schedule.php"><i class="fa-solid fa-calendar"></i> <span>Housekeeping Schedule</span></a>
+                                    </li>
+                                </ul>
+                            </li>
+                            <li class="sidenav">
                                 <a href="#wardmanagementSubmenu" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle" aria-haspopup="true">
                                     <i class="fa-solid fa-clipboard-user"></i> <span>Ward Management</span>
                                 </a>
@@ -291,19 +307,6 @@
                                     </li>
                                     <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'bed-transfer.php') ? 'active' : ''; ?>">
                                         <a href="bed-transfer.php"><i class="fa-solid fa-bed"></i> <span>Bed Transfer</span></a>
-                                    </li>
-                                </ul>
-                            </li>
-                            <li class="sidenav">
-                                <a href="#bedmanagementSubmenu" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle" aria-haspopup="true">
-                                    <i class="fa-solid fa-bed"></i> <span>Bed Management</span>
-                                </a>
-                                <ul class="collapse list-unstyled" id="bedmanagementSubmenu">
-                                    <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'bedallotment.php') ? 'active' : ''; ?>">
-                                        <a href="bedallotment.php"><i class="fa-solid fa-bed"></i> <span>Bed Allotment</span></a>
-                                    </li>
-                                    <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'housekeeping-schedule.php') ? 'active' : ''; ?>">
-                                        <a href="housekeeping-schedule.php"><i class="fa-solid fa-calendar"></i> <span>Housekeeping Schedule</span></a>
                                     </li>
                                 </ul>
                             </li>
@@ -347,7 +350,7 @@
                             </li>
                             <li class="sidenav">
                                 <a href="#laboratorySubmenu" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle" aria-haspopup="true"> 
-                                    <i class="fa-solid fa-syringe"></i><span>Laboratory Information</span>
+                                    <i class="fa-solid fa-syringe"></i><span>Laboratory<br>Information</span>
                                 </a>
                                 <ul class="collapse list-unstyled" id="laboratorySubmenu">
                                     <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'lab-tests.php') ? 'active' : ''; ?>">

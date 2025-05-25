@@ -260,14 +260,16 @@ ob_end_flush();
                                 <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><i class="fa fa-ellipsis-v"></i></a>
                                 <div class="dropdown-menu dropdown-menu-right">
                                     <?php if ($role == 2 && $doctor_name == $row['doctor_incharge']) { ?>
-                                        <button class="dropdown-item diagnosis-btn" data-toggle="modal" data-target="#diagnosisModal" data-id="<?php echo $row['outpatient_id']; ?>" <?php echo !empty($row['diagnosis']) ? 'disabled' : ''; ?>><i class="fa fa-stethoscope m-r-5"></i> Diagnosis</button>
+                                        <button class="dropdown-item diagnosis-btn" data-toggle="modal" data-target="#diagnosisModal" data-id="<?php echo $row['outpatient_id']; ?>"><i class="fa fa-stethoscope m-r-5"></i> Diagnosis</button>
                                     <?php } ?>
                                     <?php if ($role == 3 && empty($row['doctor_incharge'])) { ?>
                                         <button class="dropdown-item select-doctor-btn" data-toggle="modal" data-target="#doctorModal" data-id="<?php echo htmlspecialchars($row['outpatient_id']); ?>"><i class="fa fa-user-md m-r-5"></i> Select Doctor</button>
                                     <?php } ?>
                                     <?php 
-                                    if ($role == 1) {
-                                        echo '<a class="dropdown-item" href="edit-outpatient.php?id='.$row['id'].'"><i class="fa fa-pencil m-r-5"></i> Edit</a>';
+                                    if ($role == 1 || $role == 3) {
+                                    echo '<a class="dropdown-item" href="edit-outpatient.php?id='.$row['id'].'"><i class="fa fa-pencil m-r-5"></i> Edit</a>';
+                                    }
+                                    if ($role == 1 ) {
                                         echo '<a class="dropdown-item" href="outpatients.php?ids='.$row['id'].'" onclick="return confirmDelete()"><i class="fa fa-trash m-r-5"></i> Delete</a>';
                                     }
                                     ?>
@@ -480,14 +482,17 @@ function updateTable(data) {
                 </button>`;
         }
         
-        // Edit and Delete buttons for admins
-        if (userRole == 1) {
+        if (userRole == 1 || userRole == 3) {
             actionButtons += `
                 <a class="dropdown-item" href="edit-outpatient.php?id=${row.id}">
                     <i class="fa fa-pencil m-r-5"></i> Edit
-                </a>
+                </a>`;
+        }
+
+        if (userRole == 1) {
+            actionButtons += `
                 <a class="dropdown-item" href="outpatients.php?ids=${row.id}" onclick="return confirmDelete()">
-                    <i class="fa fa-trash-o m-r-5"></i> Delete
+                    <i class="fa fa-trash m-r-5"></i> Delete
                 </a>`;
         }
         
@@ -613,24 +618,49 @@ function filterOutpatients() {
     });
         
     $('.dropdown-toggle').on('click', function (e) {
-    var $el = $(this).next('.dropdown-menu');
-    var isVisible = $el.is(':visible');
-    
-    // Hide all dropdowns
-    $('.dropdown-menu').slideUp('400');
-    
-    // If this wasn't already visible, slide it down
-    if (!isVisible) {
-        $el.stop(true, true).slideDown('400');
-    }
-    
-    // Close the dropdown if clicked outside of it
+        var $el = $(this).next('.dropdown-menu');
+        var isVisible = $el.is(':visible');
+        
+        // Hide all dropdowns
+        $('.dropdown-menu').slideUp('400');
+        
+        // If this wasn't already visible, slide it down
+        if (!isVisible) {
+            $el.stop(true, true).slideDown('400');
+        }
+        
+        // Close the dropdown if clicked outside of it
+        $(document).on('click', function (e) {
+            if (!$(e.target).closest('.dropdown').length) {
+                $('.dropdown-menu').slideUp('400');
+            }
+        });
+    });
+
+     $('#outpatientTable').on('click', '.dropdown-toggle', function (e) {
+        e.preventDefault(); // Prevent default action if it's a link
+
+        var $el = $(this).next('.dropdown-menu');
+        var isVisible = $el.is(':visible');
+
+        // Hide all dropdowns
+        $('.dropdown-menu').slideUp(400);
+
+        // If this wasn't already visible, slide it down
+        if (!isVisible) {
+            $el.stop(true, true).slideDown(400);
+        }
+
+        // Prevent the event from bubbling to document
+        e.stopPropagation();
+    });
+
+    // Click outside to close all dropdowns
     $(document).on('click', function (e) {
         if (!$(e.target).closest('.dropdown').length) {
-            $('.dropdown-menu').slideUp('400');
+            $('.dropdown-menu').slideUp(400);
         }
     });
-});
 </script>
 
 <script>
@@ -667,7 +697,6 @@ $('#doctorForm').submit(function(e) {
 </script>
 
 <script>
-
 // Image viewer variables
 var currentZoom = 1;
 var currentRotation = 0;
@@ -823,6 +852,12 @@ $(document).ready(function() {
 </script>
 
 <style>
+.custom-btn {
+    min-width: 120px; /* Adjust as needed */
+    padding: 0.95rem 0.30rem;
+    font-size: 0.900rem;
+    line-height: 1.5;
+}    
 .btn-sm {
     min-width: 110px; /* Adjust as needed */
     padding: 0.25rem 0.5rem;

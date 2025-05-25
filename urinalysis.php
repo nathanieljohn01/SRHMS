@@ -447,20 +447,28 @@ include('footer.php');
             `;
         }
         
-        if (editable) {
+        if (editable || canPrint) {  
             buttons += `
                 <a class="dropdown-item" href="edit-urinalysis.php?id=${urinalysisId}">
                     <i class="fa fa-pencil m-r-5"></i> Insert and Edit
                 </a>
+            `;
+        } else {
+            buttons += `
+                <a class="dropdown-item disabled" href="#">
+                    <i class="fa fa-pencil m-r-5"></i> Insert and Edit
+                </a>
+            `;
+        }
+
+        if (editable) {  
+            buttons += `
                 <a class="dropdown-item" href="urinalysis.php?ids=${urinalysisId}" onclick="return confirmDelete()">
                     <i class="fa fa-trash m-r-5"></i> Delete
                 </a>
             `;
         } else {
             buttons += `
-                <a class="dropdown-item disabled" href="#">
-                    <i class="fa fa-pencil m-r-5"></i> Edit
-                </a>
                 <a class="dropdown-item disabled" href="#">
                     <i class="fa fa-trash m-r-5"></i> Delete
                 </a>
