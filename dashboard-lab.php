@@ -64,6 +64,7 @@ $stat_tests = mysqli_fetch_row(mysqli_query($connection, "
                     <div class="dash-widget-info text-right">
                         <h3><?php echo $in_progress_tests; ?></h3>
                         <span class="widget-title1">In-Progress</span>
+                        <span class="widget-title1">Tests</span>
                     </div>
                 </div>
             </div>
@@ -73,6 +74,7 @@ $stat_tests = mysqli_fetch_row(mysqli_query($connection, "
                     <div class="dash-widget-info text-right">
                         <h3><?php echo $completed_tests; ?></h3>
                         <span class="widget-title2">Completed</span>
+                        <span class="widget-title2">Tests</span>
                     </div>
                 </div>
             </div>
@@ -82,6 +84,7 @@ $stat_tests = mysqli_fetch_row(mysqli_query($connection, "
                     <div class="dash-widget-info text-right">
                         <h3><?php echo $cancelled_tests; ?></h3>
                         <span class="widget-title3">Cancelled</span>
+                        <span class="widget-title3">Tests</span>
                     </div>
                 </div>
             </div>

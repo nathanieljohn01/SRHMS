@@ -14,6 +14,8 @@ function sanitize($connection, $input) {
 }
 
 $role = isset($_SESSION['role']) ? $_SESSION['role'] : null;
+
+// Process Diagnosis Form Submission
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['diagnosis']) && isset($_POST['patientId'])) {
     $diagnosis = sanitize($connection, $_POST['diagnosis']);
     $patientId = sanitize($connection, $_POST['patientId']);
@@ -29,73 +31,192 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['diagnosis']) && isset(
     $update_query->close();
 }
 
+// Process Treatment Form Submission
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['selectedMedicines']) && isset($_POST['newbornIdTreatment'])) {
     $newbornId = sanitize($connection, $_POST['newbornIdTreatment']);
     $selectedMedicines = json_decode($_POST['selectedMedicines'], true);
 
     if ($selectedMedicines) {
-        // Fetch newborn's first name and last name
-        $fetchNewbornQuery = $connection->prepare("SELECT first_name, last_name FROM tbl_newborn WHERE newborn_id = ?");
-        $fetchNewbornQuery->bind_param("s", $newbornId);
-        $fetchNewbornQuery->execute();
-        $fetchNewbornQuery->bind_result($firstName, $lastName);
-        $fetchNewbornQuery->fetch();
-        $fetchNewbornQuery->close();
+        // Start transaction
+        $connection->begin_transaction();
+        
+        try {
+            // 1. First get all current treatments for this newborn
+            $current_treatments = [];
+            $current_query = $connection->prepare("SELECT medicine_name, medicine_brand, total_quantity FROM tbl_treatment WHERE newborn_id = ?");
+            $current_query->bind_param("s", $newbornId);
+            $current_query->execute();
+            $current_result = $current_query->get_result();
+            
+            while ($row = $current_result->fetch_assoc()) {
+                $key = $row['medicine_name'] . '|' . $row['medicine_brand'];
+                $current_treatments[$key] = $row['total_quantity'];
+            }
+            
+            // 2. Delete all existing treatments for this newborn
+            $delete_query = $connection->prepare("DELETE FROM tbl_treatment WHERE newborn_id = ?");
+            $delete_query->bind_param("s", $newbornId);
+            $delete_query->execute();
 
-        $patientName = $firstName . ' ' . $lastName; // Concatenate first and last name
+            // 3. Reset medicine quantities in newborn record
+            $reset_query = $connection->prepare("UPDATE tbl_newborn SET medicine_name = '', medicine_brand = '', total_quantity = 0 WHERE newborn_id = ?");
+            $reset_query->bind_param("s", $newbornId);
+            $reset_query->execute();
 
-        foreach ($selectedMedicines as $medicine) {
-            $medicineId = sanitize($connection, $medicine['id']);
-            $medicineName = sanitize($connection, $medicine['name']);
-            $medicineBrand = sanitize($connection, $medicine['brand']);
-            $quantity = intval($medicine['quantity']);
-            $price = floatval($medicine['price']);
-            $totalPrice = $quantity * $price;
+            // 4. Process each selected medicine
+            $new_medicines = [];
+            $new_quantities = [];
+            
+            foreach ($selectedMedicines as $medicine) {
+                $medicineId = sanitize($connection, $medicine['id']);
+                $medicineName = sanitize($connection, $medicine['name']);
+                $medicineBrand = sanitize($connection, $medicine['brand']);
+                $quantity = intval($medicine['quantity']);
+                $price = floatval($medicine['price']);
+                $totalPrice = $quantity * $price;
 
-            // Insert treatment details into tbl_treatment
-            $insertQuery = $connection->prepare("
-                INSERT INTO tbl_treatment (newborn_id, patient_name, medicine_name, medicine_brand, total_quantity, price, total_price, treatment_date)
-                VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
-            ");
-            $insertQuery->bind_param("ssssidd", $newbornId, $patientName, $medicineName, $medicineBrand, $quantity, $price, $totalPrice);
+                // Get newborn details from newborn record
+                $newborn_query = $connection->prepare("SELECT first_name, last_name FROM tbl_newborn WHERE newborn_id = ?");
+                $newborn_query->bind_param("s", $newbornId);
+                $newborn_query->execute();
+                $newborn_result = $newborn_query->get_result();
+                $newborn = $newborn_result->fetch_assoc();
+                $patientName = $newborn['first_name'] . ' ' . $newborn['last_name'];
 
-            if (!$insertQuery->execute()) {
-                $msg = "Error inserting treatment: " . $insertQuery->error;
-                error_log($msg);
-                break;
+                // Insert new treatment record
+                $insertQuery = $connection->prepare("
+                    INSERT INTO tbl_treatment (newborn_id, patient_name, medicine_name, medicine_brand, total_quantity, price, total_price, treatment_date)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
+                ");
+                $insertQuery->bind_param("ssssiss", $newbornId, $patientName, $medicineName, $medicineBrand, $quantity, $price, $totalPrice);
+                
+                if (!$insertQuery->execute()) {
+                    throw new Exception("Error inserting treatment: " . $connection->error);
+                }
+
+                // Track new medicines for inventory update
+                $key = $medicineName . '|' . $medicineBrand;
+                $new_medicines[$key] = $medicineId;
+                $new_quantities[$key] = $quantity;
+                
+                // Update newborn record with concatenated medicine info
+                $updateNewbornQuery = $connection->prepare("
+                    UPDATE tbl_newborn
+                    SET 
+                        medicine_name = IF(medicine_name IS NULL OR medicine_name = '', ?, CONCAT(medicine_name, ', ', ?)),
+                        medicine_brand = IF(medicine_brand IS NULL OR medicine_brand = '', ?, CONCAT(medicine_brand, ', ', ?)),
+                        total_quantity = IF(total_quantity IS NULL, ?, total_quantity + ?)
+                    WHERE newborn_id = ?
+                ");
+                $updateNewbornQuery->bind_param("sssssis", $medicineName, $medicineName, $medicineBrand, $medicineBrand, $quantity, $quantity, $newbornId);
+                
+                if (!$updateNewbornQuery->execute()) {
+                    throw new Exception("Error updating newborn record: " . $connection->error);
+                }
             }
 
-            // Update medicine stock in tbl_medicines
-            $updateMedicineQuery = $connection->prepare("UPDATE tbl_medicines SET quantity = quantity - ? WHERE id = ?");
-            $updateMedicineQuery->bind_param("ii", $quantity, $medicineId);
-
-            if (!$updateMedicineQuery->execute()) {
-                $msg = "Error updating medicine quantity: " . $updateMedicineQuery->error;
-                break;
+            // 5. Update medicine inventory - first add back quantities from removed treatments
+            foreach ($current_treatments as $key => $old_quantity) {
+                // If this medicine was in old treatments but not in new ones, add back its quantity
+                if (!isset($new_quantities[$key])) {
+                    list($name, $brand) = explode('|', $key);
+                    
+                    $update_query = $connection->prepare("
+                        UPDATE tbl_medicines 
+                        SET quantity = quantity + ? 
+                        WHERE medicine_name = ? AND medicine_brand = ?
+                    ");
+                    $update_query->bind_param("iss", $old_quantity, $name, $brand);
+                    
+                    if (!$update_query->execute()) {
+                        throw new Exception("Error returning medicine to inventory: " . $connection->error);
+                    }
+                }
+            }
+            
+            // 6. Update medicine inventory - subtract quantities for new/updated treatments
+            foreach ($new_quantities as $key => $new_quantity) {
+                list($name, $brand) = explode('|', $key);
+                $medicineId = $new_medicines[$key];
+                
+                // Calculate net change (new quantity minus old quantity if it existed)
+                $net_change = $new_quantity;
+                if (isset($current_treatments[$key])) {
+                    $net_change = $new_quantity - $current_treatments[$key];
+                }
+                
+                // Only update if there's a net change
+                if ($net_change != 0) {
+                    $update_query = $connection->prepare("
+                        UPDATE tbl_medicines 
+                        SET quantity = quantity - ? 
+                        WHERE id = ?
+                    ");
+                    $update_query->bind_param("is", $net_change, $medicineId);
+                    
+                    if (!$update_query->execute()) {
+                        throw new Exception("Error updating medicine inventory: " . $connection->error);
+                    }
+                }
             }
 
-            // Update tbl_newborn with new treatment details
-            $updateNewbornQuery = $connection->prepare("
-                UPDATE tbl_newborn
-                SET 
-                    medicine_name = IF(medicine_name IS NULL OR medicine_name = '', ?, CONCAT(medicine_name, ', ', ?)),
-                    medicine_brand = IF(medicine_brand IS NULL OR medicine_brand = '', ?, CONCAT(medicine_brand, ', ', ?)),
-                    total_quantity = IFNULL(total_quantity, 0) + ?
-                WHERE newborn_id = ?
-            ");
-            $updateNewbornQuery->bind_param("ssssis", $medicineName, $medicineName, $medicineBrand, $medicineBrand, $quantity, $newbornId);
-
-            if (!$updateNewbornQuery->execute()) {
-                $msg = "Error updating newborn record: " . $updateNewbornQuery->error;
-                break;
-            }
-        }
-
-        if (!isset($msg)) {
-            $msg = "Treatment added successfully.";
+            // Commit transaction
+            $connection->commit();
+            $msg = "Treatment updated successfully.";
+            
+        } catch (Exception $e) {
+            // Rollback transaction on error
+            $connection->rollback();
+            $msg = $e->getMessage();
         }
     } else {
-        $msg = "Error: Invalid medicines data.";
+        // If no medicines selected, just clear all treatments
+        $connection->begin_transaction();
+        try {
+            // Get current treatments to return to inventory
+            $current_treatments = [];
+            $current_query = $connection->prepare("SELECT medicine_name, medicine_brand, total_quantity FROM tbl_treatment WHERE newborn_id = ?");
+            $current_query->bind_param("s", $newbornId);
+            $current_query->execute();
+            $current_result = $current_query->get_result();
+            
+            while ($row = $current_result->fetch_assoc()) {
+                $key = $row['medicine_name'] . '|' . $row['medicine_brand'];
+                $current_treatments[$key] = $row['total_quantity'];
+            }
+            
+            // Delete all treatments
+            $delete_query = $connection->prepare("DELETE FROM tbl_treatment WHERE newborn_id = ?");
+            $delete_query->bind_param("s", $newbornId);
+            $delete_query->execute();
+
+            // Reset newborn record
+            $reset_query = $connection->prepare("UPDATE tbl_newborn SET medicine_name = '', medicine_brand = '', total_quantity = 0 WHERE newborn_id = ?");
+            $reset_query->bind_param("s", $newbornId);
+            $reset_query->execute();
+
+            // Return all medicines to inventory
+            foreach ($current_treatments as $key => $quantity) {
+                list($name, $brand) = explode('|', $key);
+                
+                $update_query = $connection->prepare("
+                    UPDATE tbl_medicines 
+                    SET quantity = quantity + ? 
+                    WHERE medicine_name = ? AND medicine_brand = ?
+                ");
+                $update_query->bind_param("iss", $quantity, $name, $brand);
+                
+                if (!$update_query->execute()) {
+                    throw new Exception("Error returning medicine to inventory: " . $connection->error);
+                }
+            }
+            
+            $connection->commit();
+            $msg = "All treatments removed successfully.";
+        } catch (Exception $e) {
+            $connection->rollback();
+            $msg = $e->getMessage();
+        }
     }
 }
 ob_end_flush();
@@ -275,31 +396,25 @@ ob_end_flush();
     </div>
 </div>
 
+<!-- Treatment Modal -->
 <div id="treatmentModal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="treatmentModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="treatmentModalLabel">Select Medicines</h5>
+                <h5 class="modal-title" id="treatmentModalLabel">Manage Treatments</h5>
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
             <div class="modal-body">
                 <form id="medicineSelectionForm" method="POST" action="newborn.php">
-
                     <input type="hidden" name="newbornIdTreatment" id="newbornIdTreatment">
                     
-                    <!-- Medicine Search Section -->
                     <div class="form-group">
                         <label for="medicineSearchInput">Search Medicines</label>
-                        <input
-                            type="text"
-                            class="form-control"
-                            id="medicineSearchInput"
-                            placeholder="Enter medicine name or brand"
-                            onkeyup="searchMedicines()"
-                        >
+                        <input type="text" class="form-control" id="medicineSearchInput" placeholder="Enter medicine name or brand" onkeyup="searchMedicines()">
                     </div>
+                    
                     <div class="table-responsive mb-4">
                         <table class="table table-hover table-striped">
                             <thead style="background-color: #CCCCCC;">
@@ -319,8 +434,7 @@ ob_end_flush();
                         </table>
                     </div>
 
-                    <!-- Selected Medicines Section -->
-                    <h5>Selected Medicines</h5>
+                    <h5>Current Treatments</h5>
                     <ul id="selectedMedicinesList" class="list-group">
                         <!-- Selected medicines will populate here -->
                     </ul>
@@ -329,7 +443,7 @@ ob_end_flush();
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                <button type="submit" class="btn btn-primary" form="medicineSelectionForm">Save Treatment</button>
+                <button type="submit" class="btn btn-primary" form="medicineSelectionForm">Save Treatments</button>
             </div>
         </div>
     </div>
@@ -362,35 +476,63 @@ function confirmDelete(id) {
 </script>
 
 <script>
-$(document).on('click', '.treatment-btn', function(){
-    var newbornId = $(this).data('id');
-    $('#newbornIdTreatment').val(newbornId); // Update the ID of the hidden input field
-});
-
 let selectedMedicines = [];
 
-// Function to search medicines
+// Function to load existing treatments when modal opens
+function loadExistingTreatments(newbornId) {
+    $.ajax({
+        url: 'fetch-existing-nb-treatments.php',
+        type: 'GET',
+        data: { newborn_id: newbornId },
+        dataType: 'json',
+        success: function(data) {
+            selectedMedicines = data;
+            updateSelectedMedicinesUI();
+        },
+        error: function() {
+            alert('Error loading existing treatments');
+        }
+    });
+}
+
+// Update the treatment button click handler
+$(document).on('click', '.treatment-btn', function() {
+    var newbornId = $(this).data('id');
+    $('#newbornIdTreatment').val(newbornId);
+    selectedMedicines = []; // Clear the array
+    $('#selectedMedicinesList').html(''); // Clear the UI
+    $('#selectedMedicines').val(''); // Clear the hidden input
+    
+    // Load existing treatments
+    loadExistingTreatments(newbornId);
+});
+
+// Function to search medicines (updated to exclude already selected medicines)
 function searchMedicines() {
     const query = document.getElementById('medicineSearchInput').value.trim();
+    const newbornId = $('#newbornIdTreatment').val();
 
     if (query.length > 2) {
         $.ajax({
             url: 'search-medicines.php',
             type: 'GET',
-            data: { query },
-            success: function (data) {
-                $('#medicineSearchResults').html(data); // Populate search results
+            data: { 
+                query: query,
+                exclude: selectedMedicines.map(m => m.id) // Exclude already selected medicines
             },
-            error: function () {
+            success: function(data) {
+                $('#medicineSearchResults').html(data);
+            },
+            error: function() {
                 alert('Error fetching medicines. Please try again later.');
             }
         });
     } else {
-        $('#medicineSearchResults').html('<tr><td colspan="7">Please enter at least 3 characters to search.</td></tr>');
+        $('#medicineSearchResults').html('<tr><td colspan="8">Please enter at least 3 characters to search.</td></tr>');
     }
 }
 
-// Function to add medicine to the selected list
+// Function to add medicine to the selected list (updated to handle updates)
 function addMedicineToList(id, name, brand, category, availableQuantity, price, expiration_date, event) {
     if (event) {
         event.preventDefault();
@@ -400,7 +542,7 @@ function addMedicineToList(id, name, brand, category, availableQuantity, price, 
     const quantityInput = parseInt(document.getElementById(`quantityInput-${id}`).value, 10);
 
     if (quantityInput <= 0 || quantityInput > availableQuantity) {
-        alert('Invalid quantity. Please try again.');
+        alert('Invalid quantity. Please enter a value between 1 and ' + availableQuantity);
         return;
     }
 
@@ -420,15 +562,15 @@ function addMedicineToList(id, name, brand, category, availableQuantity, price, 
             quantity: quantityInput,
             price: parseFloat(price),
             expiration_date,
+            available_quantity: availableQuantity
         };
         selectedMedicines.push(medicine);
     }
 
-    // Update the UI
     updateSelectedMedicinesUI();
 }
 
-// Function to update the selected medicines UI
+// Function to update the selected medicines UI (updated to show available quantity)
 function updateSelectedMedicinesUI() {
     $('#selectedMedicinesList').html('');
 
@@ -436,16 +578,27 @@ function updateSelectedMedicinesUI() {
         const listItem = `
             <li class="list-group-item d-flex justify-content-between align-items-center">
                 <div>
-                    <strong>${medicine.name} (${medicine.brand}) (${medicine.category})</strong> - 
-                    ${medicine.quantity} pcs @ ${medicine.price} PHP each 
-                    <small>(Exp: ${medicine.expiration_date})</small>
+                    <strong>${medicine.name} (${medicine.brand})</strong><br>
+                    <small>Category: ${medicine.category}</small><br>
+                    <small>Exp: ${medicine.expiration_date}</small><br>
+                    <small>Price: ${medicine.price} PHP each</small>
                 </div>
-                <button 
-                    type="button" 
-                    class="btn btn-danger btn-sm" 
-                    onclick="removeMedicineFromList(${index})">
-                    Remove
-                </button>
+                <div class="d-flex align-items-center">
+                    <div class="mr-3">
+                        <label>Quantity:</label>
+                        <input type="number" 
+                               class="form-control form-control-sm" 
+                               value="${medicine.quantity}" 
+                               min="1" 
+                               max="${medicine.available_quantity}"
+                               onchange="updateMedicineQuantity(${index}, this.value)">
+                    </div>
+                    <button type="button" 
+                            class="btn btn-danger btn-sm" 
+                            onclick="removeMedicineFromList(${index})">
+                        Remove
+                    </button>
+                </div>
             </li>`;
         $('#selectedMedicinesList').append(listItem);
     });
@@ -453,9 +606,25 @@ function updateSelectedMedicinesUI() {
     $('#selectedMedicines').val(JSON.stringify(selectedMedicines));
 }
 
+// New function to update quantity of existing medicine
+function updateMedicineQuantity(index, newQuantity) {
+    const medicine = selectedMedicines[index];
+    const availableQty = medicine.available_quantity;
+    newQuantity = parseInt(newQuantity);
+    
+    if (newQuantity <= 0 || newQuantity > availableQty) {
+        alert('Invalid quantity. Please enter a value between 1 and ' + availableQty);
+        return false;
+    }
+    
+    selectedMedicines[index].quantity = newQuantity;
+    updateSelectedMedicinesUI();
+    return true;
+}
+
 // Function to remove a medicine from the selected list
 function removeMedicineFromList(index) {
-    selectedMedicines.splice(index, 1); // Remove the medicine by index
+    selectedMedicines.splice(index, 1);
     updateSelectedMedicinesUI();
 }
 

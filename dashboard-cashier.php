@@ -28,7 +28,8 @@ $paid_total = mysqli_fetch_assoc(mysqli_query($connection, $paid_query))['total'
                     ?>
                     <div class="dash-widget-info text-right">
                         <h3><?php echo $total['total']; ?></h3>
-                        <span class="widget-title1">Total Transactions</span>
+                        <span class="widget-title1">Total</span>
+                        <span class="widget-title1">Transactions</span>
                     </div>
                 </div>
             </div>
@@ -58,7 +59,8 @@ $paid_total = mysqli_fetch_assoc(mysqli_query($connection, $paid_query))['total'
                     ?>
                     <div class="dash-widget-info text-right">
                         <h3><?php echo $pending['total']; ?></h3>
-                        <span class="widget-title3">Pending Payments</span>
+                        <span class="widget-title3">Pending</span>
+                        <span class="widget-title3">Payments</span>
                     </div>
                 </div>
             </div>
@@ -73,7 +75,8 @@ $paid_total = mysqli_fetch_assoc(mysqli_query($connection, $paid_query))['total'
                     ?>
                     <div class="dash-widget-info text-right">
                         <h3><?php echo $paid['total']; ?></h3>
-                        <span class="widget-title4">Paid Payments</span>
+                        <span class="widget-title4">Paid</span>
+                        <span class="widget-title4">Payments</span>
                     </div>
                 </div>
             </div>
