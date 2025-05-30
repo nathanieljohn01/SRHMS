@@ -30,7 +30,7 @@
     <!-- Material Icons with preload -->
     <link rel="preload" as="style" href="https://fonts.googleapis.com/icon?family=Material+Icons" onload="this.onload=null;this.rel='stylesheet'">
 </head>
-<body>
+   <body>
     <div class="main-wrapper">
         <div class="header">
             <div class="header-left">
@@ -70,10 +70,10 @@
                                 <a href="employees.php"><i class="fa-solid fa-users"></i> <span>Employees</span></a>
                             </li>
                             <li class="sidenav">
-                                <a href="#triageSubmenu" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle" aria-haspopup="true">
+                                <a href="javascript:void(0);" data-toggle="collapse" aria-expanded="<?php echo (basename($_SERVER['PHP_SELF']) == 'patients.php' || basename($_SERVER['PHP_SELF']) == 'schedule.php') ? 'true' : 'false'; ?>" class="dropdown-toggle" aria-haspopup="true">
                                     <i class="fa-solid fa-laptop-medical"></i> <span>Triage</span>
                                 </a>
-                                <ul class="collapse list-unstyled" id="triageSubmenu">
+                                <ul class="collapse list-unstyled <?php echo (basename($_SERVER['PHP_SELF']) == 'patients.php' || basename($_SERVER['PHP_SELF']) == 'schedule.php') ? 'show' : ''; ?>" id="triageSubmenu">
                                     <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'patients.php') ? 'active' : ''; ?>">
                                         <a href="patients.php"><i class="fa-solid fa-wheelchair"></i> <span>Patient Registration</span></a>
                                     </li>
@@ -83,10 +83,10 @@
                                 </ul>
                             </li>
                             <li class="sidenav">
-                                <a href="#patientsSubmenu" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle" aria-haspopup="true"> 
+                                <a href="javascript:void(0);" data-toggle="collapse" aria-expanded="<?php echo (basename($_SERVER['PHP_SELF']) == 'outpatients.php' || basename($_SERVER['PHP_SELF']) == 'inpatients.php' || basename($_SERVER['PHP_SELF']) == 'hemodialysis.php') ? 'true' : 'false'; ?>" class="dropdown-toggle" aria-haspopup="true"> 
                                     <i class="fa fa-user"></i> <span>Patients</span>
                                 </a>
-                                <ul class="collapse list-unstyled" id="patientsSubmenu">
+                                <ul class="collapse list-unstyled <?php echo (basename($_SERVER['PHP_SELF']) == 'outpatients.php' || basename($_SERVER['PHP_SELF']) == 'inpatients.php' || basename($_SERVER['PHP_SELF']) == 'hemodialysis.php') ? 'show' : ''; ?>" id="patientsSubmenu">
                                     <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'outpatients.php') ? 'active' : ''; ?>">
                                         <a href="outpatients.php"><i class="fa-solid fa-user"></i> <span>Outpatient Section</span></a>
                                     </li>
@@ -99,10 +99,10 @@
                                 </ul>
                             </li>
                             <li class="sidenav">
-                                <a href="#bedmanagementSubmenu" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle" aria-haspopup="true">
+                                <a href="javascript:void(0);" data-toggle="collapse" aria-expanded="<?php echo (basename($_SERVER['PHP_SELF']) == 'bedallotment.php' || basename($_SERVER['PHP_SELF']) == 'housekeeping-schedule.php') ? 'true' : 'false'; ?>" class="dropdown-toggle" aria-haspopup="true">
                                     <i class="fa-solid fa-bed"></i> <span>Bed Management</span>
                                 </a>
-                                <ul class="collapse list-unstyled" id="bedmanagementSubmenu">
+                                <ul class="collapse list-unstyled <?php echo (basename($_SERVER['PHP_SELF']) == 'bedallotment.php' || basename($_SERVER['PHP_SELF']) == 'housekeeping-schedule.php') ? 'show' : ''; ?>" id="bedmanagementSubmenu">
                                     <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'bedallotment.php') ? 'active' : ''; ?>">
                                         <a href="bedallotment.php"><i class="fa-solid fa-bed"></i> <span>Bed Allotment</span></a>
                                     </li>
@@ -112,10 +112,10 @@
                                 </ul>
                             </li>
                             <li class="sidenav">
-                                <a href="#wardmanagementSubmenu" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle" aria-haspopup="true">
+                                <a href="javascript:void(0);" data-toggle="collapse" aria-expanded="<?php echo (basename($_SERVER['PHP_SELF']) == 'visitor-pass.php' || basename($_SERVER['PHP_SELF']) == 'inpatient-record.php' || basename($_SERVER['PHP_SELF']) == 'bed-transfer.php') ? 'true' : 'false'; ?>" class="dropdown-toggle" aria-haspopup="true">
                                     <i class="fa-solid fa-clipboard-user"></i> <span>Ward Management</span>
                                 </a>
-                                <ul class="collapse list-unstyled" id="wardmanagementSubmenu">
+                                <ul class="collapse list-unstyled <?php echo (basename($_SERVER['PHP_SELF']) == 'visitor-pass.php' || basename($_SERVER['PHP_SELF']) == 'inpatient-record.php' || basename($_SERVER['PHP_SELF']) == 'bed-transfer.php') ? 'show' : ''; ?>" id="wardmanagementSubmenu">
                                     <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'visitor-pass.php') ? 'active' : ''; ?>">
                                         <a href="visitor-pass.php"><i class="fa-solid fa-user"></i> <span>Visitor Pass</span></a>
                                     </li>
@@ -128,10 +128,10 @@
                                 </ul>
                             </li>
                             <li class="sidenav">
-                                <a href="#pharmacySubmenu" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle" aria-haspopup="true">
+                                <a href="javascript:void(0);" data-toggle="collapse" aria-expanded="<?php echo (basename($_SERVER['PHP_SELF']) == 'medicines.php' || basename($_SERVER['PHP_SELF']) == 'pharmacy-invoice.php') ? 'true' : 'false'; ?>" class="dropdown-toggle" aria-haspopup="true">
                                     <i class="fa-solid fa-prescription"></i> <span>Pharmacy</span>
                                 </a>
-                                <ul class="collapse list-unstyled" id="pharmacySubmenu">
+                                <ul class="collapse list-unstyled <?php echo (basename($_SERVER['PHP_SELF']) == 'medicines.php' || basename($_SERVER['PHP_SELF']) == 'pharmacy-invoice.php') ? 'show' : ''; ?>" id="pharmacySubmenu">
                                     <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'medicines.php') ? 'active' : ''; ?>">
                                         <a href="medicines.php"><i class="fa-solid fa-pills"></i> <span>Drugs and Medication</span></a>
                                     </li>
@@ -141,10 +141,10 @@
                                 </ul>
                             </li>
                             <li class="sidenav">
-                                <a href="#patientcareSubmenu" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle" aria-haspopup="true">
+                                <a href="javascript:void(0);" data-toggle="collapse" aria-expanded="<?php echo (basename($_SERVER['PHP_SELF']) == 'newborn.php' || basename($_SERVER['PHP_SELF']) == 'deceased.php') ? 'true' : 'false'; ?>" class="dropdown-toggle" aria-haspopup="true">
                                     <i class="fa-solid fa-hospital-user"></i> <span>Patient Care</span>
                                 </a>
-                                <ul class="collapse list-unstyled" id="patientcareSubmenu">
+                                <ul class="collapse list-unstyled <?php echo (basename($_SERVER['PHP_SELF']) == 'newborn.php' || basename($_SERVER['PHP_SELF']) == 'deceased.php') ? 'show' : ''; ?>" id="patientcareSubmenu">
                                     <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'newborn.php') ? 'active' : ''; ?>">
                                         <a href="newborn.php"><i class="fa-solid fa-baby"></i> <span>Newborn</span></a>
                                     </li>
@@ -154,10 +154,10 @@
                                 </ul>
                             </li>
                             <li class="sidenav">
-                                <a href="#laboratorySubmenu" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle" aria-haspopup="true"> 
+                                <a href="javascript:void(0);" data-toggle="collapse" aria-expanded="<?php echo (basename($_SERVER['PHP_SELF']) == 'lab-tests.php' || basename($_SERVER['PHP_SELF']) == 'lab-order-patients.php' || basename($_SERVER['PHP_SELF']) == 'lab-result.php') ? 'true' : 'false'; ?>" class="dropdown-toggle" aria-haspopup="true"> 
                                     <i class="fa-solid fa-syringe"></i><span>Laboratory<br>Information</span>
                                 </a>
-                                <ul class="collapse list-unstyled" id="laboratorySubmenu">
+                                <ul class="collapse list-unstyled <?php echo (basename($_SERVER['PHP_SELF']) == 'lab-tests.php' || basename($_SERVER['PHP_SELF']) == 'lab-order-patients.php' || basename($_SERVER['PHP_SELF']) == 'lab-result.php') ? 'show' : ''; ?>" id="laboratorySubmenu">
                                     <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'lab-tests.php') ? 'active' : ''; ?>">
                                         <a href="lab-tests.php"> <i class="fa-solid fa-vials"></i> <span>Lab Tests</span></a>
                                     </li>
@@ -179,14 +179,14 @@
                                 <a href="billing.php"><i class="fas fa-file-invoice-dollar"></i> <span>Billing</span></a>
                             </li>
                             <li class="sidenav">
-                                <a href="#cashierSubmenu" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle" aria-haspopup="true">
+                                <a href="javascript:void(0);" data-toggle="collapse" aria-expanded="<?php echo (basename($_SERVER['PHP_SELF']) == 'payment-processing.php' || basename($_SERVER['PHP_SELF']) == 'patient-ledger.php') ? 'true' : 'false'; ?>" class="dropdown-toggle" aria-haspopup="true">
                                     <i class="fa-solid fa-cash-register"></i><span>Cashier</span>
                                 </a>
-                                <ul class="collapse list-unstyled" id="cashierSubmenu">
+                                <ul class="collapse list-unstyled <?php echo (basename($_SERVER['PHP_SELF']) == 'payment-processing.php' || basename($_SERVER['PHP_SELF']) == 'patient-ledger.php') ? 'show' : ''; ?>" id="cashierSubmenu">
                                     <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'payment-processing.php') ? 'active' : ''; ?>">
                                         <a href="payment-processing.php"> <i class="fa-solid fa-credit-card"></i> <span>Payment Processing</span></a>
                                     </li>
-                                    <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'lab-order-patients.php') ? 'active' : ''; ?>">
+                                    <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'patient-ledger.php') ? 'active' : ''; ?>">
                                         <a href="patient-ledger.php"> <i class="fa-solid fa-file-invoice-dollar"></i> <span>Patient Ledger</span></a>
                                     </li>
                                 </ul>
@@ -207,8 +207,8 @@
                                 <a href="schedule.php"><i class="fa fa-calendar"></i> <span>Doctors Schedule</span></a>
                             </li>
                             <li class="sidenav">
-                                <a href="#patientsSubmenu" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle"><i class="fa fa-wheelchair"></i> <span>Patients</span></a>
-                                <ul class="collapse list-unstyled" id="patientsSubmenu">
+                                <a href="javascript:void(0);" data-toggle="collapse" aria-expanded="<?php echo (basename($_SERVER['PHP_SELF']) == 'outpatients.php' || basename($_SERVER['PHP_SELF']) == 'inpatients.php' || basename($_SERVER['PHP_SELF']) == 'hemodialysis.php') ? 'true' : 'false'; ?>" class="dropdown-toggle"><i class="fa fa-wheelchair"></i> <span>Patients</span></a>
+                                <ul class="collapse list-unstyled <?php echo (basename($_SERVER['PHP_SELF']) == 'outpatients.php' || basename($_SERVER['PHP_SELF']) == 'inpatients.php' || basename($_SERVER['PHP_SELF']) == 'hemodialysis.php') ? 'show' : ''; ?>" id="patientsSubmenu">
                                     <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'outpatients.php') ? 'active' : ''; ?>">
                                         <a href="outpatients.php"><i class="fa fa-wheelchair"></i> <span>Outpatient Section</span></a>
                                     </li>
@@ -221,20 +221,20 @@
                                 </ul>
                             </li>
                             <li class="sidenav">
-                                <a href="#wardmanagementSubmenu" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle" aria-haspopup="true">
+                                <a href="javascript:void(0);" data-toggle="collapse" aria-expanded="<?php echo (basename($_SERVER['PHP_SELF']) == 'inpatient-record.php') ? 'true' : 'false'; ?>" class="dropdown-toggle" aria-haspopup="true">
                                     <i class="fa-solid fa-clipboard-user"></i> <span>Ward Management</span>
                                 </a>
-                                <ul class="collapse list-unstyled" id="wardmanagementSubmenu">
+                                <ul class="collapse list-unstyled <?php echo (basename($_SERVER['PHP_SELF']) == 'inpatient-record.php') ? 'show' : ''; ?>" id="wardmanagementSubmenu">
                                     <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'inpatient-record.php') ? 'active' : ''; ?>">
                                         <a href="inpatient-record.php"><i class="fa-solid fa-id-card-clip"></i> <span>Inpatient Record</span></a>
                                     </li>
                                 </ul>
                             </li>
                             <li class="sidenav">
-                                <a href="#patientcareSubmenu" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle" aria-haspopup="true">
+                                <a href="javascript:void(0);" data-toggle="collapse" aria-expanded="<?php echo (basename($_SERVER['PHP_SELF']) == 'newborn.php') ? 'true' : 'false'; ?>" class="dropdown-toggle" aria-haspopup="true">
                                     <i class="fa-solid fa-hospital-user"></i> <span>Patient Care</span>
                                 </a>
-                                <ul class="collapse list-unstyled" id="patientcareSubmenu">
+                                <ul class="collapse list-unstyled <?php echo (basename($_SERVER['PHP_SELF']) == 'newborn.php') ? 'show' : ''; ?>" id="patientcareSubmenu">
                                     <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'newborn.php') ? 'active' : ''; ?>">
                                         <a href="newborn.php"><i class="fa-solid fa-baby"></i> <span>Newborn</span></a>
                                     </li>
@@ -247,10 +247,10 @@
                                 <a href="dashboard-nurse.php"><i class="fa fa-dashboard"></i> <span>Dashboard</span></a>
                             </li>
                             <li class="sidenav">
-                                <a href="#triageSubmenu" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle" aria-haspopup="true">
+                                <a href="javascript:void(0);" data-toggle="collapse" aria-expanded="<?php echo (basename($_SERVER['PHP_SELF']) == 'patients.php' || basename($_SERVER['PHP_SELF']) == 'schedule.php') ? 'true' : 'false'; ?>" class="dropdown-toggle" aria-haspopup="true">
                                     <i class="fa-solid fa-laptop-medical"></i> <span>Triage</span>
                                 </a>
-                                <ul class="collapse list-unstyled" id="triageSubmenu">
+                                <ul class="collapse list-unstyled <?php echo (basename($_SERVER['PHP_SELF']) == 'patients.php' || basename($_SERVER['PHP_SELF']) == 'schedule.php') ? 'show' : ''; ?>" id="triageSubmenu">
                                     <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'patients.php') ? 'active' : ''; ?>">
                                         <a href="patients.php"><i class="fa-solid fa-wheelchair"></i> <span>Patient Registration</span></a>
                                     </li>
@@ -260,10 +260,10 @@
                                 </ul>
                             </li>
                             <li class="sidenav">
-                                <a href="#patientsSubmenu" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle" aria-haspopup="true"> 
+                                <a href="javascript:void(0);" data-toggle="collapse" aria-expanded="<?php echo (basename($_SERVER['PHP_SELF']) == 'outpatients.php' || basename($_SERVER['PHP_SELF']) == 'inpatients.php' || basename($_SERVER['PHP_SELF']) == 'hemodialysis.php') ? 'true' : 'false'; ?>" class="dropdown-toggle" aria-haspopup="true"> 
                                     <i class="fa fa-user"></i> <span>Patients</span>
                                 </a>
-                                <ul class="collapse list-unstyled" id="patientsSubmenu">
+                                <ul class="collapse list-unstyled <?php echo (basename($_SERVER['PHP_SELF']) == 'outpatients.php' || basename($_SERVER['PHP_SELF']) == 'inpatients.php' || basename($_SERVER['PHP_SELF']) == 'hemodialysis.php') ? 'show' : ''; ?>" id="patientsSubmenu">
                                     <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'outpatients.php') ? 'active' : ''; ?>">
                                         <a href="outpatients.php"><i class="fa-solid fa-user"></i> <span>Outpatient Section</span></a>
                                     </li>
@@ -282,10 +282,10 @@
                                 <a href="dashboard-nurse.php"><i class="fa fa-dashboard"></i> <span>Dashboard</span></a>
                             </li>
                             <li class="sidenav">
-                                <a href="#bedmanagementSubmenu" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle" aria-haspopup="true">
+                                <a href="javascript:void(0);" data-toggle="collapse" aria-expanded="<?php echo (basename($_SERVER['PHP_SELF']) == 'bedallotment.php' || basename($_SERVER['PHP_SELF']) == 'housekeeping-schedule.php') ? 'true' : 'false'; ?>" class="dropdown-toggle" aria-haspopup="true">
                                     <i class="fa-solid fa-bed"></i> <span>Bed Management</span>
                                 </a>
-                                <ul class="collapse list-unstyled" id="bedmanagementSubmenu">
+                                <ul class="collapse list-unstyled <?php echo (basename($_SERVER['PHP_SELF']) == 'bedallotment.php' || basename($_SERVER['PHP_SELF']) == 'housekeeping-schedule.php') ? 'show' : ''; ?>" id="bedmanagementSubmenu">
                                     <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'bedallotment.php') ? 'active' : ''; ?>">
                                         <a href="bedallotment.php"><i class="fa-solid fa-bed"></i> <span>Bed Allotment</span></a>
                                     </li>
@@ -295,10 +295,10 @@
                                 </ul>
                             </li>
                             <li class="sidenav">
-                                <a href="#wardmanagementSubmenu" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle" aria-haspopup="true">
+                                <a href="javascript:void(0);" data-toggle="collapse" aria-expanded="<?php echo (basename($_SERVER['PHP_SELF']) == 'visitor-pass.php' || basename($_SERVER['PHP_SELF']) == 'inpatient-record.php' || basename($_SERVER['PHP_SELF']) == 'bed-transfer.php') ? 'true' : 'false'; ?>" class="dropdown-toggle" aria-haspopup="true">
                                     <i class="fa-solid fa-clipboard-user"></i> <span>Ward Management</span>
                                 </a>
-                                <ul class="collapse list-unstyled" id="wardmanagementSubmenu">
+                                <ul class="collapse list-unstyled <?php echo (basename($_SERVER['PHP_SELF']) == 'visitor-pass.php' || basename($_SERVER['PHP_SELF']) == 'inpatient-record.php' || basename($_SERVER['PHP_SELF']) == 'bed-transfer.php') ? 'show' : ''; ?>" id="wardmanagementSubmenu">
                                     <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'visitor-pass.php') ? 'active' : ''; ?>">
                                         <a href="visitor-pass.php"><i class="fa-solid fa-user"></i> <span>Visitor Pass</span></a>
                                     </li>
@@ -311,10 +311,10 @@
                                 </ul>
                             </li>
                             <li class="sidenav">
-                                <a href="#patientcareSubmenu" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle" aria-haspopup="true">
+                                <a href="javascript:void(0);" data-toggle="collapse" aria-expanded="<?php echo (basename($_SERVER['PHP_SELF']) == 'newborn.php' || basename($_SERVER['PHP_SELF']) == 'deceased.php') ? 'true' : 'false'; ?>" class="dropdown-toggle" aria-haspopup="true">
                                     <i class="fa-solid fa-hospital-user"></i> <span>Patient Care</span>
                                 </a>
-                                <ul class="collapse list-unstyled" id="patientcareSubmenu">
+                                <ul class="collapse list-unstyled <?php echo (basename($_SERVER['PHP_SELF']) == 'newborn.php' || basename($_SERVER['PHP_SELF']) == 'deceased.php') ? 'show' : ''; ?>" id="patientcareSubmenu">
                                     <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'newborn.php') ? 'active' : ''; ?>">
                                         <a href="newborn.php"><i class="fa-solid fa-baby"></i> <span>Newborn</span></a>
                                     </li>
@@ -330,10 +330,10 @@
                                 <a href="dashboard-pharmacy.php"><i class="fa fa-dashboard"></i> <span>Dashboard</span></a>
                             </li>
                             <li class="sidenav">
-                                <a href="#pharmacySubmenu" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle" aria-haspopup="true">
+                                <a href="javascript:void(0);" data-toggle="collapse" aria-expanded="<?php echo (basename($_SERVER['PHP_SELF']) == 'medicines.php' || basename($_SERVER['PHP_SELF']) == 'pharmacy-invoice.php') ? 'true' : 'false'; ?>" class="dropdown-toggle" aria-haspopup="true">
                                     <i class="fa-solid fa-prescription"></i> <span>Pharmacy</span>
                                 </a>
-                                <ul class="collapse list-unstyled" id="pharmacySubmenu">
+                                <ul class="collapse list-unstyled <?php echo (basename($_SERVER['PHP_SELF']) == 'medicines.php' || basename($_SERVER['PHP_SELF']) == 'pharmacy-invoice.php') ? 'show' : ''; ?>" id="pharmacySubmenu">
                                     <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'medicines.php') ? 'active' : ''; ?>">
                                         <a href="medicines.php"><i class="fa fa-pills"></i> <span>Drugs and Medication</span></a>
                                     </li>
@@ -349,10 +349,10 @@
                                 <a href="dashboard-lab.php"><i class="fa fa-dashboard"></i> <span>Dashboard</span></a>
                             </li>
                             <li class="sidenav">
-                                <a href="#laboratorySubmenu" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle" aria-haspopup="true"> 
+                                <a href="javascript:void(0);" data-toggle="collapse" aria-expanded="<?php echo (basename($_SERVER['PHP_SELF']) == 'lab-tests.php' || basename($_SERVER['PHP_SELF']) == 'lab-order-patients.php' || basename($_SERVER['PHP_SELF']) == 'lab-result.php') ? 'true' : 'false'; ?>" class="dropdown-toggle" aria-haspopup="true"> 
                                     <i class="fa-solid fa-syringe"></i><span>Laboratory<br>Information</span>
                                 </a>
-                                <ul class="collapse list-unstyled" id="laboratorySubmenu">
+                                <ul class="collapse list-unstyled <?php echo (basename($_SERVER['PHP_SELF']) == 'lab-tests.php' || basename($_SERVER['PHP_SELF']) == 'lab-order-patients.php' || basename($_SERVER['PHP_SELF']) == 'lab-result.php') ? 'show' : ''; ?>" id="laboratorySubmenu">
                                     <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'lab-tests.php') ? 'active' : ''; ?>">
                                         <a href="lab-tests.php"> <i class="fa-solid fa-vials"></i> <span>Lab Tests</span></a>
                                     </li>
@@ -374,7 +374,7 @@
                                 <a href="radiology-patients.php"><i class="fa-solid fa-radiation"></i> <span>Radiology Information</span></a>
                             </li>
                         </ul>
-                            <?php } else if ($_SESSION['role'] == 7) { ?>
+                    <?php } else if ($_SESSION['role'] == 7) { ?>
                         <ul>
                             <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'dashboard-billing.php') ? 'active' : ''; ?>">
                                 <a href="dashboard-billing.php"><i class="fa fa-dashboard"></i> <span>Dashboard</span></a>
@@ -383,20 +383,20 @@
                                 <a href="billing.php"><i class="fa-solid fa-money-bill-wave"></i> <span>Billing</span></a>
                             </li>
                         </ul>
-                            <?php } else if ($_SESSION['role'] == 8) { ?>
+                    <?php } else if ($_SESSION['role'] == 8) { ?>
                         <ul>
                             <li class="active">
                                 <a href="dashboard-cashier.php"><i class="fa fa-dashboard"></i> <span>Dashboard</span></a>
                             </li>
                             <li class="sidenav">
-                                <a href="#cashierSubmenu" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle" aria-haspopup="true">
+                                <a href="javascript:void(0);" data-toggle="collapse" aria-expanded="<?php echo (basename($_SERVER['PHP_SELF']) == 'payment-processing.php' || basename($_SERVER['PHP_SELF']) == 'patient-ledger.php') ? 'true' : 'false'; ?>" class="dropdown-toggle" aria-haspopup="true">
                                     <i class="fa-solid fa-cash-register"></i><span>Cashier</span>
                                 </a>
-                                <ul class="collapse list-unstyled" id="cashierSubmenu">
+                                <ul class="collapse list-unstyled <?php echo (basename($_SERVER['PHP_SELF']) == 'payment-processing.php' || basename($_SERVER['PHP_SELF']) == 'patient-ledger.php') ? 'show' : ''; ?>" id="cashierSubmenu">
                                     <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'payment-processing.php') ? 'active' : ''; ?>">
                                         <a href="payment-processing.php"> <i class="fa-solid fa-credit-card"></i> <span>Payment Processing</span></a>
                                     </li>
-                                    <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'lab-order-patients.php') ? 'active' : ''; ?>">
+                                    <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'patient-ledger.php') ? 'active' : ''; ?>">
                                         <a href="patient-ledger.php"> <i class="fa-solid fa-file-invoice-dollar"></i> <span>Patient Ledger</span></a>
                                     </li>
                                 </ul>
@@ -419,6 +419,72 @@
 <script src="assets/js/moment.min.js"></script>
 <script src="assets/js/bootstrap-datetimepicker.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Current page
+    const currentPage = '<?php echo basename($_SERVER['PHP_SELF']); ?>';
+    
+    // Define page groups for each dropdown menu
+    const menuGroups = {
+        'triageSubmenu': ['patients.php', 'schedule.php'],
+        'patientsSubmenu': ['outpatients.php', 'inpatients.php', 'hemodialysis.php'],
+        'bedmanagementSubmenu': ['bedallotment.php', 'housekeeping-schedule.php'],
+        'wardmanagementSubmenu': ['visitor-pass.php', 'inpatient-record.php', 'bed-transfer.php'],
+        'pharmacySubmenu': ['medicines.php', 'pharmacy-invoice.php'],
+        'patientcareSubmenu': ['newborn.php', 'deceased.php'],
+        'laboratorySubmenu': ['lab-tests.php', 'lab-order-patients.php', 'lab-result.php'],
+        'cashierSubmenu': ['payment-processing.php', 'patient-ledger.php']
+    };
+    
+    // Find which menu should be open based on current page
+    let activeMenuId = null;
+    for (const [menuId, pages] of Object.entries(menuGroups)) {
+        if (pages.includes(currentPage)) {
+            activeMenuId = menuId;
+            break;
+        }
+    }
+    
+    if (activeMenuId) {
+        // Get the submenu element
+        const submenu = document.getElementById(activeMenuId);
+        if (submenu) {
+            // Open the dropdown
+            submenu.classList.add('show');
+            
+            // Set the toggle button state
+            const toggleButton = submenu.previousElementSibling;
+            if (toggleButton) {
+                toggleButton.setAttribute('aria-expanded', 'true');
+            }
+            
+            // Only highlight the specific menu item for the current page
+            const menuItems = submenu.querySelectorAll('li');
+            menuItems.forEach(item => {
+                // Remove any existing 'active' class to ensure only the current page is highlighted
+                item.classList.remove('active');
+                
+                // Check if this menu item links to the current page
+                const link = item.querySelector('a');
+                if (link && link.getAttribute('href') === currentPage) {
+                    item.classList.add('active');
+                }
+            });
+        }
+    }
+    
+    // Prevent the default toggle behavior and implement our own
+    $('.dropdown-toggle').off('click').on('click', function(e) {
+        e.preventDefault();
+        const $submenu = $(this).next('.collapse');
+        
+        // Toggle the clicked submenu
+        $submenu.toggleClass('show');
+        $(this).attr('aria-expanded', $submenu.hasClass('show'));
+    });
+});
+</script>
+
 <script>
 // Improved sidebar toggle with smooth transitions
    document.addEventListener("DOMContentLoaded", function() {

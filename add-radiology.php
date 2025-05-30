@@ -20,6 +20,7 @@ if (isset($_POST['add-radiology'])) {
     // Sanitize and validate input
     $patient_name = htmlspecialchars(trim($_POST['patient_name']), ENT_QUOTES, 'UTF-8');
     $selected_tests = isset($_POST['rad_tests']) ? $_POST['rad_tests'] : []; // Handle multiple test selection
+    $shift = isset($_POST['shift']) ? htmlspecialchars(trim($_POST['shift']), ENT_QUOTES, 'UTF-8') : '';
 
     if (empty($patient_name)) {
         $msg = "Patient name is required!";
@@ -69,7 +70,7 @@ if (isset($_POST['add-radiology'])) {
                     ");
                     mysqli_stmt_bind_param(
                         $insert_stmt,
-                        'ssssssssd',
+                        'sssssssssd',  
                         $radiology_id,
                         $patient_id,
                         $patient_name,

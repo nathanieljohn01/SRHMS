@@ -266,9 +266,9 @@ if (isset($_GET['patient_id'])) {
                         <label for="radiologyImage" class="font-weight-bold">Select Image File</label>
                         <div class="custom-file">
                             <input type="file" class="custom-file-input" name="radiologyImage" id="radiologyImage" accept="image/jpeg,image/png,image/gif" required>
-                            <label class="custom-file-label" for="radiologyImage">Choose file (Max 2MB)</label>
+                            <label class="custom-file-label" for="radiologyImage">Choose file (Max 1MB)</label>
                         </div>
-                        <small class="form-text text-muted">Allowed formats: JPEG, PNG, GIF</small>
+                        <small class="form-text text-muted">Allowed formats: JPEG, JPG, BMP, PNG </small>
                     </div>
                     
                     <div class="preview-container text-center mb-3" style="display:none;">
@@ -406,7 +406,7 @@ include('footer.php');
         $('#imagePreview').hide();
         $('#clearPreview').hide();
         $('#radiologyImage').val('');
-        $('.custom-file-label').text('Choose file (Max 2MB)');
+        $('.custom-file-label').text('Choose file (Max 1MB)');
         $('#imageUploadModal').modal('show');
     }
 
@@ -433,7 +433,7 @@ include('footer.php');
     $('#clearPreview').on('click', function() {
         $('#radiologyImage').val('');
         $('#imagePreview').attr('src', '#').hide();
-        $('.custom-file-label').text('Choose file (Max 2MB)');
+        $('.custom-file-label').text('Choose file (Max 1MB)');
         $(this).hide();
     });
 

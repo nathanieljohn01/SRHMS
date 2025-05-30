@@ -12,16 +12,16 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_FILES['radiologyImage']) &&
     }
 
     // Validate file type and size
-    $allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
-    $maxFileSize = 2 * 1024 * 1024; // 2 MB
+    $allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/bmp'];
+    $maxFileSize = 1 * 1024 * 1024;
 
     if (!in_array($image['type'], $allowedTypes)) {
-        echo json_encode(['success' => false, 'error' => 'Invalid file type. Only JPG, PNG, and GIF are allowed.']);
+        echo json_encode(['success' => false, 'error' => 'Invalid file type. Only JPEG, JPG, BMP, and PNG are allowed.']);
         exit;
     }
 
     if ($image['size'] > $maxFileSize) {
-        echo json_encode(['success' => false, 'error' => 'File size exceeds the 2MB limit.']);
+        echo json_encode(['success' => false, 'error' => 'File size exceeds the 1MB limit.']);
         exit;
     }
 

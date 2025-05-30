@@ -35,10 +35,10 @@ if (isset($_POST['add-employee'])) {
     
     if (isset($_FILES['profile_picture']) && $_FILES['profile_picture']['error'] === UPLOAD_ERR_OK) {
         // Validate file
-        $allowed_types = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/gif' => 'gif'];
+        $allowed_types = ['image/jpeg' => 'jpg', 'image/jpg' => 'jpg', 'image/png' => 'png', 'image/bmp' => 'bmp'];
         $file_type = $_FILES['profile_picture']['type'];
         $file_size = $_FILES['profile_picture']['size'];
-        $max_size = 2 * 1024 * 1024; // 2MB
+        $max_size = 1 * 1024 * 1024; // 1MB
 
         if (array_key_exists($file_type, $allowed_types)) {
             if ($file_size <= $max_size) {
@@ -55,10 +55,10 @@ if (isset($_POST['add-employee'])) {
                     $upload_error = "Failed to move uploaded file";
                 }
             } else {
-                $upload_error = "File size exceeds 2MB limit";
+                $upload_error = "File size exceeds 1MB limit";
             }
         } else {
-            $upload_error = "Only JPG, PNG, and GIF files are allowed";
+            $upload_error = "Only JPEG, JPG, BMP, and PNG files are allowed";
         }
     } else {
         $upload_error = $_FILES['profile_picture']['error'] ?? 'No file uploaded';
@@ -145,9 +145,11 @@ if (isset($_POST['add-employee'])) {
                             <div class="form-group">
                                 <label>Profile Picture</label>
                                 <input type="file" class="form-control-file" name="profile_picture" required
-                                    accept="image/jpeg,image/png,image/gif">
+                                    accept="image/jpeg,image/jpg,image/png,image/bmp">
+                                <small class="form-text text-muted">Required. Image must be less than 1MB in size.</small>
                             </div>
                         </div>
+
                         <!-- First Name -->
                         <div class="col-sm-6">
                             <div class="form-group">
